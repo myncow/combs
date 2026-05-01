@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1776802207020,
+      "tag": "0000_glossy_night_nurse",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777576020119,
+      "tag": "0001_drop_quality_score",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777577000000,
+      "tag": "0002_generation_runs_metrics",
+      "breakpoints": true
+    }
+  ]
+}
