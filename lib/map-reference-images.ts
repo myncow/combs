@@ -1,6 +1,7 @@
 import { appConfig } from "@/lib/config";
 import type { GenerationMetricsCollector } from "@/lib/generation-metrics";
 import { moderateText } from "@/lib/guards";
+import { stripTaxonomyWords } from "@/lib/sanitize-taxonomy";
 import { fetchGoogleImageExampleResults, getSerpApiKey, normalizeExampleImageQuery } from "@/lib/serpapi-images";
 import type { MapDocument, MapExample, MapReferenceImage } from "@/lib/types";
 import { exampleImageSearchQuery } from "@/lib/utils";
@@ -24,8 +25,8 @@ function normalizeHits(rows: Awaited<ReturnType<typeof fetchGoogleImageExampleRe
     out.push({
       link: row.link,
       thumbnail: row.thumbnail,
-      title: row.title,
-      source: row.source,
+      title: row.title ? stripTaxonomyWords(row.title) || row.title : row.title,
+      source: row.source ? stripTaxonomyWords(row.source) || row.source : row.source,
     });
     if (out.length >= REFERENCE_IMAGES_PER_EXAMPLE) {
       break;

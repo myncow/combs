@@ -36,9 +36,13 @@ import type {
   MapConstraint,
   MapDocument,
   MapExample,
+  MapReferenceImage,
   NormalizedMapBrief,
 } from "@/lib/types";
+import { stripTaxonomyWords } from "@/lib/sanitize-taxonomy";
 import { slugify, titleCase } from "@/lib/utils";
+
+export { stripTaxonomyWords };
 
 function flushStructuredAttempts(
   collector: GenerationMetricsCollector | undefined,
@@ -440,7 +444,7 @@ function isResearchPackEmpty(research: ResearchContext) {
 
 const universalMapContract = `
 Universal map contract (same rules for every topic):
-- Axis fidelity: Populate the full primary matrix declared in the skeleton. Every coordinate uses skeleton dimension keys and only values enumerated for that dimension unless the explanation explicitly declares a sanctioned extension.
+- Axis fidelity: Populate the full primary matrix declared in the skeleton. Every coordinate uses skeleton dimension keys and only values enumerated for that dimension unless the explanation explicitly declares a sanctioned extension. Matching is strict—reuse the skeleton's exact value strings character-for-character (punctuation and spacing included) so downstream coverage checks succeed; paraphrased or "cleaned up" tick labels count as missing cells.
 - No axis drift mid-pass: Never introduce new axes, synonyms for keys, or untracked value labels outside the skeleton and normalized brief.
 - Named anchors: Examples must cite identifiable referents (named artifacts, regimes, specimens, canon entries, regimes of practice)—not rhetorical moods, unnamed styles, generic classes, or adjective stacks pretending to be names.
 - Evidence routing: Prefer the GROUNDED RESEARCH PACK; outside that rely only on stable common knowledge readers would broadly accept without specialty invention. Thin evidence → downgrade status and articulate epistemic limits in the prose.
@@ -452,21 +456,7 @@ Universal map contract (same rules for every topic):
 - Visualizable cells: Because every axis value is picturable, every filled cell should be something a user could visualize; keep cell labels short and scene-stable for the same reason.
 `;
 
-const TAXONOMY_WORD_PATTERN = /\b(taxonomical|taxonomically|taxonomic|taxonomies|taxonomy)\b/gi;
 const ARTICLE_STOPWORDS = new Set(["a", "an", "the", "of", "for", "and", "or", "to", "in", "on", "with"]);
-
-export function stripTaxonomyWords(input: string): string {
-  if (!input) {
-    return "";
-  }
-  return input
-    .replace(TAXONOMY_WORD_PATTERN, " ")
-    .replace(/\s*[-–—:|·•]\s*(?=(\s|$))/g, " ")
-    .replace(/\s{2,}/g, " ")
-    .replace(/\s+([,.;:!?])/g, "$1")
-    .replace(/^[\s\-–—:|·•,]+|[\s\-–—:|·•,]+$/g, "")
-    .trim();
-}
 
 function firstSignificantWords(value: string, count = 3): string {
   const tokens = value
@@ -511,6 +501,104 @@ export function hasConcreteExample(example: MapExample): boolean {
   return nameOk && (brandOk || yearOk || note.length >= 12 || descOk);
 }
 
+function stripReferenceImageMeta(images: MapReferenceImage[] | undefined): MapReferenceImage[] | undefined {
+  if (!images?.length) {
+    return images;
+  }
+  return images.map((img) => ({
+    ...img,
+    title: img.title ? stripTaxonomyWords(img.title) || img.title : undefined,
+    source: img.source ? stripTaxonomyWords(img.source) || img.source : undefined,
+  }));
+}
+
+function stripGenerationExample(example: MapExample): MapExample {
+  return {
+    ...example,
+    name: stripTaxonomyWords(example.name) || example.name,
+    description: stripTaxonomyWords(example.description) || example.description,
+    evidenceNote: example.evidenceNote ? stripTaxonomyWords(example.evidenceNote) || example.evidenceNote : undefined,
+    brand: example.brand ? stripTaxonomyWords(example.brand) || example.brand : undefined,
+    referenceImages: stripReferenceImageMeta(example.referenceImages),
+  };
+}
+
+/** Remove forbidden taxonomy-family wording from generated copy (research/Serp captions can leak it too). */
+function stripTaxonomyFromGeneratedMap(document: MapDocument): MapDocument {
+  const strip = stripTaxonomyWords;
+
+  return {
+    ...document,
+    title: strip(document.title) || document.title,
+    summary: strip(document.summary) || document.summary,
+    intro: strip(document.intro) || document.intro,
+    domain: strip(document.domain) || document.domain,
+    topicFamily: strip(document.topicFamily) || document.topicFamily,
+    dimensions: document.dimensions.map((dimension) => ({
+      ...dimension,
+      label: strip(dimension.label) || dimension.label,
+      description: strip(dimension.description) || dimension.description,
+      values: dimension.values.map((value) => strip(value) || value),
+    })),
+    cells: document.cells.map((cell) => ({
+      ...cell,
+      label: strip(cell.label) || cell.label,
+      explanation: strip(cell.explanation) || cell.explanation,
+      badges: cell.badges.map((badge) => strip(badge) || badge),
+      examples: cell.examples.map(stripGenerationExample),
+      visualization: cell.visualization
+        ? {
+            ...cell.visualization,
+            caption: cell.visualization.caption ? strip(cell.visualization.caption) || cell.visualization.caption : undefined,
+          }
+        : undefined,
+    })),
+    featuredExamples: document.featuredExamples.map(stripGenerationExample),
+    notableGaps: document.notableGaps.map((gap) => ({
+      ...gap,
+      label: strip(gap.label) || gap.label,
+      explanation: strip(gap.explanation) || gap.explanation,
+    })),
+    impossibleCombos: document.impossibleCombos.map((combo) => ({
+      ...combo,
+      label: strip(combo.label) || combo.label,
+      explanation: strip(combo.explanation) || combo.explanation,
+    })),
+    constraints: document.constraints.map((constraint) => ({
+      ...constraint,
+      label: strip(constraint.label) || constraint.label,
+      explanation: strip(constraint.explanation) || constraint.explanation,
+    })),
+    renderingHints: {
+      ...document.renderingHints,
+      accent: strip(document.renderingHints.accent) || document.renderingHints.accent,
+      gradient: document.renderingHints.gradient.map((hex) => strip(hex) || hex),
+      icon: document.renderingHints.icon ? strip(document.renderingHints.icon) || document.renderingHints.icon : undefined,
+    },
+    seo: {
+      title: strip(document.seo.title) || document.seo.title,
+      description: strip(document.seo.description) || document.seo.description,
+    },
+    visualSeries: document.visualSeries
+      ? {
+          ...document.visualSeries,
+          label: strip(document.visualSeries.label) || document.visualSeries.label,
+          overview: strip(document.visualSeries.overview) || document.visualSeries.overview,
+          styleSpec: {
+            ...document.visualSeries.styleSpec,
+            medium: strip(document.visualSeries.styleSpec.medium) || document.visualSeries.styleSpec.medium,
+            composition: strip(document.visualSeries.styleSpec.composition) || document.visualSeries.styleSpec.composition,
+            background: strip(document.visualSeries.styleSpec.background) || document.visualSeries.styleSpec.background,
+            lighting: strip(document.visualSeries.styleSpec.lighting) || document.visualSeries.styleSpec.lighting,
+            palette: strip(document.visualSeries.styleSpec.palette) || document.visualSeries.styleSpec.palette,
+            surfaceFeel: strip(document.visualSeries.styleSpec.surfaceFeel) || document.visualSeries.styleSpec.surfaceFeel,
+            negativePrompts: document.visualSeries.styleSpec.negativePrompts.map((p) => strip(p) || p),
+          },
+        }
+      : undefined,
+  };
+}
+
 function postProcessMapDocument(document: MapDocument, brief: NormalizedMapBrief) {
   const dedupedCells = Array.from(new Map(document.cells.map((cell) => [cell.id, cell])).values()).map((cell) => {
     const proofExamples = cell.examples.filter(hasConcreteExample);
@@ -541,26 +629,30 @@ function postProcessMapDocument(document: MapDocument, brief: NormalizedMapBrief
 
   const featuredExamples = backfillFeaturedExamples(dedupedCells, document.featuredExamples);
 
-  const cleanTitle = sanitizeMapTitle(document.title, brief);
-  const cleanSummary = stripTaxonomyWords(document.summary);
-  const sanitizedSeoTitle = stripTaxonomyWords(document.seo?.title ?? "");
-  const cleanSeoTitle =
-    !sanitizedSeoTitle || sanitizedSeoTitle.length < 3
-      ? `${cleanTitle} | Lattice`
-      : sanitizedSeoTitle;
-  const cleanSeoDescription = stripTaxonomyWords(document.seo?.description ?? "");
-
-  return attachVisualSeries({
+  const staged: MapDocument = {
     ...document,
     slug: slugify(document.slug || `${brief.domain}-map`),
-    title: cleanTitle,
-    summary: cleanSummary || document.summary.trim(),
     cells: dedupedCells,
     featuredExamples,
+  };
+
+  const stripped = stripTaxonomyFromGeneratedMap(staged);
+
+  const cleanTitle = sanitizeMapTitle(stripped.title, brief);
+  const cleanSummary = stripped.summary.trim() ? stripped.summary : document.summary.trim();
+  const sanitizedSeoTitle = stripTaxonomyWords(stripped.seo?.title ?? "");
+  const cleanSeoTitle =
+    !sanitizedSeoTitle || sanitizedSeoTitle.length < 3 ? `${cleanTitle} | Lattice` : sanitizedSeoTitle;
+  const cleanSeoDescription = stripTaxonomyWords(stripped.seo?.description ?? "");
+
+  return attachVisualSeries({
+    ...stripped,
+    title: cleanTitle,
+    summary: cleanSummary || document.summary.trim(),
     seo: {
-      ...document.seo,
+      ...stripped.seo,
       title: cleanSeoTitle,
-      description: cleanSeoDescription || document.seo?.description || "",
+      description: cleanSeoDescription || stripped.seo?.description || "",
     },
   });
 }
@@ -609,12 +701,10 @@ function canonicalValue(value: string | undefined, values: string[]) {
     return undefined;
   }
 
-  const normalized = slugify(value);
+  const trimmed = value.trim();
   return (
-    values.find((candidate) => candidate === value) ??
-    values.find((candidate) => slugify(candidate) === normalized) ??
-    values.find((candidate) => slugify(candidate).includes(normalized) || normalized.includes(slugify(candidate))) ??
-    value
+    values.find((candidate) => candidate === trimmed) ??
+    values.find((candidate) => slugify(candidate) === slugify(trimmed))
   );
 }
 
@@ -840,12 +930,12 @@ async function modelGenerateMapSkeleton(
 ) {
   const researchSection = formatResearchForPrompt(research, "skeleton");
   const emptyResearchNotice = isResearchPackEmpty(research)
-    ? `\nWARNING: No grounded research summary was retrieved; axes and taxonomy may be speculative and ungrounded—still structure the map coherently, but avoid fake specificity.\n`
+    ? `\nWARNING: No grounded research summary was retrieved; axes may be speculative and ungrounded—still structure the map coherently, but avoid fake specificity.\n`
     : "";
 
   const instructions = `
-You are an expert taxonomist and systems analyst.
-Your job is to build the structural SKELETON of a combinatorial taxonomy map for whatever domain the normalized brief declares.
+You are an expert systems analyst specializing in orthogonal 2-axis combinatorial maps.
+Your job is to build the structural SKELETON of a gap-first combinatorial map for whatever domain the normalized brief declares.
 Do NOT generate the cells. You MUST emit every structural field:
 title, slug, summary, intro, domain, topicFamily, dimensions, cellSchema, constraints, renderingHints, and seo.
 ${researchSection}${emptyResearchNotice}
@@ -853,6 +943,7 @@ Skeleton quality targets:
 - FORBIDDEN WORDS in every user-visible string (title, summary, intro, domain, topicFamily, dimension labels/descriptions, value labels, constraint labels/explanations, seo.title, seo.description): the words "taxonomy", "taxonomic", and "taxonomical". Use plain words like "map", "guide", "structure", "classification scheme", or just the domain name. Internal constraint kinds may stay as-is — this rule applies to human-readable copy only.
 - Value labels remain short tokens (no explanatory sentences appended to axes).
 - Value labels are NOUN-LIKE, scene-stable, and picturable—concrete materials, formats, settings, process stages, or form factors a human could sketch or image-search. Avoid long clauses, scalar adjectives, mood words, or score-like qualifiers.
+- Quantitative ticks (counts, percentages, folds, durations) stay within domain-credible bands—prefer trade-standard bands over sci-fi extremes invented to fill axes.
 - Emit exactly two dimensions; each exposes 3–5 concrete values. Do not add a third axis — the map renders as a clean 2D grid of these two axes only.
 - Do not concatenate unrelated categories behind slashes purely to inflate counts—split them or fold into descriptions.
 - Favor axis pairs where MISSING crossings are meaningful: downstream, empty cells are shown to the user as gaps/tensions/impossibles so they can see unimagined variations. Bland axes that trivially fill every slot are a failure mode.
@@ -1031,13 +1122,15 @@ async function modelGenerateMapCells(
   const concurrency = Math.min(appConfig.generation.cellsBatchConcurrency, batchCount);
 
   const instructions = `
-You are an expert taxonomist and systems analyst shaping maps across heterogeneous domains.
-You have been given a Taxonomy Map Skeleton containing dimensions and constraints.
+You are an expert systems analyst shaping orthogonal combinatorial maps across heterogeneous domains.
+You have been given a Map Skeleton containing dimensions and constraints.
 Your job is to generate one batch of CELLS for this matrix, evaluating each combination deeply.
 ${researchSection}
 Quality bar:
 - FORBIDDEN WORDS in every user-visible string (cell labels, cell explanations, badges, example names/descriptions/evidenceNote, notableGaps/impossibleCombos labels and explanations): the words "taxonomy", "taxonomic", and "taxonomical". Use "map", "structure", "classification", or rephrase.
-- Generate the exact cells in requiredMatrix. Every listed x/y pair must have one cell, no missing pairs and no extra pairs.
+- Generate the exact cells in requiredMatrix. Every listed x/y pair must have one cell—no missing pairs and no extras.
+- For each entry in THIS batch's requiredMatrix: emit exactly ONE cell whose "coordinates" object is IDENTICAL to that entry's coordinates (same property keys AND the same literal value strings). Copy verbatim; rewritten tick strings fail validation offline.
+- When referencing counts, percentages, folds, durations, etc., align with domain-credible regimes—don't invent astronomically inflated numbers purely to sensationalize corners.
 - Cell and example coordinates MUST use dimension keys, not display labels.
 - Every cell and example coordinates object must include exactly the primary x key and primary y key from the skeleton — no additional coordinate keys.
 - Evaluate each combination carefully. Is it existing, rare, gap, tension, or impossible?
@@ -1096,7 +1189,7 @@ REFERENCE SHAPE ONLY (reuse your skeleton.dimension keys—not these literal ide
     let canonicalized: MapCellsBatchInput | null = null;
     let attemptsUsed = 0;
 
-    for (let attempt = 0; attempt < 2 && !canonicalized; attempt++) {
+    for (let attempt = 0; attempt < 3 && !canonicalized; attempt++) {
       structuredExternalCalls++;
       attemptsUsed++;
       const response = await runStructuredModel<MapCellsBatchInput>({
@@ -1128,7 +1221,7 @@ REFERENCE SHAPE ONLY (reuse your skeleton.dimension keys—not these literal ide
 
       canonicalized = canonicalizeCellsBatch(parsed.data, skeleton, batchRequiredMatrix);
       if (!canonicalized && attempt === 0) {
-        console.warn(`Map cells batch ${index + 1}: matrix coverage incomplete, retrying once.`);
+        console.warn(`Map cells batch ${index + 1}: matrix coverage incomplete, retrying.`);
       }
     }
 
