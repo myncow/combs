@@ -46,3 +46,7 @@ next-env.d.ts
 
 # generation audits
 /.generation-audits
+
+# local Codex scratch data
+/.local
+/.superpowers
