@@ -1,26 +1,315 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* --- Tailwind v4 theme bindings ---------------------------------------- */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-lg: 2px;
+  --radius-md: 2px;
+  --radius-sm: 0px;
+
+  --font-sans: var(--font-geist-sans), "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ======================================================================
+ * Raster — structural system (function first, ornament second).
+ *
+ * Typography scale (single rhythm, shared by every page):
+ *   - Page title         32/40px · semibold · tracking -0.015em
+ *   - Section title      20/24px · semibold
+ *   - Body               15px · 1.55 line-height
+ *   - Small / meta       14px
+ *   - Mono kicker        12px · uppercase · tracking 0.22em
+ *
+ * Spacing rhythm:
+ *   - Page gutter        20px (mobile) / 32px (md+)
+ *   - Max container      1240px
+ *   - Section vertical   40–56px (py-10 / py-14)
+ *
+ * Surfaces:
+ *   - Hairline borders only (1px). Radius 0–2px. No drop shadows.
+ *   - One accent (cobalt, var(--primary)) reserved for "gap" signal
+ *     and for focus/hover emphasis on primary actions.
+ *
+ * Kicker usage:
+ *   - Use .kicker ONLY where it carries information (section label next
+ *     to functional controls, meta like "Topic / Date"). Never as pure
+ *     decoration above a headline.
+ * ====================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01" 1, "cv11" 1, "kern" 1;
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+a,
+input,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--primary) 22%, transparent);
+  color: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --- Live generation animations --------------------------------------- *
+ * One accent (progress bar fill); everything else monochrome. Easings and
+ * durations mirror the tokens in lib/motion.ts so CSS and framer-motion
+ * stay in lockstep. Reserved-motion users get static results via the
+ * site-wide override above.
+ *
+ * Tokens (mirrored from lib/motion.ts):
+ *   ease-out:   cubic-bezier(0.4, 0, 0.2, 1)
+ *   short:      0.24s   (cell entries, list pops)
+ *   base:       0.32s   (text + image reveals)
+ *   page:       0.5s    (title crossfades)
+ *   loop:       ease-in-out, 5–6s (sustained breath)
+ */
+
+/* Hatched empty cell — gently breathes. Background uses the existing
+ * foreground hatch pattern (same vocabulary as map-card placeholders) so
+ * empty cells feel like part of the system, not a loading skin. */
+.live-cell-hatch {
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0 3px,
+    color-mix(in srgb, var(--foreground) 9%, transparent) 3px 4px
+  );
+  background-color: var(--card);
+  animation: liveCellBreath 5.2s ease-in-out infinite;
+  will-change: opacity;
+}
+
+@keyframes liveCellBreath {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.85; }
+}
+
+/* Used by the active phase indicator dot. Single small accent. */
+@keyframes livePulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+/* Reference / preview image arrival — opacity + tiny blur. */
+@keyframes liveImageReveal {
+  0% { opacity: 0; filter: blur(4px); }
+  100% { opacity: 1; filter: blur(0); }
+}
+
+.live-image-reveal {
+  animation: liveImageReveal 0.32s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* Soft text reveal — used for axis names, column/row labels, and the page
+ * title when they first resolve. Opacity + 3px lift, no scale, no blur. */
+@keyframes liveTextReveal {
+  0% { opacity: 0; transform: translateY(3px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.live-text-reveal {
+  animation: liveTextReveal 0.32s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* Crossfade swap for text whose content changes mid-flight (page title
+ * once the document.title is rewritten by the model). */
+@keyframes liveTextCrossfade {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.live-text-crossfade {
+  animation: liveTextCrossfade 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes soft-wait-breathe {
+  0%,
+  100% {
+    transform: scale(1) translate3d(0, 0, 0);
+    opacity: 0.72;
+  }
+  50% {
+    transform: scale(1.08) translate3d(0, -4px, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes soft-wait-shimmer {
+  0% {
+    transform: translateX(-125%);
+  }
+  100% {
+    transform: translateX(125%);
+  }
+}
+
+/* Indeterminate viz bar: chunk slides flush left → right inside the track. */
+@keyframes viz-indeterminate-marquee {
+  0% {
+    left: -36%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+.viz-loading-track {
+  position: relative;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--muted) 62%, var(--background));
+}
+
+.viz-loading-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 36%;
+  left: -36%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--primary) 78%, transparent) 0%,
+    var(--primary) 50%,
+    color-mix(in srgb, var(--primary) 78%, transparent) 100%
+  );
+  opacity: 0.96;
+  animation: viz-indeterminate-marquee 1.35s cubic-bezier(0.45, 0, 0.4, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .viz-loading-bar {
+    animation: none;
+    left: 32%;
+    width: 46%;
+    opacity: 0.75;
+    background: var(--primary);
+  }
+}
+
+.soft-wait-sheen {
+  position: relative;
+}
+
+.soft-wait-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    color-mix(in srgb, var(--foreground) 12%, transparent) 48%,
+    transparent 100%
+  );
+  opacity: 0.22;
+  pointer-events: none;
+  transform: translateX(-125%);
+  animation: soft-wait-shimmer 3.2s ease-in-out infinite;
+}
+
+.soft-wait-orb {
+  animation: soft-wait-breathe 5s ease-in-out infinite;
+}
+
+.soft-wait-progress {
+  position: relative;
+  overflow: hidden;
+}
+
+.soft-wait-progress::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--foreground) 18%, transparent) 48%,
+    transparent 100%
+  );
+  transform: translateX(-120%);
+  animation: soft-wait-shimmer 2.8s ease-in-out infinite;
+}
+
+/* --- Functional utilities ---------------------------------------------- *
+ * Kept minimal. One kicker class only; everything else is expressed
+ * inline with Tailwind so ad-hoc visual variants can't drift.
+ */
+
+/* Mono uppercase kicker — used where a small text tag conveys info
+ * (section name, meta pair). Never as a number plate or issue label. */
+.kicker {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
 }

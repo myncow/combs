@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Lattice
 
-## Getting Started
+Lattice is a greenfield Next.js app for generating public taxonomy maps from guided user prompts. It uses a two-stage server-side generation flow, structured JSON validation, and a generic renderer that turns saved map documents into browseable public pages.
 
-First, run the development server:
+## Stack
+
+- Next.js App Router
+- TypeScript
+- Tailwind CSS
+- OpenRouter SDK
+- Zod
+- Drizzle + Postgres
+- Vitest
+
+## Environment
+
+Copy `.env.example` to `.env.local` and set at least:
+
+- `DATABASE_URL` — Postgres connection string (required for dev and production)
+- `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `OPENROUTER_FALLBACK_MODEL`
+- `SERPAPI_API_KEY` (optional; enables SerpApi-backed image examples)
+
+`OPENROUTER_API_KEY` is required for map generation. If it is missing, generation fails closed instead of publishing heuristic fallback maps.
+
+`SERPAPI_API_KEY` enables visual example matrices by proxying Google Images through SerpApi. If it is missing, maps still render, but visual example tiles are hidden.
+
+## Development
+
+Create a Postgres database, point `DATABASE_URL` at it, then apply schema:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm db:migrate
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Other commands:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm lint
+pnpm test
+pnpm build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Tests and Postgres
 
-## Learn More
+`tests/leaderboard-store.test.ts` truncates store tables, so it only runs when `TEST_DATABASE_URL` is set. Point `TEST_DATABASE_URL` at a disposable database such as `lattice_test`, then apply `pnpm db:migrate` to that database first. If `TEST_DATABASE_URL` is unset, the store integration suite is skipped and `pnpm test` will not touch your dev `DATABASE_URL`.
 
-To learn more about Next.js, take a look at the following resources:
+GitHub Actions (`.github/workflows/ci.yml`) starts Postgres, migrates, then runs tests including the leaderboard suite.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Notes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Public browsing is anonymous in v1.
+- Generation is rate-limited in memory.
+- The API surface includes:
+  - `GET /api/maps`
+  - `GET /api/maps/[slug]`
+  - `GET /api/example-images`
+  - `POST /api/example-images`
+  - `GET /api/example-prompts` (reads `example_prompts` in Postgres)
+- The create flow uses a server action for generation and persistence.

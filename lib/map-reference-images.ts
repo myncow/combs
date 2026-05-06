@@ -95,6 +95,10 @@ export async function runKeyedPool(length: number, concurrency: number, worker: 
 export async function enrichMapDocumentReferenceImages(
   document: MapDocument,
   collector?: GenerationMetricsCollector,
+  onExampleEnriched?: (
+    key: string,
+    hits: MapReferenceImage[],
+  ) => void | Promise<void>,
 ): Promise<MapDocument> {
   if (!getSerpApiKey() || appConfig.generation.serpReferenceMaxCalls <= 0) {
     return document;
@@ -106,6 +110,12 @@ export async function enrichMapDocumentReferenceImages(
 
   const consider = (ex: MapExample) => {
     if (!ex.name?.trim()) {
+      return;
+    }
+    // Preserve any reference images attached upstream (e.g. by the gap-cell
+    // SerpApi verification step). Without this guard, a stronger label-based
+    // probe done earlier would be overwritten by a weaker name+brand+year query.
+    if (ex.referenceImages && ex.referenceImages.length > 0) {
       return;
     }
     const qRaw = exampleImageSearchQuery(ex);
@@ -175,6 +185,9 @@ export async function enrichMapDocumentReferenceImages(
     const hits = await resolveQuery(q);
     if (hits.length) {
       hitsByKey.set(key, hits);
+      if (onExampleEnriched) {
+        await onExampleEnriched(key, hits);
+      }
     }
   });
 

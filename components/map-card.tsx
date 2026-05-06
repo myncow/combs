@@ -1,0 +1,190 @@
+import { AnimatePresence, motion } from "framer-motion";
+import Link from "next/link";
+import { DeleteMapButton } from "@/components/delete-map-button";
+import { Spinner } from "@/components/ui/spinner";
+import { entryTransition } from "@/lib/motion";
+import type { SavedMap } from "@/lib/types";
+import { cn, pickMapThumbnail, simplifyMapDisplayTitle } from "@/lib/utils";
+
+function formatShortDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Synthetic mini-grid — used when the map has no persisted imagery yet.
+ * A 3×3 mosaic of hatched + filled + accented cells, matching the theme.
+ * No SVG pattern ids — all CSS so multiple instances compose safely.
+ */
+function SyntheticGridPlaceholder({ className }: { className?: string }) {
+  const kinds: Array<"hatch" | "fill" | "accent"> = [
+    "hatch", "fill",   "hatch",
+    "fill",  "accent", "hatch",
+    "hatch", "fill",   "hatch",
+  ];
+  return (
+    <div
+      aria-hidden
+      className={cn(
+        "grid shrink-0 grid-cols-3 gap-px border border-border bg-border",
+        className,
+      )}
+    >
+      {kinds.map((kind, idx) => (
+        <div
+          key={idx}
+          className={cn(
+            "bg-background",
+            kind === "fill" && "bg-[color:color-mix(in_srgb,var(--foreground)_14%,transparent)]",
+            kind === "accent" && "bg-[color:color-mix(in_srgb,var(--primary)_28%,transparent)]",
+            kind === "hatch" &&
+              "bg-[repeating-linear-gradient(135deg,transparent_0_2px,color-mix(in_srgb,var(--foreground)_20%,transparent)_2px_3px)]",
+          )}
+        />
+      ))}
+    </div>
+  );
+}
+
+function MapThumbnail({
+  url,
+  className,
+}: {
+  url: string | null | undefined;
+  className?: string;
+}) {
+  if (!url) {
+    return <SyntheticGridPlaceholder className={className} />;
+  }
+  return (
+    <div
+      aria-hidden
+      className={cn(
+        "shrink-0 overflow-hidden border border-border bg-muted",
+        className,
+      )}
+    >
+      {/* Remote thumbnail URL: native img (unbounded hosts), not next/image. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={url}
+        alt=""
+        referrerPolicy="no-referrer"
+        className="h-full w-full object-cover"
+      />
+    </div>
+  );
+}
+
+/**
+ * Hairline index row: [thumbnail] [title + topic family] [date].
+ * Title anchor is the a11y label; thumbnail is decorative.
+ */
+export function MapCard({
+  map,
+  allowDelete = false,
+  compact = false,
+  onDeleted,
+}: {
+  map: SavedMap;
+  /** @deprecated kept for call-site compatibility; the index no longer numbers rows. */
+  index?: number;
+  allowDelete?: boolean;
+  /** Tighter row for sidebars / narrow rails. */
+  compact?: boolean;
+  onDeleted?: (slug: string) => void;
+}) {
+  const date = formatShortDate(map.createdAt);
+  const thumbnailUrl = map.thumbnailUrl ?? pickMapThumbnail(map.document);
+  const displayTitle = simplifyMapDisplayTitle(map.title, map.topicFamily);
+
+  const isGenerating = map.status === "generating";
+  const hasFailed = map.status === "failed";
+
+  if (compact) {
+    return (
+      <article className="group flex items-center gap-2 py-2 pl-1 pr-1">
+        <Link
+          href={`/maps/${map.slug}`}
+          aria-label={`Open map ${map.title}`}
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-sm outline-none transition-colors duration-150 hover:bg-muted/35 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          <MapThumbnail url={thumbnailUrl} className="h-14 w-14" />
+          <div className="min-w-0 text-left">
+            <h3 className="truncate text-[14px] font-semibold leading-[1.3] tracking-[-0.005em] text-foreground transition-colors duration-150 group-hover:text-primary">
+              {displayTitle}
+            </h3>
+            <AnimatePresence mode="wait" initial={false}>
+              {isGenerating ? (
+                <motion.p
+                  key="generating"
+                  className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground"
+                  initial={{ opacity: 0, y: 2 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -2 }}
+                  transition={entryTransition()}
+                >
+                  <Spinner size="xs" className="text-muted-foreground" />
+                  Generating
+                </motion.p>
+              ) : hasFailed ? (
+                <motion.p
+                  key="failed"
+                  className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--destructive)]"
+                  initial={{ opacity: 0, y: 2 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -2 }}
+                  transition={entryTransition()}
+                >
+                  <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full bg-[color:var(--destructive)]" />
+                  Failed
+                </motion.p>
+              ) : null}
+            </AnimatePresence>
+          </div>
+        </Link>
+        {allowDelete ? (
+          <div className="shrink-0">
+            <DeleteMapButton slug={map.slug} title={map.title} onDeleted={onDeleted} />
+          </div>
+        ) : null}
+      </article>
+    );
+  }
+
+  return (
+    <article className="group flex items-center gap-4 py-3">
+      <Link
+        href={`/maps/${map.slug}`}
+        aria-label={map.title}
+        className="shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        tabIndex={-1}
+      >
+        <MapThumbnail url={thumbnailUrl} className="h-12 w-12" />
+      </Link>
+
+      <div className="min-w-0 flex-1">
+        <Link href={`/maps/${map.slug}`} className="block">
+          <h3 className="truncate text-[16px] font-semibold leading-[1.3] tracking-[-0.005em] text-foreground transition-colors duration-150 group-hover:text-primary">
+            {displayTitle}
+          </h3>
+          <p className="mt-0.5 truncate font-mono text-[12px] uppercase tracking-[0.18em] text-muted-foreground">
+            {map.topicFamily}
+          </p>
+        </Link>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-3">
+        <time dateTime={map.createdAt} className="font-mono text-[12px] tabular-nums text-muted-foreground">
+          {date}
+        </time>
+      </div>
+    </article>
+  );
+}

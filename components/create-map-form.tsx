@@ -2,15 +2,15 @@
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, ChevronRight, Loader2, Lock, RefreshCw, Unlock } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowRight, Lock, RefreshCw, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
+import { entryTransition } from "@/lib/motion";
 import { axisPairKey } from "@/components/axis-pair-suggestion-card";
 import { ResponsiveAxesSlot } from "@/components/responsive-axes-slot";
-import { SoftWaitPanel, type StepRow } from "@/components/soft-wait-panel";
-import { LoadingSpinner } from "@/components/loading-spinner";
-import { AxisVisualGuide } from "@/components/axis-visual-guide";
-import type { GenerationTraceEvent } from "@/lib/generation-stream";
+import { dispatchLibraryRefresh } from "@/lib/client-events";
 import type { SuggestAxisPairInput } from "@/lib/schema";
 
 /** Short examples for rotating placeholder (empty field, not focused). Visual, axis-friendly hints. */
@@ -60,79 +60,12 @@ function pickNextPhraseIdx(exclude: number, len: number): number {
   return next;
 }
 
-function stepLabel(step: string, detail?: string): string {
-  switch (step) {
-    case "normalize_brief":
-      return "Framing the topic";
-    case "research":
-      return "Gathering grounded clues";
-    case "skeleton":
-      return "Sketching the grid";
-    case "cells":
-      return detail ? `Trying crossings — ${detail}` : "Trying crossings";
-    case "post_process":
-      return "Settling the map";
-    default:
-      if (step.startsWith("cells_batch_")) {
-        const n = step.slice("cells_batch_".length);
-        return n ? `Trying crossings (${n})` : "Trying crossings";
-      }
-      return "Warming up the draft";
-  }
-}
-
-function upsertStep(rows: StepRow[], key: string, label: string, status: StepRow["status"]): StepRow[] {
-  const i = rows.findIndex((r) => r.key === key);
-  const next = { key, label, status };
-  if (i === -1) {
-    return [...rows, next];
-  }
-  const copy = [...rows];
-  copy[i] = next;
-  return copy;
-}
-
-async function* parseSseJson(body: ReadableStream<Uint8Array> | null): AsyncGenerator<GenerationTraceEvent> {
-  if (!body) {
-    return;
-  }
-  const reader = body.getReader();
-  const decoder = new TextDecoder();
-  let buf = "";
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
-      buf += decoder.decode(value, { stream: true });
-      const blocks = buf.split("\n\n");
-      buf = blocks.pop() ?? "";
-      for (const block of blocks) {
-        for (const line of block.split("\n")) {
-          const t = line.trim();
-          if (!t.startsWith("data:")) {
-            continue;
-          }
-          const json = t.slice(5).trim();
-          if (!json || json === "[DONE]") {
-            continue;
-          }
-          try {
-            yield JSON.parse(json) as GenerationTraceEvent;
-          } catch {
-            continue;
-          }
-        }
-      }
-    }
-  } finally {
-    reader.releaseLock();
-  }
-}
-
 function buildSuggestCacheKey(topicTrim: string): string {
   return topicTrim.trim().toLowerCase();
+}
+
+function isAbortError(error: unknown) {
+  return error instanceof Error && error.name === "AbortError";
 }
 
 const URL_PARAM_TOPIC = "topic";
@@ -187,10 +120,6 @@ export function CreateMapForm() {
   const [suggestErr, setSuggestErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [steps, setSteps] = useState<StepRow[]>([]);
-  const [reasoning, setReasoning] = useState("");
-  const [output, setOutput] = useState("");
-  const [usageLines, setUsageLines] = useState<string[]>([]);
   const router = useRouter();
   const suggestSeq = useRef(0);
   const hasMounted = useRef(false);
@@ -198,6 +127,7 @@ export function CreateMapForm() {
   const requestedLockedPairKeyRef = useRef<string | null>(null);
   const lastFetchedSuggestKeyRef = useRef<string | null>(null);
   const pendingSuggestKeyRef = useRef<string | null>(null);
+  const suggestAbortRef = useRef<AbortController | null>(null);
 
   const topicTrim = topic.trim();
   const hasDraft = topicTrim !== "" || lockedPair !== null || requestedLockedPairKey !== null;
@@ -254,6 +184,12 @@ export function CreateMapForm() {
     topicTrimRef.current = topicTrim;
     requestedLockedPairKeyRef.current = requestedLockedPairKey;
   }, [requestedLockedPairKey, topicTrim]);
+
+  useEffect(() => {
+    return () => {
+      suggestAbortRef.current?.abort();
+    };
+  }, []);
 
   useEffect(() => {
     if (topic !== "" || topicFocused) {
@@ -332,6 +268,9 @@ export function CreateMapForm() {
 
     const seq = ++suggestSeq.current;
     pendingSuggestKeyRef.current = key;
+    suggestAbortRef.current?.abort();
+    const controller = new AbortController();
+    suggestAbortRef.current = controller;
     setSuggestLoading(true);
     setSuggestErr(null);
     try {
@@ -339,6 +278,7 @@ export function CreateMapForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic: t }),
+        signal: controller.signal,
       });
       const data = (await res.json()) as { error?: string; pairs?: SuggestAxisPairInput[] };
       if (suggestSeq.current !== seq) {
@@ -363,14 +303,20 @@ export function CreateMapForm() {
         return;
       }
       setLockedPair(null);
-    } catch {
+    } catch (error) {
       if (suggestSeq.current !== seq) {
+        return;
+      }
+      if (isAbortError(error)) {
         return;
       }
       setSuggestErr("Suggestions failed.");
       setPairs([]);
       setLockedPair(null);
     } finally {
+      if (suggestAbortRef.current === controller) {
+        suggestAbortRef.current = null;
+      }
       if (suggestSeq.current === seq) {
         pendingSuggestKeyRef.current = null;
         setSuggestLoading(false);
@@ -431,66 +377,36 @@ export function CreateMapForm() {
 
     setBusy(true);
     setError(null);
-    setSteps([]);
-    setReasoning("");
-    setOutput("");
-    setUsageLines([]);
 
     try {
-      const res = await fetch("/api/generate/stream", {
+      const res = await fetch("/api/generate/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(buildGenerationPayload(topicStr)),
       });
 
-      if (!res.ok && !res.headers.get("content-type")?.includes("text/event-stream")) {
-        const j = await res.json().catch(() => null);
-        setError(typeof j?.error === "string" ? j.error : `Request failed (${res.status})`);
+      const payload = (await res.json().catch(() => null)) as
+        | { slug?: string; error?: string }
+        | null;
+
+      if (!res.ok || !payload?.slug) {
+        setError(
+          payload?.error ?? `Request failed (${res.status})`,
+        );
         setBusy(false);
         return;
       }
 
-      for await (const ev of parseSseJson(res.body)) {
-        if (ev.type === "step") {
-          const key = ev.detail ? `${ev.step}:${ev.detail}` : ev.step;
-          const label = stepLabel(ev.step, ev.detail);
-          setSteps((rows) =>
-            upsertStep(rows, key, label, ev.phase === "start" ? "running" : "done"),
-          );
-        } else if (ev.type === "reasoning_delta") {
-          setReasoning((r) => r + ev.text);
-        } else if (ev.type === "output_delta") {
-          setOutput((o) => o + ev.text);
-        } else if (ev.type === "usage") {
-          // Omit token/model telemetry from the primary UI
-        } else if (ev.type === "research") {
-          if (ev.phase === "end" && ev.sourcesFound != null) {
-            const n = ev.sourcesFound;
-            setUsageLines((lines) => [
-              ...lines,
-              n === 1 ? "Working from one grounded reference." : `Working from ${n} grounded references.`,
-            ]);
-          }
-        } else if (ev.type === "error") {
-          setError(ev.message);
-          setBusy(false);
-          return;
-        } else if (ev.type === "complete") {
-          router.push(`/maps/${ev.slug}`);
-          setBusy(false);
-          return;
-        }
-      }
-
-      setBusy(false);
+      dispatchLibraryRefresh();
+      router.push(`/maps/${payload.slug}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Stream failed.");
+      setError(err instanceof Error ? err.message : "Could not start generation.");
       setBusy(false);
     }
   }
 
   const canSuggest = topicTrim.length >= 2;
-  const visiblePairs = pairs.slice(0, 2);
+  const visiblePairs = pairs.slice(0, 4);
   const lockedPairShownInSuggestions =
     lockedPair !== null &&
     visiblePairs.some((p) => axisPairKey(p) === axisPairKey(lockedPair));
@@ -509,257 +425,219 @@ export function CreateMapForm() {
             : `${pairs.length} frames suggested.`;
 
   return (
-    <form onSubmit={onSubmit} className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 md:overflow-hidden">
-      <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-[minmax(0,1.2fr)_minmax(24rem,0.9fr)] md:items-stretch md:overflow-y-auto md:pr-1 xl:grid-cols-[minmax(0,1.35fr)_minmax(30rem,0.95fr)]">
-        <section className="flex min-h-0 min-w-0 flex-col border border-border bg-card/35">
-          <div className="flex items-start justify-between gap-3 border-b border-border px-3 py-2.5">
-            <div>
-              <p className="font-mono text-[10px] font-medium uppercase leading-none tracking-[0.22em] text-foreground/80">
-                1. Define Input
-              </p>
-              <p className="mt-1.5 text-[13px] leading-snug text-muted-foreground">
-                Enter a topic and choose the axes that shape the generated table.
-              </p>
+    <form onSubmit={onSubmit} className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col border border-border bg-card/35">
+        <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3 md:px-5">
+          <div>
+            <p className="font-mono text-[10px] font-medium uppercase leading-none tracking-[0.22em] text-foreground/80">
+              1. Define Input
+            </p>
+            <p className="mt-1.5 max-w-[40rem] text-[13px] leading-snug text-muted-foreground">
+              Start with the topic. Suggested axes will appear as you type, and the table itself is generated after you submit.
+            </p>
+          </div>
+          <span className="shrink-0 border border-border bg-background px-1.5 py-0.5 font-mono text-[9px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Input
+          </span>
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col gap-5 px-4 py-4 md:px-5 md:py-5">
+          <div className="shrink-0 space-y-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <label
+                htmlFor="create-map-topic"
+                className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground"
+              >
+                Topic
+              </label>
+              <p className="text-[12px] text-muted-foreground">2+ characters to start suggestions</p>
             </div>
-            <span className="shrink-0 border border-border bg-background px-1.5 py-0.5 font-mono text-[9px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              Source
-            </span>
+            <Input
+              id="create-map-topic"
+              name="topic"
+              required
+              autoComplete="off"
+              spellCheck={false}
+              value={topic}
+              onFocus={() => setTopicFocused(true)}
+              onBlur={() => setTopicFocused(false)}
+              onChange={(e) => {
+                const v = e.target.value;
+                const nextTrim = v.trim();
+                const prevTrim = topicTrim;
+                setTopic(v);
+                if (nextTrim !== prevTrim) {
+                  lastFetchedSuggestKeyRef.current = null;
+                  pendingSuggestKeyRef.current = null;
+                  setPairs([]);
+                  setLockedPair(null);
+                  setRequestedLockedPairKey(null);
+                }
+                if (nextTrim.length < 2) {
+                  lastFetchedSuggestKeyRef.current = null;
+                  pendingSuggestKeyRef.current = null;
+                  setSuggestErr(null);
+                  setSuggestLoading(false);
+                }
+              }}
+              placeholder={topicPlaceholder}
+              className={
+                "min-h-[3.35rem] border-border/55 bg-transparent py-1 pb-1.5 font-semibold leading-[1.2] tracking-[-0.035em] text-foreground " +
+                "placeholder-shown:font-medium placeholder-shown:tracking-[-0.022em] " +
+                "placeholder:font-normal placeholder:italic placeholder:tracking-[-0.02em] placeholder:text-muted-foreground/48 " +
+                "text-[clamp(1.3rem,4vw,1.75rem)] md:min-h-[3.75rem] md:text-[clamp(1.45rem,3.4vw,1.95rem)]"
+              }
+            />
           </div>
 
-          <div className="flex min-h-0 flex-col gap-4 px-3 py-3">
-            <div className="shrink-0 space-y-3">
-              <div className="flex items-baseline justify-between gap-3">
-                <label
-                  htmlFor="create-map-topic"
-                  className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground"
-                >
-                  Topic
-                </label>
-              </div>
-              <Input
-                id="create-map-topic"
-                name="topic"
-                required
-                autoComplete="off"
-                spellCheck={false}
-                value={topic}
-                onFocus={() => setTopicFocused(true)}
-                onBlur={() => setTopicFocused(false)}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  const nextTrim = v.trim();
-                  const prevTrim = topicTrim;
-                  setTopic(v);
-                  if (nextTrim !== prevTrim) {
-                    lastFetchedSuggestKeyRef.current = null;
-                    pendingSuggestKeyRef.current = null;
-                    setPairs([]);
-                    setLockedPair(null);
-                    setRequestedLockedPairKey(null);
-                  }
-                  if (nextTrim.length < 2) {
-                    lastFetchedSuggestKeyRef.current = null;
-                    pendingSuggestKeyRef.current = null;
-                    setSuggestErr(null);
-                    setSuggestLoading(false);
-                  }
-                }}
-                placeholder={topicPlaceholder}
-                className={
-                  "min-h-[3rem] border-border/55 bg-transparent py-1 pb-1.5 font-semibold leading-[1.2] tracking-[-0.035em] text-foreground " +
-                  "placeholder-shown:font-medium placeholder-shown:tracking-[-0.022em] " +
-                  "placeholder:font-normal placeholder:italic placeholder:tracking-[-0.02em] placeholder:text-muted-foreground/48 " +
-                  "text-[clamp(1.25rem,4.2vw,1.55rem)] md:min-h-[3.35rem] md:text-[clamp(1.35rem,3.8vw,1.65rem)]"
-                }
-              />
-            </div>
-
-            <ResponsiveAxesSlot>
-              <div className="flex items-center justify-between gap-2">
+          <ResponsiveAxesSlot>
+            <div className="flex items-center justify-between gap-2">
+              <div>
                 <p className="font-mono text-[9px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
                   Axis Suggestions
                 </p>
-                {pairs.length > visiblePairs.length ? (
+                <p className="mt-1 text-[13px] leading-snug text-muted-foreground">
+                  Leave it open for automatic framing, or lock a pair before generating.
+                </p>
+              </div>
+              {pairs.length > visiblePairs.length ? (
+                <button
+                  type="button"
+                  onClick={() => void executeSuggestFetch(true)}
+                  className="shrink-0 text-[12px] text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
+                >
+                  Refresh
+                </button>
+              ) : null}
+            </div>
+
+            <div aria-live="polite" aria-busy={suggestLoading} className="min-h-[3rem] space-y-2">
+              <p className="sr-only" role="status">
+                {suggestLiveMessage}
+              </p>
+
+              {!canSuggest ? (
+                <p className="text-[13px] text-muted-foreground">
+                  Start with a category, scene, collection, or product space.
+                </p>
+              ) : suggestLoading ? (
+                <p className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                  <Spinner size="sm" className="opacity-70" />
+                  Sketching frames…
+                </p>
+              ) : suggestErr ? (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <p className="text-[13px] text-destructive">{suggestErr}</p>
                   <button
                     type="button"
                     onClick={() => void executeSuggestFetch(true)}
-                    className="text-[12px] text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
+                    className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground underline decoration-border underline-offset-4 hover:text-foreground"
                   >
-                    Show two more
+                    <RefreshCw className="h-3 w-3" aria-hidden />
+                    Retry
                   </button>
-                ) : null}
-              </div>
-
-              <div aria-live="polite" aria-busy={suggestLoading} className="min-h-[3rem] space-y-2">
-                <p className="sr-only" role="status">
-                  {suggestLiveMessage}
-                </p>
-
-                {!canSuggest ? null : suggestLoading ? (
-                  <p className="flex items-center gap-2 text-[13px] text-muted-foreground">
-                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin opacity-70" aria-hidden />
-                    Sketching frames…
-                  </p>
-                ) : suggestErr ? (
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <p className="text-[13px] text-destructive">{suggestErr}</p>
-                    <button
-                      type="button"
-                      onClick={() => void executeSuggestFetch(true)}
-                      className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground underline decoration-border underline-offset-4 hover:text-foreground"
-                    >
-                      <RefreshCw className="h-3 w-3" aria-hidden />
-                      Retry
-                    </button>
-                  </div>
-                ) : pairs.length === 0 ? (
-                  <p className="text-[13px] text-muted-foreground">Keep typing — frames appear automatically.</p>
-                ) : (
-                  <ul className="space-y-1">
-                    {visiblePairs.map((pair) => {
-                      const selected = lockedPair !== null && axisPairKey(lockedPair) === axisPairKey(pair);
-                      return (
-                        <li key={axisPairKey(pair)}>
-                          <button
-                            type="button"
-                            onClick={() => togglePair(pair)}
-                            aria-pressed={selected}
-                            aria-label={
-                              selected
-                                ? `Selected frame ${pair.primary.label} by ${pair.secondary.label}`
-                                : `Select frame ${pair.primary.label} by ${pair.secondary.label}`
-                            }
-                            className={
-                              "group w-full border border-transparent px-2 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring " +
-                              (selected
-                                ? "border-primary/40 bg-[color:color-mix(in_srgb,var(--primary)_7%,transparent)]"
-                                : "hover:border-border hover:bg-foreground/[0.025]")
-                            }
-                          >
-                            <span className="text-[15px] font-medium leading-snug tracking-[-0.02em] text-foreground">
-                              {pair.primary.label}
-                              <span className="mx-1.5 font-normal text-muted-foreground">×</span>
-                              {pair.secondary.label}
-                            </span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-            </ResponsiveAxesSlot>
-
-            {lockedPair && !lockedPairShownInSuggestions ? (
-              <div className="flex shrink-0 items-center gap-2 py-1">
-                <Lock className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
-                <p className="min-w-0 flex-1 truncate text-[14px] text-foreground/90">
-                  {lockedPair.primary.label}
-                  <span className="mx-1.5 text-muted-foreground">×</span>
-                  {lockedPair.secondary.label}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLockedPair(null);
-                    setRequestedLockedPairKey(null);
-                  }}
-                  className="inline-flex shrink-0 items-center gap-1 text-[12px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  aria-label="Clear locked frame"
-                >
-                  <Unlock className="h-3 w-3" aria-hidden />
-                  Clear
-                </button>
-              </div>
-            ) : null}
-
-            {error ? (
-              <p className="shrink-0 text-[13px] text-destructive" role="alert">
-                {error}
-              </p>
-            ) : null}
-
-            <Button type="submit" disabled={busy} size="lg" className="h-11 w-full shrink-0">
-              {busy ? (
-                <>
-                  <LoadingSpinner className="h-4 w-4" />
-                  Building map…
-                </>
+                </div>
+              ) : pairs.length === 0 ? (
+                <p className="text-[13px] text-muted-foreground">Keep typing. Suggested frames will appear automatically.</p>
               ) : (
-                <>
+                <ul className="grid gap-2 md:grid-cols-2">
+                  {visiblePairs.map((pair) => {
+                    const selected = lockedPair !== null && axisPairKey(lockedPair) === axisPairKey(pair);
+                    return (
+                      <li key={axisPairKey(pair)}>
+                        <button
+                          type="button"
+                          onClick={() => togglePair(pair)}
+                          aria-pressed={selected}
+                          aria-label={
+                            selected
+                              ? `Selected frame ${pair.primary.label} by ${pair.secondary.label}`
+                              : `Select frame ${pair.primary.label} by ${pair.secondary.label}`
+                          }
+                          className={
+                            "group flex w-full flex-col gap-1.5 border px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring " +
+                            (selected
+                              ? "border-primary/40 bg-[color:color-mix(in_srgb,var(--primary)_7%,transparent)]"
+                              : "border-border/70 hover:border-border hover:bg-foreground/[0.025]")
+                          }
+                        >
+                          <span className="text-[15px] font-medium leading-snug tracking-[-0.02em] text-foreground">
+                            {pair.primary.label}
+                            <span className="mx-1.5 font-normal text-muted-foreground">×</span>
+                            {pair.secondary.label}
+                          </span>
+                          {pair.rationale ? (
+                            <span className="text-[12px] leading-snug text-muted-foreground">{pair.rationale}</span>
+                          ) : null}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </ResponsiveAxesSlot>
+
+          {lockedPair && !lockedPairShownInSuggestions ? (
+            <div className="flex shrink-0 items-center gap-2 border border-border/70 bg-background/55 px-3 py-2">
+              <Lock className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+              <p className="min-w-0 flex-1 truncate text-[14px] text-foreground/90">
+                {lockedPair.primary.label}
+                <span className="mx-1.5 text-muted-foreground">×</span>
+                {lockedPair.secondary.label}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setLockedPair(null);
+                  setRequestedLockedPairKey(null);
+                }}
+                className="inline-flex shrink-0 items-center gap-1 text-[12px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                aria-label="Clear locked frame"
+              >
+                <Unlock className="h-3 w-3" aria-hidden />
+                Clear
+              </button>
+            </div>
+          ) : null}
+
+          {error ? (
+            <p className="shrink-0 text-[13px] text-destructive" role="alert">
+              {error}
+            </p>
+          ) : null}
+
+          <Button type="submit" disabled={busy} size="lg" className="mt-auto h-11 w-full shrink-0 md:max-w-56">
+            <AnimatePresence mode="wait" initial={false}>
+              {busy ? (
+                <motion.span
+                  key="busy"
+                  className="flex items-center gap-2"
+                  initial={{ opacity: 0, y: 2 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -2 }}
+                  transition={entryTransition()}
+                >
+                  <Spinner size="md" />
+                  Building map…
+                </motion.span>
+              ) : (
+                <motion.span
+                  key="idle"
+                  className="flex items-center gap-2"
+                  initial={{ opacity: 0, y: 2 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -2 }}
+                  transition={entryTransition()}
+                >
                   Build map
                   <ArrowRight className="h-4 w-4" />
-                </>
+                </motion.span>
               )}
-            </Button>
-          </div>
-        </section>
-
-        <div className="min-w-0">
-          <AxisVisualGuide 
-            className="h-full w-full text-foreground"
-            primaryLabel={lockedPair?.primary.label || pairs[0]?.primary.label}
-            secondaryLabel={lockedPair?.secondary.label || pairs[0]?.secondary.label}
-            primaryValues={lockedPair?.primary.values || pairs[0]?.primary.values}
-            secondaryValues={lockedPair?.secondary.values || pairs[0]?.secondary.values}
-          />
+            </AnimatePresence>
+          </Button>
         </div>
-      </div>
-
-      {busy || steps.length > 0 ? <SoftWaitPanel busy={busy} steps={steps} usageLines={usageLines} /> : null}
-
-      {(busy || steps.length > 0 || reasoning || output || usageLines.length > 0) && (
-        <details className="group/trace shrink-0 border-t border-border/70 pt-2">
-          <summary className="flex cursor-pointer list-none items-center gap-2 py-1 text-[12px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-            <ChevronRight className="h-3 w-3 shrink-0 transition-transform group-open/trace:rotate-90" aria-hidden />
-            Trace
-          </summary>
-          <div className="space-y-3 py-2 text-[13px]">
-            {steps.length > 0 ? (
-              <div>
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Steps</p>
-                <ul className="mt-1.5 space-y-1">
-                  {steps.map((row) => (
-                    <li
-                      key={row.key}
-                      className="flex items-start gap-2 text-[12px] leading-snug text-muted-foreground"
-                    >
-                      <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-muted-foreground/40" aria-hidden />
-                      <span className={row.status === "running" ? "text-foreground/90" : ""}>{row.label}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-            {usageLines.length > 0 && (
-              <div>
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Summary</p>
-                <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-muted-foreground">
-                  {usageLines.map((line, idx) => (
-                    <li key={`${line}-${idx}`}>{line}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {reasoning && (
-              <div>
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Notes</p>
-                <pre className="mt-1.5 max-h-32 overflow-auto whitespace-pre-wrap text-[12px] leading-relaxed text-foreground/85">
-                  {reasoning}
-                </pre>
-              </div>
-            )}
-            {output && (
-              <div>
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Structured output</p>
-                <pre className="mt-1.5 max-h-36 overflow-auto whitespace-pre-wrap font-mono text-[12px] text-foreground/85">
-                  {output}
-                </pre>
-              </div>
-            )}
-          </div>
-        </details>
-      )}
+      </section>
     </form>
   );
 }

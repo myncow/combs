@@ -1,13 +1,26 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { materializeCellImageAsset } from "@/lib/cell-visualization-storage";
+import {
+  DegenerateImageError,
+  materializeCellImageAsset,
+  type MaterializedCellImage,
+} from "@/lib/cell-visualization-storage";
 import { generateCellVisualizationWithMetrics } from "@/lib/cell-image";
 import { checkRateLimit, getRequesterId, moderateText } from "@/lib/guards";
 import { runMapGenerationCore } from "@/lib/map-generation-runner";
-import { mapBriefSchema, cellVisualizationResultSchema, type CellVisualizationResult } from "@/lib/schema";
+import {
+  cellVisualizationResultSchema,
+  mapBriefSchema,
+  publishGapSpotlightSchema,
+  type CellVisualizationResult,
+} from "@/lib/schema";
 import type { MapDocument, MapCell } from "@/lib/types";
-import { patchMapCellVisualization } from "@/lib/store";
+import { patchMapCellVisualization, publishGapSpotlight } from "@/lib/store";
+import {
+  buildDiversificationSuffix,
+  findHashCollisionAgainstOthers,
+} from "@/lib/visualization-diversity";
 
 export type CreateMapActionState =
   | { status: "idle" }
@@ -30,7 +43,7 @@ export async function createMapAction(
 
   const rawBrief = {
     topic: String(formData.get("topic") ?? "").slice(0, 120),
-    extraContext: String(formData.get("extraContext") ?? "").slice(0, 500) || undefined,
+    extraContext: String(formData.get("extraContext") ?? "").slice(0, 1500) || undefined,
   };
 
   const moderated = moderateText(`${rawBrief.topic} ${rawBrief.extraContext ?? ""}`);
@@ -88,7 +101,7 @@ export async function createMapAction(
 
 export type VisualizeCellActionState =
   | { status: "idle" }
-  | { status: "success"; result: CellVisualizationResult }
+  | { status: "success"; result: CellVisualizationResult & { imageModel: string; prompt?: string } }
   | { status: "error"; message: string };
 
 export async function visualizeCellAction(
@@ -129,42 +142,162 @@ export async function visualizeCellAction(
       };
     }
 
-    const { result: raw, metrics: vizMetrics } = await generateCellVisualizationWithMetrics(document, cell);
-    if (!raw) {
-      return {
-        status: "error",
-        message: "No idea image came back from the model. Check OPENROUTER_API_KEY and model availability.",
-      };
-    }
-
-    const parsed = cellVisualizationResultSchema.safeParse(raw);
-    if (!parsed.success) {
-      return { status: "error", message: "Unexpected response shape from the model." };
-    }
+    const rawImageModel = formData.get("imageModel");
+    const imageModel =
+      typeof rawImageModel === "string" && rawImageModel.trim() !== "" ? rawImageModel.trim() : undefined;
 
     const slug = document.slug;
-    const matT0 = Date.now();
-    const storedUrl = await materializeCellImageAsset(slug, cell.id, parsed.data.imageUrl);
-    vizMetrics.materializationFetchMs = Date.now() - matT0;
+
+    async function generateAndMaterialize(
+      extraPromptSuffix: string,
+    ): Promise<{
+      materialized: MaterializedCellImage;
+      caption?: string;
+      usedImageModel: string;
+      usedPrompt?: string;
+    } | { error: VisualizeCellActionState }> {
+      const { result: raw, imageModel: usedImageModel, prompt: usedPrompt } =
+        await generateCellVisualizationWithMetrics(document, cell, {
+          imageModel,
+          extraPromptSuffix,
+        });
+      if (!raw) {
+        return {
+          error: {
+            status: "error",
+            message:
+              "No idea image came back from the model. Check OPENROUTER_API_KEY and model availability.",
+          },
+        };
+      }
+
+      const parsed = cellVisualizationResultSchema.safeParse(raw);
+      if (!parsed.success) {
+        return { error: { status: "error", message: "Unexpected response shape from the model." } };
+      }
+
+      try {
+        const materialized = await materializeCellImageAsset(slug, cell.id, parsed.data.imageUrl);
+        return {
+          materialized,
+          caption: parsed.data.caption,
+          usedImageModel,
+          usedPrompt,
+        };
+      } catch (error) {
+        if (error instanceof DegenerateImageError) {
+          return {
+            error: {
+              status: "error",
+              message:
+                "The image came back empty or corrupted. Try again — this is usually a transient model issue.",
+            },
+          };
+        }
+        throw error;
+      }
+    }
+
+    let attempt = await generateAndMaterialize("");
+    if ("error" in attempt) {
+      return attempt.error;
+    }
+
+    // Cross-cell duplicate detection: if this cell's bytes match another
+    // cell's persisted visualization, the model collapsed two distinct
+    // coordinates onto one rendering. Retry once with a diversification
+    // suffix; accept whatever comes back from the second pass even if it
+    // still collides (better than blocking the user).
+    const collidingCell = findHashCollisionAgainstOthers(document, cell.id, attempt.materialized.byteHash);
+    if (collidingCell) {
+      console.warn("[visualize_cell] hash_collision", {
+        slug,
+        cellId: cell.id,
+        collidedWith: collidingCell.id,
+        byteHash: attempt.materialized.byteHash,
+      });
+      const retryAttempt = await generateAndMaterialize(buildDiversificationSuffix(collidingCell));
+      if (!("error" in retryAttempt)) {
+        attempt = retryAttempt;
+      }
+    }
 
     const updatedAt = new Date().toISOString();
     await patchMapCellVisualization(slug, cell.id, {
-      imageUrl: storedUrl,
-      caption: parsed.data.caption,
+      imageUrl: attempt.materialized.url,
+      caption: attempt.caption,
       updatedAt,
+      imageModel: attempt.usedImageModel,
+      prompt: attempt.usedPrompt,
+      byteHash: attempt.materialized.byteHash,
     });
     revalidatePath(`/maps/${slug}`);
     revalidatePath("/gallery");
 
     return {
       status: "success",
-      result: { imageUrl: storedUrl, caption: parsed.data.caption },
+      result: {
+        imageUrl: attempt.materialized.url,
+        caption: attempt.caption,
+        imageModel: attempt.usedImageModel,
+        prompt: attempt.usedPrompt,
+      },
     };
   } catch (error) {
     console.error("Cell idea image error:", error);
     return {
       status: "error",
       message: error instanceof Error ? error.message : "Could not generate an idea. Please try again.",
+    };
+  }
+}
+
+export type PublishGapSpotlightActionState =
+  | { status: "idle" }
+  | { status: "success"; slug: string }
+  | { status: "error"; message: string };
+
+export async function publishGapSpotlightAction(
+  _previousState: PublishGapSpotlightActionState,
+  formData: FormData,
+): Promise<PublishGapSpotlightActionState> {
+  const parsed = publishGapSpotlightSchema.safeParse({
+    mapSlug: String(formData.get("mapSlug") ?? ""),
+    cellId: String(formData.get("cellId") ?? ""),
+    storyTitle: String(formData.get("storyTitle") ?? "").slice(0, 120),
+    storySummary: String(formData.get("storySummary") ?? "").slice(0, 220),
+  });
+
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: parsed.error.issues[0]?.message ?? "Please review the story details and try again.",
+    };
+  }
+
+  const moderated = moderateText(`${parsed.data.storyTitle} ${parsed.data.storySummary}`);
+  if (!moderated.safe) {
+    return {
+      status: "error",
+      message: moderated.reason ?? "This publish request is blocked by moderation.",
+    };
+  }
+
+  try {
+    const entry = await publishGapSpotlight(parsed.data);
+    revalidatePath("/leaderboard");
+    revalidatePath(`/leaderboard/${entry.slug}`);
+    revalidatePath("/gallery");
+    revalidatePath("/api/leaderboard");
+
+    return {
+      status: "success",
+      slug: entry.slug,
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Could not publish this spotlight.",
     };
   }
 }

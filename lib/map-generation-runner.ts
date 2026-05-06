@@ -1,13 +1,21 @@
 import { revalidatePath } from "next/cache";
+import { eq } from "drizzle-orm";
 import type { MapBriefInput } from "@/lib/schema";
 import { appConfig } from "@/lib/config";
+import { getDb } from "@/lib/db/client";
+import { mapsTable } from "@/lib/db/schema";
 import type { GenerationMetrics } from "@/lib/generation-metrics";
 import { GenerationMetricsCollector } from "@/lib/generation-metrics";
 import { withMetricsGenerationSink } from "@/lib/generation-sink-metrics";
 import type { GenerationStreamSink } from "@/lib/generation-stream";
 import { buildMapJob } from "@/lib/map-engine";
-import { logGenerationRun, saveMap } from "@/lib/store";
-import type { MapBrief, NormalizedMapBrief, MapDocument, GenerationJobResult } from "@/lib/types";
+import { applyMapPatch, logGenerationRun, saveMap } from "@/lib/store";
+import type {
+  GenerationJobResult,
+  MapBrief,
+  MapDocument,
+  NormalizedMapBrief,
+} from "@/lib/types";
 
 export type MapGenerationRunOutcome =
   | {
@@ -44,40 +52,72 @@ function revalidateMapPaths(slug: string) {
 }
 
 /**
+ * Mark an already-reserved map row as failed so the live shell can render the
+ * error state and the SSE poller can shut down.
+ */
+async function markReservedMapFailed(mapId: string, message: string) {
+  const db = getDb();
+  await db
+    .update(mapsTable)
+    .set({
+      status: "failed",
+      summary: message.slice(0, 500),
+    })
+    .where(eq(mapsTable.id, mapId));
+}
+
+/**
  * Shared map generation: `buildMapJob`, metrics, persistence, and revalidation.
  * Callers own parse, moderation, and rate limiting.
+ *
+ * When `reservedMap` is provided, the map row already exists with status
+ * "generating"; this runner mutates it in place and flips it to "published" or
+ * "failed" at the end. Without `reservedMap`, the legacy behavior applies:
+ * runner inserts a fresh "published" row at the end.
  */
 export async function runMapGenerationCore(
   briefInput: MapBriefInput,
-  options?: { sink?: GenerationStreamSink },
+  options?: {
+    sink?: GenerationStreamSink;
+    reservedMap?: { id: string; slug: string };
+  },
 ): Promise<MapGenerationRunOutcome> {
   const collector = new GenerationMetricsCollector();
+  const reserved = options?.reservedMap ?? null;
 
   try {
     const mergedSink = withMetricsGenerationSink(options?.sink, collector);
-    const { result, normalizedBrief, document } = await buildMapJob(briefInput, mergedSink, collector);
+    const { result, normalizedBrief, document } = await buildMapJob(briefInput, mergedSink, collector, {
+      mapId: reserved?.id,
+    });
 
     const metricsBase = collector.finalize();
     const inputBrief = briefInput as MapBrief;
 
     if (!normalizedBrief) {
+      const message = "Brief normalization unavailable.";
+      if (reserved) await markReservedMapFailed(reserved.id, message);
       await logGenerationRun({
         id: `run_${crypto.randomUUID()}`,
+        mapId: reserved?.id,
         status: "failed",
         model: appConfig.openRouter.model,
         fallbackModel: appConfig.openRouter.fallbackModel,
         inputBrief,
         normalizedBrief: null,
-        error: "Brief normalization unavailable.",
+        error: message,
         metrics: metricsBase,
         createdAt: new Date().toISOString(),
       });
-      return { outcome: "error", message: "Brief normalization unavailable.", metrics: metricsBase };
+      return { outcome: "error", message, metrics: metricsBase };
     }
 
     if (result.status === "rejected") {
+      const message = normalizedBrief.guidance?.join(" ") ?? "Brief was rejected.";
+      if (reserved) await markReservedMapFailed(reserved.id, message);
       await logGenerationRun({
         id: `run_${crypto.randomUUID()}`,
+        mapId: reserved?.id,
         status: "rejected",
         model: appConfig.openRouter.model,
         fallbackModel: appConfig.openRouter.fallbackModel,
@@ -91,8 +131,12 @@ export async function runMapGenerationCore(
     }
 
     if (result.status !== "success" || !document) {
+      const message =
+        result.error ?? "The generated map did not meet structural publish requirements.";
+      if (reserved) await markReservedMapFailed(reserved.id, message);
       await logGenerationRun({
         id: `run_${crypto.randomUUID()}`,
+        mapId: reserved?.id,
         status: "failed",
         model: appConfig.openRouter.model,
         fallbackModel: appConfig.openRouter.fallbackModel,
@@ -112,30 +156,81 @@ export async function runMapGenerationCore(
       };
     }
 
-    const saved = await saveMap({
-      brief: inputBrief,
-      normalizedBrief,
-      document,
-      status: "published",
-      metrics: metricsBase,
-    });
+    let savedSlug: string;
+    let savedTitle: string;
+    let savedId: string;
 
-    revalidateMapPaths(saved.slug);
+    if (reserved) {
+      // Map row was reserved up front; flip to published and finalize document.
+      const stamped = { ...document, slug: reserved.slug };
+      const patched = await applyMapPatch({
+        mapId: reserved.id,
+        mutate: () => stamped,
+        status: "published",
+        publishedAtIso: new Date().toISOString(),
+      });
+      if (!patched) {
+        const message = "Reserved map row disappeared before publish.";
+        await logGenerationRun({
+          id: `run_${crypto.randomUUID()}`,
+          mapId: reserved.id,
+          status: "failed",
+          model: appConfig.openRouter.model,
+          fallbackModel: appConfig.openRouter.fallbackModel,
+          inputBrief,
+          normalizedBrief,
+          error: message,
+          metrics: metricsBase,
+          createdAt: new Date().toISOString(),
+        });
+        return { outcome: "error", message, metrics: metricsBase };
+      }
+      savedSlug = reserved.slug;
+      savedTitle = stamped.title;
+      savedId = reserved.id;
+
+      await logGenerationRun({
+        id: `run_${crypto.randomUUID()}`,
+        mapId: savedId,
+        status: "success",
+        model: appConfig.openRouter.model,
+        fallbackModel: appConfig.openRouter.fallbackModel,
+        normalizedBrief,
+        inputBrief,
+        metrics: metricsBase,
+        createdAt: new Date().toISOString(),
+      });
+    } else {
+      const saved = await saveMap({
+        brief: inputBrief,
+        normalizedBrief,
+        document,
+        status: "published",
+        metrics: metricsBase,
+      });
+      savedSlug = saved.slug;
+      savedTitle = saved.title;
+      savedId = saved.id;
+    }
+
+    revalidateMapPaths(savedSlug);
 
     return {
       outcome: "success",
       normalizedBrief,
       document,
-      slug: saved.slug,
-      title: saved.title,
-      mapId: saved.id,
+      slug: savedSlug,
+      title: savedTitle,
+      mapId: savedId,
       metrics: metricsBase,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Generation failed.";
+    if (reserved) await markReservedMapFailed(reserved.id, message);
     const metrics = collector.stages.length ? collector.finalize() : null;
     await logGenerationRun({
       id: `run_${crypto.randomUUID()}`,
+      mapId: reserved?.id,
       status: "failed",
       model: appConfig.openRouter.model,
       fallbackModel: appConfig.openRouter.fallbackModel,

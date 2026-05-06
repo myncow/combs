@@ -136,6 +136,7 @@ export class GenerationMetricsCollector {
     fallbackSyntheticBatchCount: number;
     externalCalls: number;
     model?: string;
+    extras?: Record<string, unknown>;
   }) {
     this.appendStage({
       stageId: "cells_batches",
@@ -146,6 +147,7 @@ export class GenerationMetricsCollector {
       extras: {
         batchCount: opts.batchCount,
         fallbackSyntheticBatchCount: opts.fallbackSyntheticBatchCount,
+        ...opts.extras,
       },
     });
   }

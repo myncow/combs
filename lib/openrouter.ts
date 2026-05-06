@@ -38,18 +38,27 @@ function getTextContent(content: ChatContent) {
   return "";
 }
 
+function isAbortError(error: unknown) {
+  return error instanceof Error && error.name === "AbortError";
+}
+
 async function requestJsonCompletion({
   model,
   instructions,
   input,
   schemaName,
   jsonSchema,
+  temperature,
+  signal,
 }: {
   model: string;
   instructions: string;
   input: string;
   schemaName: string;
   jsonSchema: JsonSchema;
+  /** Default 0.35; suggest_axis_pairs uses a lower value for steadier axes. */
+  temperature?: number;
+  signal?: AbortSignal;
 }) {
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
@@ -71,7 +80,7 @@ async function requestJsonCompletion({
           content: input,
         },
       ],
-      temperature: 0.35,
+      temperature: temperature ?? 0.35,
       provider: {
         require_parameters: true,
       },
@@ -85,6 +94,7 @@ async function requestJsonCompletion({
         },
       },
     }),
+    signal,
   });
 
   const payload = (await response.json().catch(() => null)) as ChatCompletionResponse | null;
@@ -104,6 +114,8 @@ export async function callStructuredModel<T>({
   schemaName,
   jsonSchema,
   onAttempts,
+  temperature,
+  signal,
 }: {
   model: string;
   instructions: string;
@@ -111,6 +123,8 @@ export async function callStructuredModel<T>({
   schemaName: string;
   jsonSchema: JsonSchema;
   onAttempts?: StructuredModelAttemptHook;
+  temperature?: number;
+  signal?: AbortSignal;
 }): Promise<T | null> {
   if (!process.env.OPENROUTER_API_KEY) {
     return null;
@@ -124,6 +138,9 @@ export async function callStructuredModel<T>({
   let attemptIndex = 0;
 
   for (const modelToTry of modelsToTry) {
+    if (signal?.aborted) {
+      return null;
+    }
     const t0 = Date.now();
     const text = await requestJsonCompletion({
       model: modelToTry,
@@ -131,7 +148,12 @@ export async function callStructuredModel<T>({
       input,
       schemaName,
       jsonSchema,
+      temperature,
+      signal,
     }).catch((error) => {
+      if (signal?.aborted || isAbortError(error)) {
+        throw error;
+      }
       console.warn(
         `OpenRouter structured output failed for ${modelToTry}.`,
         error instanceof Error ? error.message : error,

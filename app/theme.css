@@ -1,0 +1,81 @@
+/* Raster — Engineering paper palette.
+ * Cool pale cyan-gray paper, graphite ink, one desaturated cobalt accent,
+ * warm stone as a muted surface. No red. Reads as technical reference
+ * material, not editorial. Every token drives structural meaning first.
+ *
+ * Semantic mapping:
+ *   --background   page "paper"
+ *   --foreground   body ink (graphite)
+ *   --card         slightly lighter paper for insets
+ *   --muted        warm stone (inert surface)
+ *   --primary      single accent — signals "the missing picture" only
+ *   --destructive  muted russet warning for irreversible actions
+ *
+ * Authored as raw CSS colors so Tailwind v4 `@theme inline` (see globals.css)
+ * can reference them directly.
+ */
+
+:root {
+  --background: #eff1ed;
+  --foreground: #1c1e1f;
+
+  --card: #f7f7f3;
+  --card-foreground: #1c1e1f;
+  --popover: #f7f7f3;
+  --popover-foreground: #1c1e1f;
+
+  --primary: #2b4a8b;
+  --primary-foreground: #f7f7f3;
+
+  --secondary: #1c1e1f;
+  --secondary-foreground: #f7f7f3;
+
+  --muted: #cfc9be;
+  --muted-foreground: #5f6360;
+
+  --accent: #2b4a8b;
+  --accent-foreground: #f7f7f3;
+
+  --destructive: #7a3f2e;
+  --destructive-foreground: #f7f7f3;
+
+  --border: rgba(28, 30, 31, 0.16);
+  --border-strong: rgba(28, 30, 31, 0.52);
+  --input: rgba(28, 30, 31, 0.52);
+  --ring: #1c1e1f;
+
+  --radius: 2px;
+  color-scheme: light;
+}
+
+html.dark {
+  --background: #141616;
+  --foreground: #e8eae4;
+
+  --card: #1c1e1d;
+  --card-foreground: #e8eae4;
+  --popover: #1c1e1d;
+  --popover-foreground: #e8eae4;
+
+  --primary: #6e8fc9;
+  --primary-foreground: #141616;
+
+  --secondary: #e8eae4;
+  --secondary-foreground: #141616;
+
+  --muted: #2a2c28;
+  --muted-foreground: #9a9a94;
+
+  --accent: #6e8fc9;
+  --accent-foreground: #141616;
+
+  --destructive: #bd6e65;
+  --destructive-foreground: #141616;
+
+  --border: rgba(232, 234, 228, 0.18);
+  --border-strong: rgba(232, 234, 228, 0.45);
+  --input: rgba(232, 234, 228, 0.48);
+  --ring: #e8eae4;
+
+  color-scheme: dark;
+}

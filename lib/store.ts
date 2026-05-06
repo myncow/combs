@@ -1,17 +1,22 @@
-import { and, desc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { appConfig } from "@/lib/config";
 import { getDb } from "@/lib/db/client";
-import { generationRunsTable, mapsTable } from "@/lib/db/schema";
-import { examplePrompts } from "@/lib/data/example-prompts";
-import { seedBreadMap } from "@/lib/data/seed-maps";
-import { seedTeaMap } from "@/lib/data/seed-tea-map";
-import { applyPersistedUserMaps, readDevStoreFile, writeDevStoreFile } from "@/lib/dev-store";
+import {
+  examplePromptsTable,
+  generationRunsTable,
+  leaderboardEntriesTable,
+  leaderboardVotesTable,
+  mapsTable,
+} from "@/lib/db/schema";
 import type { GenerationMetrics } from "@/lib/generation-metrics";
 import type {
   ExamplePrompt,
   GenerationRun,
-  ListedCellVisualization,
-  MapCellVisualization,
+  LeaderboardEntry,
+  LeaderboardSort,
+  LeaderboardVote,
+  LeaderboardVoteDirection,
+  ListedLeaderboardEntry,
   MapBrief,
   MapDocument,
   MapVisibility,
@@ -19,8 +24,6 @@ import type {
   SavedMap,
 } from "@/lib/types";
 import { pickMapThumbnail, slugify } from "@/lib/utils";
-
-const seededExamples = examplePrompts;
 
 function isoNow() {
   return new Date().toISOString();
@@ -33,215 +36,343 @@ function coerceIsoString(value: unknown, fallback = isoNow()): string {
   return typeof value === "string" && value ? value : fallback;
 }
 
-const globalStore = globalThis as typeof globalThis & {
-  __mapStudioMemory?: {
-    maps: SavedMap[];
-    runs: GenerationRun[];
-    prompts: ExamplePrompt[];
-    deletedSeedKeys: string[];
-    hydrated?: boolean;
-  };
-};
-
-function persistMemoryStore() {
-  const store = globalStore.__mapStudioMemory;
-  if (!store) return;
-  writeDevStoreFile(store.maps, store.deletedSeedKeys);
-}
-
-function getMemoryStore() {
-  if (!globalStore.__mapStudioMemory) {
-    globalStore.__mapStudioMemory = {
-      maps: [
-        {
-          id: "seed-bread",
-          slug: "bread-map",
-          title: "Bread Map",
-          domain: "Bread",
-          topicFamily: "Food & Drink",
-          status: "published",
-          publishedAt: "2026-04-20T10:00:00.000Z",
-          createdAt: "2026-04-20T10:00:00.000Z",
-          summary: "A map of breads across grain, fermentation, and cooking method.",
-          promptSummary: seededExamples[0].prompt,
-          document: {
-            title: "Bread Map",
-            slug: "bread-map",
-            summary: "A map of breads across grain, fermentation, and cooking method.",
-            intro:
-              "Bread is a great mapping domain because chemistry, technique, and tradition all push against each other in visible ways.",
-            domain: "Bread",
-            topicFamily: "Food & Drink",
-            dimensions: [
-              {
-                key: "grain",
-                label: "Grain",
-                description: "Base material family.",
-                values: ["Wheat", "Rye", "Rice"],
-              },
-              {
-                key: "fermentation",
-                label: "Fermentation",
-                description: "Leavening and aging logic.",
-                values: ["None", "Yeast", "Sourdough"],
-              },
-            ],
-            cellSchema: {
-              primaryX: "grain",
-              primaryY: "fermentation",
-            },
-            cells: [
-              {
-                id: "wheat-yeast",
-                coordinates: { grain: "Wheat", fermentation: "Yeast", cooking: "Baked" },
-                label: "Wheat + Yeast",
-                status: "existing",
-                explanation: "The dominant bread archetype.",
-                confidence: 0.95,
-                badges: ["Classic"],
-                examples: [
-                  {
-                    name: "Baguette",
-                    description: "High-recognition canonical example.",
-                    coordinates: { grain: "Wheat", fermentation: "Yeast", cooking: "Baked" },
-                    status: "existing",
-                  },
-                ],
-              },
-              {
-                id: "rice-sourdough",
-                coordinates: { grain: "Rice", fermentation: "Sourdough", cooking: "Steamed" },
-                label: "Rice + Sourdough",
-                status: "gap",
-                explanation: "A plausible but under-developed category.",
-                confidence: 0.63,
-                badges: ["Opportunity"],
-                examples: [],
-              },
-              {
-                id: "rye-none",
-                coordinates: { grain: "Rye", fermentation: "None", cooking: "Baked" },
-                label: "Rye + Unfermented",
-                status: "rare",
-                explanation: "It exists, but it is not a default modern category.",
-                confidence: 0.72,
-                badges: ["Niche"],
-                examples: [],
-              },
-              {
-                id: "rice-deep-fried-sourdough",
-                coordinates: { grain: "Rice", fermentation: "Sourdough", cooking: "Fried" },
-                label: "Rice + Sourdough + Fried",
-                status: "impossible",
-                explanation: "The structure and process fight each other too hard to form a stable category.",
-                confidence: 0.54,
-                badges: ["Constraint"],
-                examples: [],
-              },
-            ],
-            featuredExamples: [
-              {
-                name: "Baguette",
-                description: "A classic wheat + yeast example.",
-                coordinates: { grain: "Wheat", fermentation: "Yeast", cooking: "Baked" },
-                status: "existing",
-              },
-              {
-                name: "Injera",
-                description: "A fermentation-driven flatbread family.",
-                coordinates: { grain: "Teff", fermentation: "Sourdough", cooking: "Griddled" },
-                status: "rare",
-              },
-            ],
-            notableGaps: [
-              {
-                label: "Rice + Sourdough",
-                explanation: "Promising but not well normalized as a category.",
-                coordinates: { grain: "Rice", fermentation: "Sourdough" },
-              },
-            ],
-            impossibleCombos: [
-              {
-                label: "Rice + Sourdough + Fried",
-                explanation: "Texture and process constraints make the cell unstable.",
-                coordinates: { grain: "Rice", fermentation: "Sourdough", cooking: "Fried" },
-              },
-            ],
-            constraints: [
-              {
-                label: "Gluten structure",
-                kind: "physical",
-                explanation: "Some bread families require enough structure to trap gas or hold shape.",
-              },
-              {
-                label: "Regional lineage",
-                kind: "cultural",
-                explanation: "Many bread categories persist because they are socially legible and repeated.",
-              },
-            ],
-            renderingHints: {
-              accent: "#d97706",
-              gradient: ["#fef3c7", "#fde68a"],
-              icon: "grid",
-            },
-            seo: {
-              title: "Bread Map | Lattice",
-              description: "A map of bread combinations.",
-            },
-          },
-        },
-      ],
-      runs: [],
-      prompts: seededExamples,
-      deletedSeedKeys: [],
-    };
-  }
-
-  globalStore.__mapStudioMemory.deletedSeedKeys ??= [];
-
-  if (!globalStore.__mapStudioMemory.hydrated) {
-    const persisted = readDevStoreFile();
-    if (persisted) {
-      for (const key of persisted.deletedSeedKeys) {
-        if (!globalStore.__mapStudioMemory.deletedSeedKeys.includes(key)) {
-          globalStore.__mapStudioMemory.deletedSeedKeys.push(key);
-        }
-      }
-      globalStore.__mapStudioMemory.maps = applyPersistedUserMaps(
-        globalStore.__mapStudioMemory.maps,
-        persisted.maps,
-      );
-    }
-    globalStore.__mapStudioMemory.hydrated = true;
-  }
-
-  for (const seedMap of [seedBreadMap, seedTeaMap]) {
-    if (globalStore.__mapStudioMemory.deletedSeedKeys.includes(seedMap.id) || globalStore.__mapStudioMemory.deletedSeedKeys.includes(seedMap.slug)) {
-      continue;
-    }
-
-    const seedIndex = globalStore.__mapStudioMemory.maps.findIndex((map) => map.id === seedMap.id || map.slug === seedMap.slug);
-    if (seedIndex >= 0) {
-      globalStore.__mapStudioMemory.maps[seedIndex] = seedMap;
-    } else {
-      globalStore.__mapStudioMemory.maps.unshift(seedMap);
-    }
-  }
-
-  globalStore.__mapStudioMemory.prompts = seededExamples;
-  return globalStore.__mapStudioMemory;
-}
-
 function serializeSavedMap(record: SavedMap): SavedMap {
   return {
     ...record,
-    thumbnailUrl: record.document ? pickMapThumbnail(record.document) : null,
+    thumbnailUrl: pickMapThumbnail(record.document),
   };
 }
 
-export async function listExamplePrompts() {
-  return seededExamples;
+function serializeLeaderboardEntry<T extends LeaderboardEntry>(record: T): T {
+  return {
+    ...record,
+    createdAt: coerceIsoString(record.createdAt),
+    publishedAt: coerceIsoString(record.publishedAt),
+  };
 }
+
+function buildLeaderboardSlug(mapSlug: string, cellId: string) {
+  return slugify(`${mapSlug}-${cellId}`);
+}
+
+function attachViewerVote(
+  entries: LeaderboardEntry[],
+  votes: LeaderboardVote[],
+  requesterId?: string,
+): ListedLeaderboardEntry[] {
+  const byEntryId = new Map<string, LeaderboardVoteDirection | null>();
+  if (requesterId) {
+    for (const vote of votes) {
+      if (vote.requesterId === requesterId) {
+        byEntryId.set(vote.entryId, vote.direction);
+      }
+    }
+  }
+
+  return entries.map((entry) => ({
+    ...serializeLeaderboardEntry(entry),
+    viewerVote: requesterId ? (byEntryId.get(entry.id) ?? null) : null,
+  }));
+}
+
+function recalculateEntryScore(
+  entry: LeaderboardEntry,
+  votes: LeaderboardVote[],
+): LeaderboardEntry {
+  let upvotes = 0;
+  let downvotes = 0;
+  for (const vote of votes) {
+    if (vote.entryId !== entry.id) continue;
+    if (vote.direction === "up") upvotes += 1;
+    if (vote.direction === "down") downvotes += 1;
+  }
+  return {
+    ...entry,
+    upvotes,
+    downvotes,
+    score: upvotes - downvotes,
+  };
+}
+
+export async function listExamplePrompts(): Promise<ExamplePrompt[]> {
+  const db = getDb();
+  const rows = await db.select().from(examplePromptsTable).orderBy(asc(examplePromptsTable.title));
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    topicFamily: row.topicFamily,
+    prompt: row.prompt,
+    whyItWorks: row.whyItWorks,
+  }));
+}
+
+export async function listLeaderboardTopicFamilies(): Promise<string[]> {
+  const db = getDb();
+  const rows = await db.select({ topicFamily: leaderboardEntriesTable.topicFamily }).from(leaderboardEntriesTable);
+  return [...new Set(rows.map((row) => row.topicFamily).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
+export async function listLeaderboardEntries({
+  topicFamily,
+  sort = "top",
+  page = 1,
+  pageSize = 12,
+  requesterId,
+}: {
+  topicFamily?: string;
+  sort?: LeaderboardSort;
+  page?: number;
+  pageSize?: number;
+  requesterId?: string;
+}) {
+  const db = getDb();
+  const whereClause =
+    topicFamily && topicFamily !== "All" ? eq(leaderboardEntriesTable.topicFamily, topicFamily) : undefined;
+  const rows = await db
+    .select()
+    .from(leaderboardEntriesTable)
+    .where(whereClause)
+    .orderBy(
+      sort === "top" ? desc(leaderboardEntriesTable.score) : desc(leaderboardEntriesTable.publishedAt),
+      desc(leaderboardEntriesTable.publishedAt),
+    )
+    .limit(pageSize)
+    .offset((page - 1) * pageSize);
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(leaderboardEntriesTable)
+    .where(whereClause);
+
+  let votes: LeaderboardVote[] = [];
+  if (requesterId && rows.length) {
+    votes = (await db
+      .select()
+      .from(leaderboardVotesTable)
+      .where(
+        and(
+          eq(leaderboardVotesTable.requesterId, requesterId),
+          inArray(
+            leaderboardVotesTable.entryId,
+            rows.map((row) => row.id),
+          ),
+        ),
+      )) as unknown as LeaderboardVote[];
+  }
+
+  return {
+    items: attachViewerVote(rows as unknown as LeaderboardEntry[], votes, requesterId),
+    total: Number(count),
+  };
+}
+
+export async function getLeaderboardEntryBySlug(slug: string, requesterId?: string) {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(leaderboardEntriesTable)
+    .where(eq(leaderboardEntriesTable.slug, slug))
+    .limit(1);
+  if (!rows.length) return null;
+
+  let votes: LeaderboardVote[] = [];
+  if (requesterId) {
+    votes = (await db
+      .select()
+      .from(leaderboardVotesTable)
+      .where(
+        and(
+          eq(leaderboardVotesTable.entryId, rows[0].id),
+          eq(leaderboardVotesTable.requesterId, requesterId),
+        ),
+      )) as unknown as LeaderboardVote[];
+  }
+  return attachViewerVote(rows as unknown as LeaderboardEntry[], votes, requesterId)[0] ?? null;
+}
+
+export async function publishGapSpotlight({
+  mapSlug,
+  cellId,
+  storyTitle,
+  storySummary,
+}: {
+  mapSlug: string;
+  cellId: string;
+  storyTitle: string;
+  storySummary: string;
+}) {
+  const map = await getMapBySlug(mapSlug);
+  if (!map) {
+    throw new Error("Map not found.");
+  }
+
+  const cell = map.document.cells.find((item) => item.id === cellId);
+  if (!cell || !["gap", "tension", "impossible"].includes(cell.status)) {
+    throw new Error("Only visualized frontier cells can be published.");
+  }
+  if (!cell.visualization?.imageUrl) {
+    throw new Error("Generate an image for this frontier cell before publishing it.");
+  }
+
+  const now = isoNow();
+  const slug = buildLeaderboardSlug(map.slug, cell.id);
+  const db = getDb();
+
+  const existingRows = await db
+    .select()
+    .from(leaderboardEntriesTable)
+    .where(
+      and(eq(leaderboardEntriesTable.mapSlug, map.slug), eq(leaderboardEntriesTable.cellId, cell.id)),
+    )
+    .limit(1);
+  const existing = (existingRows[0] as unknown as LeaderboardEntry | undefined) ?? null;
+  const nextEntry: LeaderboardEntry = serializeLeaderboardEntry({
+    id: existing?.id ?? `spotlight_${crypto.randomUUID()}`,
+    slug: existing?.slug ?? slug,
+    mapId: map.id,
+    mapSlug: map.slug,
+    mapTitle: map.title,
+    topicFamily: map.topicFamily,
+    cellId: cell.id,
+    cellLabel: cell.label,
+    coordinatesSnapshot: { ...cell.coordinates },
+    imageUrl: cell.visualization.imageUrl,
+    storyTitle,
+    storySummary,
+    createdAt: existing?.createdAt ?? now,
+    publishedAt: now,
+    score: existing?.score ?? 0,
+    upvotes: existing?.upvotes ?? 0,
+    downvotes: existing?.downvotes ?? 0,
+  });
+
+  if (existing) {
+    await db
+      .update(leaderboardEntriesTable)
+      .set({
+        mapId: nextEntry.mapId,
+        mapSlug: nextEntry.mapSlug,
+        mapTitle: nextEntry.mapTitle,
+        topicFamily: nextEntry.topicFamily,
+        cellId: nextEntry.cellId,
+        cellLabel: nextEntry.cellLabel,
+        coordinatesSnapshot: nextEntry.coordinatesSnapshot,
+        imageUrl: nextEntry.imageUrl,
+        storyTitle: nextEntry.storyTitle,
+        storySummary: nextEntry.storySummary,
+        publishedAt: new Date(nextEntry.publishedAt),
+      })
+      .where(eq(leaderboardEntriesTable.id, nextEntry.id));
+  } else {
+    await db.insert(leaderboardEntriesTable).values({
+      id: nextEntry.id,
+      slug: nextEntry.slug,
+      mapId: nextEntry.mapId,
+      mapSlug: nextEntry.mapSlug,
+      mapTitle: nextEntry.mapTitle,
+      topicFamily: nextEntry.topicFamily,
+      cellId: nextEntry.cellId,
+      cellLabel: nextEntry.cellLabel,
+      coordinatesSnapshot: nextEntry.coordinatesSnapshot,
+      imageUrl: nextEntry.imageUrl,
+      storyTitle: nextEntry.storyTitle,
+      storySummary: nextEntry.storySummary,
+      score: nextEntry.score,
+      upvotes: nextEntry.upvotes,
+      downvotes: nextEntry.downvotes,
+      createdAt: new Date(nextEntry.createdAt),
+      publishedAt: new Date(nextEntry.publishedAt),
+    });
+  }
+
+  return nextEntry;
+}
+
+export async function castLeaderboardVote({
+  slug,
+  requesterId,
+  direction,
+}: {
+  slug: string;
+  requesterId: string;
+  direction: LeaderboardVoteDirection | null;
+}) {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(leaderboardEntriesTable)
+    .where(eq(leaderboardEntriesTable.slug, slug))
+    .limit(1);
+  if (!rows.length) return null;
+  const entry = rows[0] as unknown as LeaderboardEntry;
+
+  const updatedEntry = await db.transaction(async (tx) => {
+    const existingVotes = (await tx
+      .select()
+      .from(leaderboardVotesTable)
+      .where(
+        and(
+          eq(leaderboardVotesTable.entryId, entry.id),
+          eq(leaderboardVotesTable.requesterId, requesterId),
+        ),
+      )
+      .limit(1)) as unknown as LeaderboardVote[];
+
+    if (direction === null) {
+      await tx
+        .delete(leaderboardVotesTable)
+        .where(
+          and(
+            eq(leaderboardVotesTable.entryId, entry.id),
+            eq(leaderboardVotesTable.requesterId, requesterId),
+          ),
+        );
+    } else if (existingVotes.length) {
+      await tx
+        .update(leaderboardVotesTable)
+        .set({
+          direction,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(leaderboardVotesTable.entryId, entry.id),
+            eq(leaderboardVotesTable.requesterId, requesterId),
+          ),
+        );
+    } else {
+      await tx.insert(leaderboardVotesTable).values({
+        entryId: entry.id,
+        requesterId,
+        direction,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
+
+    const votes = (await tx
+      .select()
+      .from(leaderboardVotesTable)
+      .where(eq(leaderboardVotesTable.entryId, entry.id))) as unknown as LeaderboardVote[];
+    const nextEntry = recalculateEntryScore(entry, votes);
+    await tx
+      .update(leaderboardEntriesTable)
+      .set({
+        score: nextEntry.score,
+        upvotes: nextEntry.upvotes,
+        downvotes: nextEntry.downvotes,
+      })
+      .where(eq(leaderboardEntriesTable.id, entry.id));
+
+    return {
+      ...nextEntry,
+      viewerVote: votes.find((vote) => vote.requesterId === requesterId)?.direction ?? null,
+    };
+  });
+
+  return serializeLeaderboardEntry(updatedEntry);
+}
+
+export type MapListingVisibility = MapVisibility | "live";
 
 export async function listMaps({
   topicFamily,
@@ -250,25 +381,14 @@ export async function listMaps({
   pageSize = 9,
 }: {
   topicFamily?: string;
-  status?: MapVisibility;
+  status?: MapListingVisibility;
   page?: number;
   pageSize?: number;
 }) {
   const db = getDb();
-  if (!db) {
-    let results = getMemoryStore().maps.filter((map) => map.status === status);
-    if (topicFamily && topicFamily !== "All") {
-      results = results.filter((map) => map.topicFamily === topicFamily);
-    }
-    results = results.sort((a, b) => ((a.publishedAt ?? a.createdAt) < (b.publishedAt ?? b.createdAt) ? 1 : -1));
-    const start = (page - 1) * pageSize;
-    return {
-      items: results.slice(start, start + pageSize).map(serializeSavedMap),
-      total: results.length,
-    };
-  }
+  const statusFilter = status === "live" ? ne(mapsTable.status, "failed") : eq(mapsTable.status, status);
 
-  const conditions = [eq(mapsTable.status, status)];
+  const conditions = [statusFilter];
   if (topicFamily && topicFamily !== "All") {
     conditions.push(eq(mapsTable.topicFamily, topicFamily));
   }
@@ -286,70 +406,23 @@ export async function listMaps({
     .from(mapsTable)
     .where(and(...conditions));
 
+  const items: SavedMap[] = [];
+  for (const row of rows) {
+    try {
+      items.push(serializeSavedMap(row as unknown as SavedMap));
+    } catch (err) {
+      console.error("[listMaps] skipping unreadable map row:", (row as { slug?: string })?.slug, err);
+    }
+  }
+
   return {
-    items: rows.map((row) => serializeSavedMap(row as unknown as SavedMap)),
+    items,
     total: Number(count),
   };
 }
 
-const VISUAL_GENERATIONS_PAGE_SIZE = 200;
-
-export async function listVisualGenerations(): Promise<ListedCellVisualization[]> {
-  const db = getDb();
-  const maps: SavedMap[] = [];
-
-  if (!db) {
-    maps.push(...getMemoryStore().maps.filter((m) => m.status !== "failed"));
-  } else {
-    let offset = 0;
-    while (true) {
-      const rows = await db
-        .select()
-        .from(mapsTable)
-        .where(ne(mapsTable.status, "failed"))
-        .limit(VISUAL_GENERATIONS_PAGE_SIZE)
-        .offset(offset);
-      if (!rows.length) break;
-      for (const row of rows) {
-        maps.push(serializeSavedMap(row as unknown as SavedMap));
-      }
-      if (rows.length < VISUAL_GENERATIONS_PAGE_SIZE) break;
-      offset += VISUAL_GENERATIONS_PAGE_SIZE;
-    }
-  }
-
-  const out: ListedCellVisualization[] = [];
-  for (const map of maps) {
-    const cells = Array.isArray(map.document?.cells) ? map.document.cells : [];
-    for (const cell of cells) {
-      const viz = cell.visualization as MapCellVisualization | undefined;
-      if (!viz?.imageUrl) continue;
-      const mapUpdatedAt = coerceIsoString(map.publishedAt ?? map.createdAt);
-      out.push({
-        mapSlug: map.slug,
-        mapTitle: map.title,
-        cellId: cell.id,
-        cellLabel: cell.label,
-        status: cell.status,
-        imageUrl: viz.imageUrl,
-        caption: viz.caption,
-        updatedAt: coerceIsoString(viz.updatedAt, mapUpdatedAt),
-        coordinatesSnapshot: { ...cell.coordinates },
-      });
-    }
-  }
-
-  out.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
-  return out;
-}
-
 export async function getMapBySlug(slug: string) {
   const db = getDb();
-  if (!db) {
-    const match = getMemoryStore().maps.find((map) => map.slug === slug);
-    return match ? serializeSavedMap(match) : null;
-  }
-
   const rows = await db.select().from(mapsTable).where(eq(mapsTable.slug, slug)).limit(1);
   if (!rows.length) {
     return null;
@@ -360,35 +433,26 @@ export async function getMapBySlug(slug: string) {
 
 export async function deleteMapBySlug(slug: string) {
   const db = getDb();
-  if (!db) {
-    const store = getMemoryStore();
-    const deletedSeedKeys = new Set(store.deletedSeedKeys);
-    const deleteIndex = store.maps.findIndex((map) => map.slug === slug);
-
-    if (deleteIndex < 0) {
-      return null;
-    }
-
-    const [deletedMap] = store.maps.splice(deleteIndex, 1);
-    const seedMap = [seedBreadMap, seedTeaMap].find(
-      (map) => map.id === deletedMap.id || map.slug === deletedMap.slug,
-    );
-
-    if (seedMap) {
-      deletedSeedKeys.add(seedMap.id);
-      deletedSeedKeys.add(seedMap.slug);
-      store.deletedSeedKeys = [...deletedSeedKeys];
-    }
-
-    persistMemoryStore();
-    return deletedMap;
-  }
-
   const existingMap = await getMapBySlug(slug);
   if (!existingMap) {
     return null;
   }
 
+  const existingEntries = await db
+    .select({ id: leaderboardEntriesTable.id })
+    .from(leaderboardEntriesTable)
+    .where(eq(leaderboardEntriesTable.mapSlug, slug));
+  if (existingEntries.length) {
+    await db
+      .delete(leaderboardVotesTable)
+      .where(
+        inArray(
+          leaderboardVotesTable.entryId,
+          existingEntries.map((entry) => entry.id),
+        ),
+      );
+    await db.delete(leaderboardEntriesTable).where(eq(leaderboardEntriesTable.mapSlug, slug));
+  }
   await db.delete(mapsTable).where(eq(mapsTable.slug, slug));
   return existingMap;
 }
@@ -426,12 +490,6 @@ export async function saveMap({
   };
 
   const db = getDb();
-  if (!db) {
-    getMemoryStore().maps.unshift(saved);
-    persistMemoryStore();
-    return saved;
-  }
-
   await db.insert(mapsTable).values({
     id,
     slug,
@@ -463,7 +521,14 @@ export async function saveMap({
 export async function patchMapCellVisualization(
   slug: string,
   cellId: string,
-  visualization: { imageUrl: string; caption?: string; updatedAt: string },
+  visualization: {
+    imageUrl: string;
+    caption?: string;
+    updatedAt: string;
+    imageModel?: string;
+    prompt?: string;
+    byteHash?: string;
+  },
 ): Promise<boolean> {
   const map = await getMapBySlug(slug);
   if (!map) {
@@ -478,28 +543,178 @@ export async function patchMapCellVisualization(
   };
 
   const db = getDb();
-  if (!db) {
-    const store = getMemoryStore();
-    const index = store.maps.findIndex((m) => m.slug === slug);
-    if (index < 0) {
-      return false;
-    }
-    store.maps[index] = { ...store.maps[index], document };
-    persistMemoryStore();
-    return true;
-  }
-
   await db.update(mapsTable).set({ document }).where(eq(mapsTable.slug, slug));
   return true;
 }
 
-export async function logGenerationRun(run: GenerationRun) {
+/**
+ * Builds an empty placeholder document used for reserved-but-not-yet-generated
+ * maps. The map view renders this in `live` mode and tolerates the missing
+ * pieces (dimensions, cells) until the generator backfills them.
+ */
+function buildPlaceholderDocument(brief: MapBrief, slug: string): MapDocument {
+  const topic = brief.topic.trim() || "Untitled map";
+  return {
+    title: topic,
+    slug,
+    summary: "",
+    intro: "",
+    domain: "",
+    topicFamily: "",
+    dimensions: [],
+    cellSchema: { primaryX: "", primaryY: "" },
+    cells: [],
+    featuredExamples: [],
+    notableGaps: [],
+    impossibleCombos: [],
+    constraints: [],
+    renderingHints: { accent: "", gradient: [] },
+    seo: { title: topic, description: "" },
+  };
+}
+
+async function findUniqueSlug(base: string): Promise<string> {
   const db = getDb();
-  if (!db) {
-    getMemoryStore().runs.unshift(run);
-    return;
+  const fallback = base || "map";
+  let candidate = fallback;
+  let n = 1;
+  while (true) {
+    const existing = await db
+      .select({ slug: mapsTable.slug })
+      .from(mapsTable)
+      .where(eq(mapsTable.slug, candidate))
+      .limit(1);
+    if (existing.length === 0) return candidate;
+    n += 1;
+    candidate = `${fallback}-${n}`.slice(0, 128);
+    if (n > 999) {
+      candidate = `${fallback}-${crypto.randomUUID().slice(0, 6)}`.slice(0, 128);
+      return candidate;
+    }
+  }
+}
+
+/**
+ * Reserve a "generating" map row up front so the client can navigate to
+ * `/maps/{slug}` immediately while generation continues in the background.
+ * Returns the slug + id for the route handler to redirect to.
+ */
+export async function reserveMap({ brief }: { brief: MapBrief }): Promise<{
+  id: string;
+  slug: string;
+}> {
+  const id = `map_${crypto.randomUUID()}`;
+  const baseSlug = slugify(brief.topic);
+  const slug = await findUniqueSlug(baseSlug);
+  const placeholder = buildPlaceholderDocument(brief, slug);
+  const title = placeholder.title;
+
+  const db = getDb();
+  await db.insert(mapsTable).values({
+    id,
+    slug,
+    title,
+    domain: "",
+    topicFamily: "",
+    status: "generating",
+    summary: "",
+    promptSummary: brief.extraContext || brief.combines || "",
+    document: placeholder,
+    revision: 0,
+    publishedAt: null,
+  });
+
+  return { id, slug };
+}
+
+/**
+ * Atomically merge a patch into the map's document, bump its revision, and
+ * optionally update top-level status / publishedAt. Returns the new revision.
+ *
+ * Reads the current document, applies the mutator, writes it back. Generation
+ * for a given map runs single-writer so no inter-process locking is needed.
+ */
+export async function applyMapPatch({
+  mapId,
+  mutate,
+  status,
+  publishedAtIso,
+}: {
+  mapId: string;
+  mutate: (current: MapDocument) => MapDocument;
+  status?: MapVisibility;
+  publishedAtIso?: string | null;
+}): Promise<{ revision: number } | null> {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(mapsTable)
+    .where(eq(mapsTable.id, mapId))
+    .limit(1);
+  if (!rows.length) return null;
+
+  const row = rows[0] as unknown as {
+    document: MapDocument;
+    revision: number | null;
+    title: string;
+    domain: string;
+    topicFamily: string;
+    summary: string;
+  };
+  const next = mutate(row.document);
+
+  const patch: Record<string, unknown> = {
+    document: next,
+    revision: sql`${mapsTable.revision} + 1`,
+  };
+  if (next.title && next.title !== row.title) patch.title = next.title;
+  if (next.domain && next.domain !== row.domain) patch.domain = next.domain;
+  if (next.topicFamily && next.topicFamily !== row.topicFamily) patch.topicFamily = next.topicFamily;
+  if (next.summary && next.summary !== row.summary) patch.summary = next.summary;
+  if (status !== undefined) patch.status = status;
+  if (publishedAtIso !== undefined) {
+    patch.publishedAt = publishedAtIso === null ? null : new Date(publishedAtIso);
   }
 
+  await db.update(mapsTable).set(patch).where(eq(mapsTable.id, mapId));
+
+  const updated = await db
+    .select({ revision: mapsTable.revision })
+    .from(mapsTable)
+    .where(eq(mapsTable.id, mapId))
+    .limit(1);
+  return { revision: updated[0]?.revision ?? (row.revision ?? 0) + 1 };
+}
+
+/**
+ * Cheap read used by the live SSE poller to detect whether the map's document
+ * has changed without re-fetching the full payload until it has.
+ */
+export async function getMapRevisionState(slug: string): Promise<{
+  id: string;
+  revision: number;
+  status: MapVisibility;
+} | null> {
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: mapsTable.id,
+      revision: mapsTable.revision,
+      status: mapsTable.status,
+    })
+    .from(mapsTable)
+    .where(eq(mapsTable.slug, slug))
+    .limit(1);
+  if (!rows.length) return null;
+  return {
+    id: rows[0].id,
+    revision: rows[0].revision ?? 0,
+    status: rows[0].status as MapVisibility,
+  };
+}
+
+export async function logGenerationRun(run: GenerationRun) {
+  const db = getDb();
   await db.insert(generationRunsTable).values({
     id: run.id,
     mapId: run.mapId,

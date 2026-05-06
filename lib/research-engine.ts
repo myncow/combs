@@ -12,14 +12,30 @@ import type { GenerationMetricsCollector } from "@/lib/generation-metrics";
 import type { GenerationStreamSink } from "@/lib/generation-stream";
 import type { NormalizedMapBrief } from "@/lib/types";
 
-export type ResearchFocus = "taxonomy" | "examples" | "constraints";
+export type ResearchFocus = "taxonomy" | "examples" | "constraints" | "visual_anchors";
+export type ResearchGroundingState = "none" | "unsourced" | "sourced";
 
 export interface ResearchEntity {
   name: string;
   brand?: string;
   category?: string;
   evidence?: string;
+  /**
+   * Mixed-form list of visual cues kept for backward compatibility. Older
+   * code paths read from this; new prompts read the structured fields below
+   * when present.
+   */
   visualDescriptors: string[];
+  /** Outline / form / posture cue. */
+  silhouette?: string;
+  /** Materials, finish, surface vocabulary. */
+  materials?: string;
+  /** Scale cues (relative size, comparison object, magnification). */
+  scale?: string;
+  /** Color, palette, finish vocabulary. */
+  color?: string;
+  /** Era / period / lineage cue (when relevant). */
+  era?: string;
   citations: string[];
 }
 
@@ -30,6 +46,8 @@ export interface ResearchSection {
 }
 
 export interface ResearchContext {
+  /** Whether the research pack has retrievable cited sources behind it. */
+  groundingState: ResearchGroundingState;
   /** Structured context passed into generation prompts */
   summary: string;
   /** Named entities / examples extracted from all research sections */
@@ -79,6 +97,7 @@ type ResearchResponse = {
 };
 
 const emptyResearchContext: ResearchContext = {
+  groundingState: "none",
   summary: "",
   knownEntities: [],
   sources: [],
@@ -87,6 +106,18 @@ const emptyResearchContext: ResearchContext = {
   constraintHints: [],
   sections: [],
 };
+
+export function getResearchGroundingState(
+  research: Pick<ResearchContext, "groundingState" | "summary" | "sources">,
+): ResearchGroundingState {
+  if (research.groundingState) {
+    return research.groundingState;
+  }
+  if (!research.summary.trim()) {
+    return "none";
+  }
+  return research.sources.length > 0 ? "sourced" : "unsourced";
+}
 
 function toResearchBrief(topicOrBrief: string | ResearchBrief, combines?: string): ResearchBrief {
   if (typeof topicOrBrief !== "string") {
@@ -152,6 +183,20 @@ CONSTRAINTS:
 - <constraint> | <physical/cultural/economic/taste/taxonomy> | <what it makes rare, impossible, or tense>
 EDGE CASES:
 - <named example or combination> | <why it is rare, a gap, a tension, or impossible>`,
+    },
+    {
+      focus: "visual_anchors",
+      question: `${contextLines}
+
+Find named, photographable anchor examples and describe how they LOOK in a single hero photo. Return plain text with this exact section:
+VISUAL ANCHORS:
+- Name: <example name> | Silhouette: <outline / form / posture cue> | Materials: <materials, finish, surface vocabulary> | Scale: <scale cues, magnification, comparison object> | Color: <palette, finish, light interaction> | Era: <period or lineage cue or "n/a">
+
+Rules:
+- Each line must name a real, attributable instance (catalogued specimen, released SKU, sanctioned movement, chartered policy artifact—whatever fits the ontology). Skip lines you cannot ground in a real referent.
+- Silhouette/Materials/Scale/Color/Era must be picturable cues a photographer or illustrator could read off a single photograph. Avoid mood words, scores, or ranks.
+- Prefer 6–12 lines covering the documented breadth of the domain: at least one canonical anchor and one rare/edge-case anchor when the literature supports it.
+- Skip a field by writing "n/a" rather than guessing.`,
     },
   ];
 }
@@ -349,6 +394,97 @@ function extractConstraintHints(text: string) {
   return extractSectionBullets(text, ["CONSTRAINTS", "EDGE CASES"], 40);
 }
 
+const VISUAL_FIELD_KEYS = ["silhouette", "materials", "scale", "color", "era"] as const;
+
+function parseVisualBullet(bullet: string): ResearchEntity | null {
+  const parts = bullet.split("|").map((part) => part.trim()).filter(Boolean);
+  if (!parts.length) return null;
+
+  const fields = new Map<string, string>();
+  let leadingName: string | undefined;
+
+  for (const part of parts) {
+    const colonIndex = part.indexOf(":");
+    if (colonIndex <= 0) {
+      if (!leadingName) {
+        leadingName = part;
+      }
+      continue;
+    }
+    const key = part.slice(0, colonIndex).trim().toLowerCase();
+    const value = part.slice(colonIndex + 1).trim();
+    if (!value || /^n\/?a$/i.test(value)) continue;
+    fields.set(key, value);
+  }
+
+  const name = fields.get("name") ?? leadingName;
+  if (!name || name.length < 2 || /^(example name|category|style)$/i.test(name)) {
+    return null;
+  }
+
+  const visualDescriptors: string[] = [];
+  const visual: Pick<ResearchEntity, "silhouette" | "materials" | "scale" | "color" | "era"> = {};
+  for (const key of VISUAL_FIELD_KEYS) {
+    const value = fields.get(key);
+    if (value) {
+      visual[key] = value;
+      visualDescriptors.push(`${key}: ${value}`);
+    }
+  }
+  if (!visualDescriptors.length) {
+    return null;
+  }
+
+  return {
+    name,
+    visualDescriptors,
+    citations: [],
+    ...visual,
+  };
+}
+
+function extractVisualAnchorEntities(text: string): ResearchEntity[] {
+  const bullets = extractSectionBullets(text, ["VISUAL ANCHORS"], 36);
+  return bullets
+    .map(parseVisualBullet)
+    .filter((entity): entity is ResearchEntity => Boolean(entity));
+}
+
+/**
+ * Merge structured visual anchors into the example-derived entity ledger.
+ * Visual fields enrich entries that share a name (case-insensitive). Visual
+ * anchors that don't appear in the example ledger are appended as new entries
+ * so the cell prompt can still see their picturable cues.
+ */
+function mergeVisualAnchors(
+  primary: ResearchEntity[],
+  visual: ResearchEntity[],
+): ResearchEntity[] {
+  const out = [...primary];
+  const indexByName = new Map(out.map((entity, idx) => [entity.name.toLowerCase(), idx]));
+
+  for (const v of visual) {
+    const key = v.name.toLowerCase();
+    const idx = indexByName.get(key);
+    if (idx == null) {
+      out.push(v);
+      indexByName.set(key, out.length - 1);
+      continue;
+    }
+    const existing = out[idx];
+    out[idx] = {
+      ...existing,
+      silhouette: existing.silhouette ?? v.silhouette,
+      materials: existing.materials ?? v.materials,
+      scale: existing.scale ?? v.scale,
+      color: existing.color ?? v.color,
+      era: existing.era ?? v.era,
+      visualDescriptors: dedupe([...existing.visualDescriptors, ...v.visualDescriptors]),
+    };
+  }
+  return out;
+}
+
 /** Heuristic backup: extract proper nouns as candidate entity names. */
 function extractProperNouns(text: string): string[] {
   const matches =
@@ -365,15 +501,41 @@ function extractProperNouns(text: string): string[] {
 }
 
 function formatEntity(entity: ResearchEntity) {
+  const visualLine = formatVisualLine(entity);
   return [
     entity.name,
     entity.brand,
     entity.category,
     entity.evidence,
-    entity.visualDescriptors.length ? `Visual cues: ${entity.visualDescriptors.join(", ")}` : "",
+    visualLine || (entity.visualDescriptors.length ? `Visual cues: ${entity.visualDescriptors.join(", ")}` : ""),
   ]
     .filter(Boolean)
     .join(" | ");
+}
+
+function formatVisualLine(entity: ResearchEntity): string {
+  const parts = [
+    entity.silhouette ? `silhouette: ${entity.silhouette}` : "",
+    entity.materials ? `materials: ${entity.materials}` : "",
+    entity.scale ? `scale: ${entity.scale}` : "",
+    entity.color ? `color: ${entity.color}` : "",
+    entity.era ? `era: ${entity.era}` : "",
+  ].filter(Boolean);
+  return parts.length ? `Visual: ${parts.join(" · ")}` : "";
+}
+
+/** Public formatter used by skeleton/cell prompts that want only the visual ledger. */
+export function formatVisualAnchorLedger(entities: ResearchEntity[], limit = 12): string {
+  const withVisual = entities.filter(
+    (entity) => entity.silhouette || entity.materials || entity.scale || entity.color || entity.era,
+  );
+  if (!withVisual.length) {
+    return "";
+  }
+  return withVisual
+    .slice(0, limit)
+    .map((entity) => `- ${entity.name} | ${formatVisualLine(entity).replace(/^Visual:\s*/, "")}`)
+    .join("\n");
 }
 
 function buildSummary({
@@ -387,11 +549,13 @@ function buildSummary({
   entityHints: ResearchEntity[];
   constraintHints: string[];
 }) {
+  const visualLedger = formatVisualAnchorLedger(entityHints, 18);
   const parts = [
     axisHints.length ? `AXIS HINTS:\n${axisHints.slice(0, 12).map((hint) => `- ${hint}`).join("\n")}` : "",
     entityHints.length
       ? `ENTITY LEDGER:\n${entityHints.slice(0, 35).map((entity) => `- ${formatEntity(entity)}`).join("\n")}`
       : "",
+    visualLedger ? `VISUAL ANCHOR LEDGER (silhouette · materials · scale · color · era):\n${visualLedger}` : "",
     constraintHints.length
       ? `CONSTRAINT HINTS:\n${constraintHints.slice(0, 20).map((hint) => `- ${hint}`).join("\n")}`
       : "",
@@ -400,7 +564,7 @@ function buildSummary({
       .join("\n\n"),
   ].filter(Boolean);
 
-  return parts.join("\n\n").slice(0, 9000);
+  return parts.join("\n\n").slice(0, 10000);
 }
 
 /**
@@ -474,16 +638,19 @@ export async function fetchResearchContext(
 
   const combinedContent = sections.map((section) => section.content).join("\n\n");
   const axisHints = extractAxisHints(combinedContent);
-  const entityHints = extractEntityHints(combinedContent);
+  const entityHintsRaw = extractEntityHints(combinedContent);
+  const visualEntities = extractVisualAnchorEntities(combinedContent);
+  const entityHints = mergeVisualAnchors(entityHintsRaw, visualEntities);
   const constraintHints = extractConstraintHints(combinedContent);
   const sources = dedupe(sections.flatMap((section) => section.sources)).slice(0, 24);
-  const citationUrls = sources.map((entry) => entry.replace(/^.*?:\s*/, "")).filter(Boolean);
-  const entityHintsWithCitations = entityHints.map((entity) => ({
-    ...entity,
-    citations: citationUrls.slice(0, 3),
-  }));
+  const summary = buildSummary({ sections, axisHints, entityHints, constraintHints });
+  const groundingState: ResearchGroundingState = summary.trim()
+    ? sources.length > 0
+      ? "sourced"
+      : "unsourced"
+    : "none";
   const knownEntities = dedupe([
-    ...entityHintsWithCitations.map((entity) => entity.name),
+    ...entityHints.map((entity) => entity.name),
     ...extractProperNouns(combinedContent),
   ]).slice(0, 80);
   sink?.({ type: "research", phase: "end", sourcesFound: sources.length });
@@ -495,10 +662,11 @@ export async function fetchResearchContext(
   });
 
   return {
-    summary: buildSummary({ sections, axisHints, entityHints: entityHintsWithCitations, constraintHints }),
+    groundingState,
+    summary,
     knownEntities,
     sources,
-    entityHints: entityHintsWithCitations,
+    entityHints,
     axisHints,
     constraintHints,
     sections,

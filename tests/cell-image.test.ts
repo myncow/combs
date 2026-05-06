@@ -174,6 +174,100 @@ const groundedBirdDocument: MapDocument = {
   ],
 };
 
+const eggHamCell: MapCell = {
+  id: "orange-yolk-mahogany-ham",
+  coordinates: {
+    "yolk-chroma": "Sunset Orange",
+    "meat-pigmentation": "Mahogany",
+  },
+  label: "Sunset yolk with mahogany ham",
+  status: "gap",
+  explanation: "A dramatic breakfast plate crossing bright yolk color with dark cured ham.",
+  confidence: 0.58,
+  badges: ["Opportunity"],
+  examples: [],
+};
+
+const eggHamDocument: MapDocument = {
+  title: "Egg and Ham Visual Palette Map",
+  slug: "egg-ham-map",
+  summary: "A map of plated eggs and ham across yolk color and meat pigmentation.",
+  intro: "Each cell should show the egg/yolk and ham/meat together as one plated subject.",
+  domain: "Eggs and ham",
+  topicFamily: "Food & Drink",
+  dimensions: [
+    {
+      key: "yolk-chroma",
+      label: "Yolk chroma",
+      description: "The visible color intensity of the egg yolk.",
+      values: ["Pale Cream", "Sunset Orange", "Deep Crimson"],
+    },
+    {
+      key: "meat-pigmentation",
+      label: "Meat pigmentation",
+      description: "The visible color and opacity of the ham or cured meat.",
+      values: ["Translucent Pale Pink", "Mahogany"],
+    },
+  ],
+  cellSchema: {
+    primaryX: "yolk-chroma",
+    primaryY: "meat-pigmentation",
+  },
+  cells: [
+    eggHamCell,
+    {
+      id: "pale-yolk-mahogany-ham",
+      coordinates: {
+        "yolk-chroma": "Pale Cream",
+        "meat-pigmentation": "Mahogany",
+      },
+      label: "Pale yolk with mahogany ham",
+      status: "rare",
+      explanation: "A documented plate where both egg yolk and ham color are visible.",
+      confidence: 0.82,
+      badges: ["Known"],
+      examples: [
+        {
+          name: "Breakfast plate with dark ham and pale egg",
+          description: "A plated egg with visible pale yolk next to dark cured ham.",
+          coordinates: {
+            "yolk-chroma": "Pale Cream",
+            "meat-pigmentation": "Mahogany",
+          },
+          status: "rare",
+          evidenceNote: "Both the egg yolk and ham surface are visible in the same plate.",
+          referenceImages: [
+            {
+              link: "https://example.com/egg-ham-plate.jpg",
+              thumbnail: "https://example.com/egg-ham-plate-thumb.jpg",
+              title: "Egg and dark ham plate",
+              source: "Kitchen Archive",
+            },
+          ],
+        },
+      ],
+    },
+  ],
+  featuredExamples: [],
+  notableGaps: [
+    {
+      label: "Sunset yolk with mahogany ham",
+      explanation: "A visually plausible but underused crossing.",
+      coordinates: eggHamCell.coordinates,
+    },
+  ],
+  impossibleCombos: [],
+  constraints: [],
+  renderingHints: {
+    accent: "#c2410c",
+    gradient: ["#fed7aa", "#7f1d1d"],
+  },
+  seo: {
+    title: "Egg and Ham Visual Palette Map | Raster",
+    description: "Explore egg and ham color combinations.",
+  },
+};
+
 function jsonResponse(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
     status,
@@ -223,16 +317,24 @@ describe("cell image prompting", () => {
     const prompt = buildCellImagePrompt(groundedBirdDocument, birdCell, false);
     expect(prompt).toContain("Natural History Plate");
     expect(prompt).toContain("same natural history plate series");
+    expect(prompt).toContain("Photorealism mandate");
+    expect(prompt).toContain("Photorealistic field-guide specimen photography");
+    expect(prompt).toContain("## Exact subject lock");
+    expect(prompt).toContain("The image must be a Birds subject");
     expect(prompt).toContain("The primary subject should fill roughly 60-80% of the frame.");
     expect(prompt).toContain("Favor a strong silhouette");
     expect(prompt).toContain("strong image when reduced to a small tile");
     expect(prompt).toContain("Avoid sterile studio-backdrop language and retail presentation tropes.");
-    expect(prompt).toContain("do not use props, restraints, vines, cages, chains, lead weights");
+    expect(prompt).toContain("Do not illustrate absence, impossibility, tension");
+    expect(prompt).toContain("Unrelated output is a failure");
+    expect(prompt).toContain("Use other visual examples as the main source of truth");
+    expect(prompt).toContain("## Plausibility construction");
     expect(prompt).toContain("Persisted visual references available to you");
     expect(prompt).toContain("Ref 1: Direct evidence from Virginia rail");
     expect(prompt).toContain("Red-winged blackbird");
     expect(prompt).toContain("#0f766e");
-    expect(prompt).toContain('Caption rule: use "Wetland waders"');
+    expect(prompt).toContain("Generate a single square image for this map cell");
+    expect(prompt).toContain("## Composition hint");
   });
 
   it("switches prompt behavior by frontier status", () => {
@@ -247,9 +349,25 @@ describe("cell image prompting", () => {
       false,
     );
 
-    expect(tensionPrompt).toContain("strained hybrid or edge-case");
-    expect(impossiblePrompt).toContain("structurally blocked");
-    expect(impossiblePrompt).toContain("failed, incomplete, unstable, or non-cohering form");
+    expect(tensionPrompt).toContain("hard-but-viable edge case");
+    expect(tensionPrompt).toContain("do not dramatize tension");
+    expect(impossiblePrompt).toContain("stay in-domain");
+    expect(impossiblePrompt).toContain("minimum visible assumptions");
+    expect(impossiblePrompt).toContain("Silently choose one or two visible assumptions");
+    expect(impossiblePrompt).toContain("without changing the subject category");
+    expect(impossiblePrompt).toContain("Do not show impossibility, tension, failure");
+  });
+
+  it("requires every coordinate carrier for composite subjects", () => {
+    const prompt = buildCellImagePrompt(eggHamDocument, eggHamCell, false);
+
+    expect(prompt).toContain("Composite subjects must remain complete");
+    expect(prompt).toContain("an eggs-and-ham cell must show the egg/yolk and the ham/meat");
+    expect(prompt).toContain("## Coordinate coverage checklist");
+    expect(prompt).toContain('Yolk chroma = Sunset Orange: the visible carrier of "Yolk chroma" must appear');
+    expect(prompt).toContain('Meat pigmentation = Mahogany: the visible carrier of "Meat pigmentation" must appear');
+    expect(prompt).toContain("Do not crop out, hide, imply, substitute, or leave off any coordinate carrier");
+    expect(prompt).toContain("Show every coordinate-bearing object, ingredient, part, or material");
   });
 
   it("builds a grounding bundle from direct examples, neighboring anchors, and reference images", () => {
@@ -304,123 +422,141 @@ describe("cell image generation integration", () => {
     vi.restoreAllMocks();
   });
 
-  it("ranks candidates with the visual judge and keeps the best accepted image", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        jsonResponse({
-          choices: [{ message: { content: "Wetland waders", images: [{ url: "https://img.local/candidate-a.png" }] } }],
-        }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({
-          choices: [{ message: { content: JSON.stringify({
-            accepted: false,
-            score: 0.34,
-            subjectFit: 0.45,
-            seriesFit: 0.5,
-            compositionFit: 0.42,
-            thumbnailFit: 0.38,
-            failures: ["Looks like a diagram."],
-            rationale: "Too diagram-like.",
-          }) } }],
-        }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({
-          choices: [{ message: { content: "Wetland waders", images: [{ url: "https://img.local/candidate-b.png" }] } }],
-        }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({
-          choices: [{ message: { content: JSON.stringify({
-            accepted: true,
-            score: 0.91,
-            subjectFit: 0.9,
-            seriesFit: 0.93,
-            compositionFit: 0.88,
-            thumbnailFit: 0.9,
-            failures: [],
-            rationale: "Strong frontier exemplar.",
-          }) } }],
-        }),
-      );
+  it("calls Seedream once and stores the cell label as caption", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      jsonResponse({
+        choices: [
+          {
+            message: {
+              images: [{ image_url: { url: "https://img.local/seedream.png" } }],
+            },
+          },
+        ],
+      }),
+    );
 
     global.fetch = fetchMock as typeof global.fetch;
 
     const result = await generateCellVisualizationImage(groundedBirdDocument, birdCell);
 
-    expect(result?.imageUrl).toBe("https://img.local/candidate-b.png");
+    expect(result?.imageUrl).toBe("https://img.local/seedream.png");
     expect(result?.caption).toBe("Wetland waders");
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const body = JSON.parse(String(init?.body));
+    expect(body.model).toBe("bytedance-seed/seedream-4.5");
+    expect(body.modalities).toEqual(["image"]);
   });
 
-  it("repairs once when failures exist and reviewer score lands in repair band without fallback", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        jsonResponse({
-          choices: [{ message: { content: "Wetland waders", images: [{ url: "https://img.local/diag-a.png" }] } }],
-        }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({
-          choices: [{ message: { content: JSON.stringify({
-            accepted: false,
-            score: 0.55,
-            subjectFit: 0.62,
-            seriesFit: 0.64,
-            compositionFit: 0.61,
-            thumbnailFit: 0.63,
-            failures: ["Background competes slightly."],
-            rationale: "Close but cluttered.",
-          }) } }],
-        }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({
-          choices: [{ message: { content: "Wetland waders", images: [{ url: "https://img.local/diag-b.png" }] } }],
-        }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({
-          choices: [{ message: { content: JSON.stringify({
-            accepted: false,
-            score: 0.72,
-            subjectFit: 0.71,
-            seriesFit: 0.74,
-            compositionFit: 0.73,
-            thumbnailFit: 0.71,
-            failures: ["Slight diagram tendency."],
-            rationale: "Legible subject but cramped.",
-          }) } }],
-        }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({
-          choices: [{ message: { content: "Wetland waders", images: [{ url: "https://img.local/repaired.png" }] } }],
-        }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({
-          choices: [{ message: { content: JSON.stringify({
-            accepted: true,
-            score: 0.84,
-            subjectFit: 0.82,
-            seriesFit: 0.86,
-            compositionFit: 0.83,
-            thumbnailFit: 0.81,
-            failures: [],
-            rationale: "Repaired into a grounded subject render.",
-          }) } }],
-        }),
-      );
+  it("forwards an allowlisted image model when provided", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      jsonResponse({
+        choices: [
+          {
+            message: {
+              images: [{ image_url: { url: "https://img.local/flux.png" } }],
+            },
+          },
+        ],
+      }),
+    );
 
     global.fetch = fetchMock as typeof global.fetch;
 
-    const result = await generateCellVisualizationImage(groundedBirdDocument, birdCell);
+    const result = await generateCellVisualizationImage(groundedBirdDocument, birdCell, {
+      imageModel: "black-forest-labs/flux.2-max",
+    });
 
-    expect(result?.imageUrl).toBe("https://img.local/repaired.png");
-    expect(fetchMock).toHaveBeenCalledTimes(6);
+    expect(result?.imageUrl).toBe("https://img.local/flux.png");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const body = JSON.parse(String(init?.body));
+    expect(body.model).toBe("black-forest-labs/flux.2-max");
+    expect(body.modalities).toEqual(["image"]);
+  });
+
+  it("falls back to Seedream when image model is not allowlisted", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      jsonResponse({
+        choices: [
+          {
+            message: {
+              images: [{ image_url: { url: "https://img.local/fallback.png" } }],
+            },
+          },
+        ],
+      }),
+    );
+
+    global.fetch = fetchMock as typeof global.fetch;
+
+    const result = await generateCellVisualizationImage(groundedBirdDocument, birdCell, {
+      imageModel: "some/unknown-image-model",
+    });
+
+    expect(result?.imageUrl).toBe("https://img.local/fallback.png");
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const body = JSON.parse(String(init?.body));
+    expect(body.model).toBe("bytedance-seed/seedream-4.5");
+    expect(body.modalities).toEqual(["image"]);
+  });
+});
+
+describe("OpenRouter image modalities by model family", () => {
+  const originalFetch = global.fetch;
+  const originalApiKey = process.env.OPENROUTER_API_KEY;
+
+  beforeEach(() => {
+    process.env.OPENROUTER_API_KEY = "test-key";
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    process.env.OPENROUTER_API_KEY = originalApiKey;
+    vi.restoreAllMocks();
+  });
+
+  it("uses image+text for Gemini image models (OpenRouter requirement)", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      jsonResponse({
+        choices: [
+          {
+            message: {
+              images: [{ type: "image_url", image_url: { url: "https://img.local/gemini.png" } }],
+            },
+          },
+        ],
+      }),
+    );
+    global.fetch = fetchMock as typeof global.fetch;
+
+    await generateCellVisualizationImage(groundedBirdDocument, birdCell, {
+      imageModel: "google/gemini-3.1-flash-image-preview",
+    });
+
+    const body = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit)?.body));
+    expect(body.modalities).toEqual(["image", "text"]);
+  });
+
+  it("uses image+text for OpenAI image models", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      jsonResponse({
+        choices: [
+          {
+            message: {
+              images: [{ image_url: { url: "data:image/png;base64,AAA" } }],
+            },
+          },
+        ],
+      }),
+    );
+    global.fetch = fetchMock as typeof global.fetch;
+
+    await generateCellVisualizationImage(groundedBirdDocument, birdCell, {
+      imageModel: "openai/gpt-5.4-image-2",
+    });
+
+    const body = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit)?.body));
+    expect(body.modalities).toEqual(["image", "text"]);
   });
 });

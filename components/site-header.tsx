@@ -1,0 +1,78 @@
+"use client";
+
+import { ImageModelPicker } from "@/components/image-model-picker";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import type { MouseEvent } from "react";
+
+function LogoMark({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      aria-hidden="true"
+      shapeRendering="crispEdges"
+      className={className}
+    >
+      <rect x="1" y="1" width="6" height="6" fill="currentColor" />
+      <rect x="9" y="1" width="6" height="6" fill="currentColor" />
+      <rect x="17" y="1" width="6" height="6" fill="currentColor" />
+      <rect x="1" y="9" width="6" height="6" fill="currentColor" />
+      <rect x="9" y="9" width="6" height="6" fill="currentColor" />
+      <rect x="17" y="9" width="6" height="6" fill="currentColor" />
+      <rect x="1" y="17" width="6" height="6" fill="currentColor" />
+      <rect x="9" y="17" width="6" height="6" fill="currentColor" />
+      <rect x="17" y="17" width="6" height="6" fill="var(--primary)" />
+    </svg>
+  );
+}
+
+export function SiteHeader() {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  function handleHomeClick(event: MouseEvent<HTMLAnchorElement>) {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.altKey ||
+      event.shiftKey
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    const alreadyCleanHome =
+      pathname === "/" &&
+      window.location.search === "" &&
+      window.location.hash === "";
+
+    if (alreadyCleanHome) {
+      router.refresh();
+      return;
+    }
+    router.push("/");
+  }
+
+  return (
+    <header className="sticky top-0 z-20 shrink-0 border-b border-border bg-[color:color-mix(in_srgb,var(--background)_92%,transparent)] backdrop-blur-md">
+      <div className="mx-auto flex max-w-[1240px] items-center gap-3 px-5 py-2.5 md:px-8 md:py-2">
+        <Link
+          href="/"
+          aria-label="Raster — home"
+          onClick={handleHomeClick}
+          className="flex shrink-0 items-center gap-2.5 rounded-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          <LogoMark className="text-foreground" />
+          <span className="font-sans text-[15px] font-semibold uppercase leading-none tracking-[0.08em]">
+            Raster
+          </span>
+        </Link>
+        <ImageModelPicker />
+      </div>
+    </header>
+  );
+}

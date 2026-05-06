@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { seedBreadMap } from "@/lib/data/seed-maps";
 import { enrichMapDocumentReferenceImages, exampleIdentityKey } from "@/lib/map-reference-images";
 import * as serp from "@/lib/serpapi-images";
 import type { MapDocument, MapExample } from "@/lib/types";
+import { testBreadMapDocument } from "./fixtures/bread-map-document";
 
 vi.mock("@/lib/serpapi-images", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/serpapi-images")>();
@@ -32,7 +32,7 @@ describe("enrichMapDocumentReferenceImages", () => {
       results: [{ link: "https://example.com/full", thumbnail: "https://example.com/thumb.jpg", title: "x", source: "y" }],
     });
 
-    const doc = seedBreadMap.document as MapDocument;
+    const doc = testBreadMapDocument;
     const out = await enrichMapDocumentReferenceImages(doc);
 
     expect(serp.fetchGoogleImageExampleResults).toHaveBeenCalled();
@@ -46,7 +46,7 @@ describe("enrichMapDocumentReferenceImages", () => {
 
   it("skips when no API key", async () => {
     vi.mocked(serp.getSerpApiKey).mockReturnValue(null);
-    const doc = seedBreadMap.document as MapDocument;
+    const doc = testBreadMapDocument;
     const out = await enrichMapDocumentReferenceImages(doc);
     expect(serp.fetchGoogleImageExampleResults).not.toHaveBeenCalled();
     expect(out).toBe(doc);

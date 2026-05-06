@@ -1,16 +1,23 @@
 import type { GenerationMetrics } from "@/lib/generation-metrics";
 
 export const MAP_CELL_STATUSES = ["existing", "rare", "gap", "tension", "impossible"] as const;
-export const MAP_VISIBILITY = ["published", "internal", "failed"] as const;
+export const MAP_VISIBILITY = ["published", "internal", "failed", "generating"] as const;
 export const MAP_VISUAL_SERIES_PRESETS = [
   "natural-history-plate",
   "editorial-habitat-photo",
+  "studio-product",
+  "documentary-context",
+  "macro-detail",
   "tactile-diorama",
 ] as const;
+export const LEADERBOARD_SORTS = ["top", "new"] as const;
+export const LEADERBOARD_VOTE_DIRECTIONS = ["up", "down"] as const;
 
 export type MapCellStatus = (typeof MAP_CELL_STATUSES)[number];
 export type MapVisibility = (typeof MAP_VISIBILITY)[number];
 export type MapVisualSeriesPresetId = (typeof MAP_VISUAL_SERIES_PRESETS)[number];
+export type LeaderboardSort = (typeof LEADERBOARD_SORTS)[number];
+export type LeaderboardVoteDirection = (typeof LEADERBOARD_VOTE_DIRECTIONS)[number];
 
 export interface MapVisualStyleSpec {
   medium: string;
@@ -94,19 +101,58 @@ export interface MapCellVisualization {
   caption?: string;
   /** Optional so older persisted visualizations without timestamps still render. */
   updatedAt?: string;
+  /** OpenRouter image model slug used for this render (newer maps only). */
+  imageModel?: string;
+  /** Full text prompt sent to the image model — surfaced in the cell drawer. */
+  prompt?: string;
+  /**
+   * SHA-256 of the persisted image bytes (hex). Used for cross-cell
+   * duplicate detection: when two visualizations share a byte-identical
+   * hash, the model reused an output and the cell should be regenerated
+   * with a diversification cue. Optional so legacy rows pre-dating this
+   * field continue to load.
+   */
+  byteHash?: string;
 }
 
-/** Flattened cell viz row for cross-map indexes (e.g. `/visualizations`). */
-export interface ListedCellVisualization {
+export interface GapSpotlightDraft {
+  mapSlug: string;
+  cellId: string;
+  storyTitle: string;
+  storySummary: string;
+  updatedAt: string;
+}
+
+export interface LeaderboardEntry {
+  id: string;
+  slug: string;
+  mapId: string;
   mapSlug: string;
   mapTitle: string;
+  topicFamily: string;
   cellId: string;
   cellLabel: string;
-  status: MapCellStatus;
-  imageUrl: string;
-  caption?: string;
-  updatedAt: string;
   coordinatesSnapshot: Record<string, string>;
+  imageUrl: string;
+  storyTitle: string;
+  storySummary: string;
+  publishedAt: string;
+  createdAt: string;
+  score: number;
+  upvotes: number;
+  downvotes: number;
+}
+
+export interface ListedLeaderboardEntry extends LeaderboardEntry {
+  viewerVote?: LeaderboardVoteDirection | null;
+}
+
+export interface LeaderboardVote {
+  entryId: string;
+  requesterId: string;
+  direction: LeaderboardVoteDirection;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface MapDocument {
@@ -194,6 +240,8 @@ export interface SavedMap {
   summary: string;
   promptSummary: string;
   document: MapDocument;
+  /** Monotonic counter bumped each time the document is mutated server-side. */
+  revision?: number;
   /**
    * Pre-computed representative thumbnail URL derived from the document at
    * read time by `serializeSavedMap`. `null` when the document has no
