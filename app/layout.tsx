@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import "./theme.css";
 import "./globals.css";
+import { NeonAuthProviders } from "@/components/neon-auth-providers";
 import { SiteHeader } from "@/components/site-header";
 import { ThemeBootstrap } from "@/components/theme-bootstrap";
 import { ThemeSwitcher } from "@/components/theme-switcher";
@@ -74,15 +75,17 @@ export default async function RootLayout({
     >
       <body className="min-h-dvh bg-background font-sans text-foreground md:h-dvh md:overflow-hidden">
         <ThemeBootstrap />
-        <div className="flex min-h-dvh flex-col md:h-dvh md:overflow-hidden">
-          <SiteHeader />
-          <div className="flex min-h-0 flex-1 flex-col">{children}</div>
-          <ThemeSwitcher
-            initialPreference={initialThemePreference}
-            initialResolvedDark={ssrDark}
-          />
-          <SiteFooter />
-        </div>
+        <NeonAuthProviders>
+          <div className="flex min-h-dvh flex-col md:h-dvh md:overflow-hidden">
+            <SiteHeader />
+            <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+            <ThemeSwitcher
+              initialPreference={initialThemePreference}
+              initialResolvedDark={ssrDark}
+            />
+            <SiteFooter />
+          </div>
+        </NeonAuthProviders>
       </body>
     </html>
   );
