@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { ExplorerSidebar } from "@/components/explorer-sidebar";
 import { auth } from "@/lib/auth/server";
@@ -44,15 +45,32 @@ async function ExplorerSidebarLoader() {
 
 export default function ShellLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-      <div className="order-2 md:order-1">
-        <Suspense
-          fallback={<aside className="hidden w-[min(360px,34vw)] shrink-0 border-r border-border md:block" />}
-        >
-          <ExplorerSidebarLoader />
-        </Suspense>
+    <>
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        <div className="order-2 md:order-1">
+          <Suspense
+            fallback={<aside className="hidden w-[min(360px,34vw)] shrink-0 border-r border-border md:block" />}
+          >
+            <ExplorerSidebarLoader />
+          </Suspense>
+        </div>
+        <div className="order-1 flex min-h-0 min-w-0 flex-1 flex-col md:order-2">{children}</div>
       </div>
-      <div className="order-1 flex min-h-0 min-w-0 flex-1 flex-col md:order-2">{children}</div>
-    </div>
+      <ShellFooter />
+    </>
+  );
+}
+
+function ShellFooter() {
+  const year = new Date().getFullYear();
+  return (
+    <footer className="shrink-0 border-t border-border md:hidden">
+      <div className="mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-3 px-5 py-4 font-mono text-[12px] uppercase tracking-[0.22em] text-muted-foreground md:px-8">
+        <Link href="/" className="hover:text-foreground">
+          Raster · two-axis visual maps
+        </Link>
+        <span className="tabular-nums">{year}</span>
+      </div>
+    </footer>
   );
 }

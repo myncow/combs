@@ -1,5 +1,6 @@
 "use client";
 
+import { SignedIn } from "@neondatabase/auth/react";
 import { HeaderAuth } from "@/components/header-auth";
 import { ImageModelPicker } from "@/components/image-model-picker";
 import Link from "next/link";
@@ -73,7 +74,9 @@ export function SiteHeader() {
           </span>
         </Link>
         <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 sm:gap-3">
-          <ImageModelPicker />
+          <SignedIn>
+            <ImageModelPicker />
+          </SignedIn>
           <HeaderAuth />
         </div>
       </div>

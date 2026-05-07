@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
-import Link from "next/link";
 import "./theme.css";
 import "./globals.css";
 import { NeonAuthProviders } from "@/components/neon-auth-providers";
@@ -83,24 +82,9 @@ export default async function RootLayout({
               initialPreference={initialThemePreference}
               initialResolvedDark={ssrDark}
             />
-            <SiteFooter />
           </div>
         </NeonAuthProviders>
       </body>
     </html>
-  );
-}
-
-function SiteFooter() {
-  const year = new Date().getFullYear();
-  return (
-    <footer className="shrink-0 border-t border-border md:hidden">
-      <div className="mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-3 px-5 py-4 font-mono text-[12px] uppercase tracking-[0.22em] text-muted-foreground md:px-8">
-        <Link href="/" className="hover:text-foreground">
-          Raster · two-axis visual maps
-        </Link>
-        <span className="tabular-nums">{year}</span>
-      </div>
-    </footer>
   );
 }

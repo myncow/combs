@@ -7,11 +7,10 @@ vi.mock("@/components/create-map-form", () => ({
 }));
 
 describe("NewMapHome", () => {
-  it("still presents the builder shell with the create form", () => {
+  it("renders the builder shell with the create form", () => {
     render(<NewMapHome />);
 
     expect(screen.getByRole("heading", { name: /^new map$/i })).toBeInTheDocument();
-    expect(screen.getByText(/suggested axes appear as you type/i)).toBeInTheDocument();
     expect(screen.getByTestId("create-map-form")).toBeInTheDocument();
   });
 });

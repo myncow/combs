@@ -18,21 +18,17 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-vi.mock("@/components/leaderboard-card", () => ({
-  LeaderboardCard: ({ entry }: { entry: { storyTitle: string } }) => <article>{entry.storyTitle}</article>,
-}));
-
 afterEach(() => {
   cleanup();
 });
 
 describe("SignedOutHome", () => {
-  it("shows concept copy, CTAs, leaderboard preview, and signed-out cue", () => {
+  it("shows the hero, Get-started CTA, and the spotlight grid", () => {
     const preview = [
-      makeListedLeaderboardEntry({ id: "1", storyTitle: "Featured story" }),
-      makeListedLeaderboardEntry({ id: "2", storyTitle: "Second" }),
-      makeListedLeaderboardEntry({ id: "3", storyTitle: "Third" }),
-      makeListedLeaderboardEntry({ id: "4", storyTitle: "Fourth" }),
+      makeListedLeaderboardEntry({ id: "1", slug: "first", storyTitle: "Featured story" }),
+      makeListedLeaderboardEntry({ id: "2", slug: "second", storyTitle: "Second" }),
+      makeListedLeaderboardEntry({ id: "3", slug: "third", storyTitle: "Third" }),
+      makeListedLeaderboardEntry({ id: "4", slug: "fourth", storyTitle: "Fourth" }),
     ];
 
     render(
@@ -44,22 +40,20 @@ describe("SignedOutHome", () => {
       />,
     );
 
-    expect(screen.getByText(/two-axis visual maps/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /create account/i })).toHaveAttribute(
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/two-axis maps/i);
+    expect(screen.getByRole("link", { name: /get started/i })).toHaveAttribute(
       "href",
       "/auth/sign-up?x=1",
     );
-    expect(
-      screen
-        .getAllByRole("link", { name: /^sign in$/i })
-        .some((el) => el.getAttribute("href") === "/auth/sign-in?x=1"),
-    ).toBe(true);
-    expect(screen.getByRole("link", { name: /view full top list/i })).toHaveAttribute("href", "/leaderboard");
+    expect(screen.getByRole("link", { name: /view all/i })).toHaveAttribute("href", "/leaderboard");
+
+    const spotlights = screen.getByRole("region", { name: /top spotlights/i });
+    expect(spotlights).toBeInTheDocument();
     expect(screen.getByText("Featured story")).toBeInTheDocument();
-    expect(screen.getByText(/signed out/i)).toBeInTheDocument();
+    expect(screen.getByText("Second")).toBeInTheDocument();
   });
 
-  it("does not render live builder controls (topic field, suggestions fetch, submit flow)", () => {
+  it("hides the spotlight grid when there are no entries and renders no builder controls", () => {
     render(
       <SignedOutHome
         signInHref="/auth/sign-in"
@@ -69,11 +63,8 @@ describe("SignedOutHome", () => {
       />,
     );
 
+    expect(screen.queryByRole("region", { name: /top spotlights/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(document.querySelector("#create-map-topic")).toBeNull();
-    expect(screen.queryByText(/sketching frames/i)).not.toBeInTheDocument();
-
-    expect(screen.getByRole("region", { name: /locked builder preview/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^build map$/i })).toBeDisabled();
   });
 });

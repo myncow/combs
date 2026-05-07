@@ -44,12 +44,11 @@ describe("HeaderAuth", () => {
     cleanup();
   });
 
-  it("shows signed-out label with sign-in and create-account CTAs", () => {
+  it("shows sign-in and create-account CTAs when signed out", () => {
     mockIsSignedIn.current = false;
 
     render(<HeaderAuth />);
 
-    expect(screen.getByText("Signed out")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^sign in$/i })).toHaveAttribute(
       "href",
       "/auth/sign-in?redirectTo=" + encodeURIComponent("/maps/abc?q=1"),
@@ -58,15 +57,16 @@ describe("HeaderAuth", () => {
       "href",
       "/auth/sign-up?redirectTo=" + encodeURIComponent("/maps/abc?q=1"),
     );
+    expect(screen.queryByRole("button", { name: /user menu/i })).not.toBeInTheDocument();
   });
 
-  it("shows signed-in label and the Neon UserButton when authenticated", () => {
+  it("renders the Neon UserButton when authenticated", () => {
     mockIsSignedIn.current = true;
 
     render(<HeaderAuth />);
 
-    expect(screen.getByText("Signed in")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /user menu/i })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /^sign in$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /create account/i })).not.toBeInTheDocument();
   });
 });

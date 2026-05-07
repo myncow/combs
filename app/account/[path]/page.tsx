@@ -15,7 +15,7 @@ export default async function AccountPathPage({
   const { path } = await params;
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-5 py-10 md:py-14">
+    <main className="mx-auto w-full max-w-3xl px-5 py-10 md:py-14">
       <AccountView path={path} />
     </main>
   );
