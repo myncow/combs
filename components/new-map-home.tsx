@@ -7,9 +7,6 @@ export function NewMapHome() {
         <h1 className="font-sans text-[21px] font-semibold leading-tight tracking-[-0.02em] text-foreground md:text-[24px]">
           New map
         </h1>
-        <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground md:text-[13px]">
-          Start with a topic. Suggested axes appear as you type, and the table is generated dynamically after you submit.
-        </p>
       </header>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col pt-3 md:pt-4">
