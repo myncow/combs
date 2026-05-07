@@ -1,13 +1,14 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ChevronsLeft, ChevronsRight, Plus } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, Lock, Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MapCard } from "@/components/map-card";
 import { LIBRARY_REFRESH_EVENT } from "@/lib/client-events";
 import { entryTransition } from "@/lib/motion";
+import { buildAuthRedirectHref } from "@/lib/auth/redirect";
 import type { ListedLeaderboardEntry, SavedMap } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +16,7 @@ type MapsPayload = { items?: SavedMap[]; total?: number };
 type LeaderboardPayload = { items?: ListedLeaderboardEntry[] };
 
 export type ExplorerSidebarProps = {
+  isSignedIn: boolean;
   initialMaps?: { items: SavedMap[]; total: number };
   initialLeaderboard?: ListedLeaderboardEntry[];
   /** Set when server-side library load threw — shown until client refresh succeeds. */
@@ -22,16 +24,26 @@ export type ExplorerSidebarProps = {
 };
 
 export function ExplorerSidebar({
+  isSignedIn,
   initialMaps,
   initialLeaderboard,
   initialHydrationError,
 }: ExplorerSidebarProps) {
   const pathname = usePathname() ?? "/";
   const searchParams = useSearchParams();
+  const signInHref = buildAuthRedirectHref("/auth/sign-in", pathname, searchParams);
   const topicFamily = searchParams.get("topicFamily") ?? undefined;
   const reduceMotion = useReducedMotion() ?? false;
 
-  const [tab, setTab] = useState<"maps" | "leaderboard">("maps");
+  const [tab, setTab] = useState<"maps" | "leaderboard">(() => (isSignedIn ? "maps" : "leaderboard"));
+  const prevSignedInRef = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    if (prevSignedInRef.current === false && isSignedIn) {
+      setTab("maps");
+    }
+    prevSignedInRef.current = isSignedIn;
+  }, [isSignedIn]);
   const [collapsed, setCollapsed] = useState(false);
   const [maps, setMaps] = useState<SavedMap[]>(() => initialMaps?.items ?? []);
   const [mapsTotal, setMapsTotal] = useState(() => initialMaps?.total ?? 0);
@@ -145,18 +157,22 @@ export function ExplorerSidebar({
       )}
       aria-label="Library and suggested axes"
     >
-      {/* New map button — always visible */}
+      {/* Primary path: new map when signed in; sign-in CTA when signed out */}
       <div className="shrink-0 border-b border-border px-2 py-2">
         <Link
-          href="/"
-          aria-label="New map"
+          href={isSignedIn ? "/" : signInHref}
+          aria-label={isSignedIn ? "New map" : "Sign in to build maps"}
           className={cn(
             "inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-sm border border-border bg-card px-3 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-foreground transition-[border-color,background-color,color] duration-150 hover:border-primary/35 hover:bg-[color:color-mix(in_srgb,var(--primary)_6%,var(--card))] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             collapsed && "md:px-0",
           )}
         >
-          <Plus className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden strokeWidth={2.5} />
-          <span className={cn(collapsed && "md:hidden")}>New map</span>
+          {isSignedIn ? (
+            <Plus className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden strokeWidth={2.5} />
+          ) : (
+            <Lock className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden strokeWidth={2.5} />
+          )}
+          <span className={cn(collapsed && "md:hidden")}>{isSignedIn ? "New map" : "Sign in to build"}</span>
         </Link>
       </div>
 

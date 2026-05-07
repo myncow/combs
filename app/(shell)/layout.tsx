@@ -1,10 +1,14 @@
 import { Suspense } from "react";
 import { ExplorerSidebar } from "@/components/explorer-sidebar";
+import { auth } from "@/lib/auth/server";
 import { hasDatabaseUrl } from "@/lib/db/client";
 import type { ListedLeaderboardEntry, SavedMap } from "@/lib/types";
 import { listLeaderboardEntries, listMaps } from "@/lib/store";
 
 async function ExplorerSidebarLoader() {
+  const { data: session } = await auth.getSession();
+  const isSignedIn = Boolean(session?.user);
+
   let mapsResult: { items: SavedMap[]; total: number } = { items: [], total: 0 };
   let leaderboardItems: ListedLeaderboardEntry[] = [];
   let hydrationError: string | undefined;
@@ -30,6 +34,7 @@ async function ExplorerSidebarLoader() {
 
   return (
     <ExplorerSidebar
+      isSignedIn={isSignedIn}
       initialMaps={{ items: mapsResult.items, total: mapsResult.total }}
       initialLeaderboard={leaderboardItems}
       initialHydrationError={hydrationError}
