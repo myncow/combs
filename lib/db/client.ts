@@ -5,6 +5,10 @@ import * as schema from "@/lib/db/schema";
 let dbInstance: ReturnType<typeof drizzle<typeof schema>> | null = null;
 let sqlClient: ReturnType<typeof postgres> | null = null;
 
+export function hasDatabaseUrl() {
+  return Boolean(process.env.DATABASE_URL?.trim());
+}
+
 export function getDb() {
   const url = process.env.DATABASE_URL?.trim();
   if (!url) {
