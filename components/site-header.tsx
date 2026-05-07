@@ -1,5 +1,6 @@
 "use client";
 
+import { HeaderAuth } from "@/components/header-auth";
 import { ImageModelPicker } from "@/components/image-model-picker";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -71,7 +72,10 @@ export function SiteHeader() {
             Raster
           </span>
         </Link>
-        <ImageModelPicker />
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <ImageModelPicker />
+          <HeaderAuth />
+        </div>
       </div>
     </header>
   );

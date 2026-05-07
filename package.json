@@ -12,6 +12,7 @@
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
+    "@neondatabase/auth": "0.3.0-beta",
     "@openrouter/sdk": "^0.12.18",
     "@radix-ui/react-slot": "^1.2.4",
     "class-variance-authority": "^0.7.1",
@@ -27,10 +28,10 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
+    "@tailwindcss/postcss": "^4.1.17",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
-    "@types/node": "^20",
+    "@types/node": "^20.19.39",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitest/coverage-v8": "^4.1.5",
@@ -38,10 +39,11 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
-    "jsdom": "^29.0.2",
-    "tailwindcss": "^4",
+    "jsdom": "^25.0.1",
+    "tailwindcss": "^4.1.17",
     "tsx": "^4.21.0",
-    "typescript": "^5",
+    "typescript": "^5.9.3",
+    "vite": "6.4.2",
     "vitest": "^4.1.5"
   }
 }
