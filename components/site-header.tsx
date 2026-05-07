@@ -72,7 +72,7 @@ export function SiteHeader() {
             Raster
           </span>
         </Link>
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 sm:gap-3">
           <ImageModelPicker />
           <HeaderAuth />
         </div>

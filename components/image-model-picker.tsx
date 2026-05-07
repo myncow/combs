@@ -69,7 +69,7 @@ export function ImageModelPicker() {
   return (
     <div
       ref={rootRef}
-      className="relative ml-auto flex min-w-0 max-w-[min(100%,26rem)] flex-row flex-wrap items-center justify-end gap-2 sm:max-w-[28rem] sm:flex-nowrap"
+      className="relative flex min-w-0 max-w-[min(100%,26rem)] flex-1 basis-[16rem] flex-row flex-wrap items-center justify-end gap-2 sm:max-w-[28rem] sm:flex-nowrap"
     >
       <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.22em] text-foreground/65 sm:text-[11px]">
         Image model
