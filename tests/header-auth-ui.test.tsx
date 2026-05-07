@@ -1,10 +1,9 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
 import { HeaderAuth } from "@/components/header-auth";
 
-const { mockUseSession, mockSignOut } = vi.hoisted(() => ({
-  mockUseSession: vi.fn(),
-  mockSignOut: vi.fn(),
+const { mockIsSignedIn } = vi.hoisted(() => ({
+  mockIsSignedIn: { current: false },
 }));
 
 vi.mock("next/navigation", () => ({
@@ -28,21 +27,25 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-vi.mock("@/lib/auth/client", () => ({
-  authClient: {
-    useSession: () => mockUseSession(),
-    signOut: (...args: unknown[]) => mockSignOut(...args),
-  },
+vi.mock("@neondatabase/auth/react", () => ({
+  SignedIn: ({ children }: { children: React.ReactNode }) =>
+    mockIsSignedIn.current ? <>{children}</> : null,
+  SignedOut: ({ children }: { children: React.ReactNode }) =>
+    mockIsSignedIn.current ? null : <>{children}</>,
+  UserButton: () => <button type="button" aria-label="User menu">user menu</button>,
 }));
 
 describe("HeaderAuth", () => {
   beforeEach(() => {
-    mockUseSession.mockReset();
-    mockSignOut.mockReset();
+    mockIsSignedIn.current = false;
   });
 
-  it("shows signed-out label, icon, and sign-in control", () => {
-    mockUseSession.mockReturnValue({ data: null, isPending: false });
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("shows signed-out label with sign-in and create-account CTAs", () => {
+    mockIsSignedIn.current = false;
 
     render(<HeaderAuth />);
 
@@ -51,24 +54,19 @@ describe("HeaderAuth", () => {
       "href",
       "/auth/sign-in?redirectTo=" + encodeURIComponent("/maps/abc?q=1"),
     );
+    expect(screen.getByRole("link", { name: /create account/i })).toHaveAttribute(
+      "href",
+      "/auth/sign-up?redirectTo=" + encodeURIComponent("/maps/abc?q=1"),
+    );
   });
 
-  it("shows signed-in label, user affordance, account link, and sign-out", () => {
-    mockUseSession.mockReturnValue({
-      data: {
-        user: {
-          id: "u1",
-          name: "Ada",
-          email: "ada@example.com",
-        },
-      },
-      isPending: false,
-    });
+  it("shows signed-in label and the Neon UserButton when authenticated", () => {
+    mockIsSignedIn.current = true;
 
     render(<HeaderAuth />);
 
     expect(screen.getByText("Signed in")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Ada" })).toHaveAttribute("href", "/account");
-    expect(screen.getByRole("button", { name: /sign out/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /user menu/i })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^sign in$/i })).not.toBeInTheDocument();
   });
 });
