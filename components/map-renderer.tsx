@@ -1063,18 +1063,18 @@ function CellTile({
             <EmptyCellBody />
           )}
 
-          <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 bg-[linear-gradient(180deg,rgba(7,10,15,0.62),transparent_82%)] px-3 pb-6 pt-2.5 md:px-2 md:pt-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/86 md:text-[10px]">
+          <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 bg-[linear-gradient(180deg,rgba(7,10,15,0.78),transparent_82%)] px-3 pb-6 pt-2.5 md:px-2 md:pt-2">
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.55)] md:text-[10px]">
               {code}
             </span>
           </div>
 
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-[linear-gradient(180deg,transparent_6%,rgba(7,10,15,0.82)_100%)] px-3 pb-2.5 pt-8 md:px-2 md:pb-2">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/60">
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-[linear-gradient(180deg,transparent_0%,rgba(7,10,15,0.55)_45%,rgba(7,10,15,0.92)_100%)] px-3 pb-2.5 pt-8 md:px-2 md:pb-2">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/80 [text-shadow:0_1px_2px_rgba(0,0,0,0.55)]">
               {display.label}
             </p>
             {primaryTitle ? (
-              <h3 className="mt-1 line-clamp-2 font-sans text-[15px] font-semibold leading-[1.12] tracking-[-0.01em] text-white md:text-[14px]">
+              <h3 className="mt-1 line-clamp-2 font-sans text-[15px] font-semibold leading-[1.12] tracking-[-0.01em] text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.55)] md:text-[14px]">
                 {primaryTitle}
               </h3>
             ) : null}
@@ -2091,7 +2091,7 @@ function ReferenceTile({
             referrerPolicy="no-referrer"
             className="h-full w-full object-cover"
           />
-          <span className="absolute inset-0 bg-[linear-gradient(180deg,transparent_55%,#000_100%)] opacity-0 transition-opacity duration-150 group-hover:opacity-80 group-focus-visible:opacity-80" />
+          <span className="absolute inset-0 bg-[linear-gradient(180deg,transparent_45%,rgba(0,0,0,0.55)_70%,rgba(0,0,0,0.92)_100%)] opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100" />
         </button>
       ) : (
         <a
@@ -2112,12 +2112,12 @@ function ReferenceTile({
             referrerPolicy="no-referrer"
             className="h-full w-full object-cover"
           />
-          <span className="absolute inset-0 bg-[linear-gradient(180deg,transparent_55%,#000_100%)] opacity-0 transition-opacity duration-150 group-hover:opacity-80 group-focus-visible:opacity-80" />
+          <span className="absolute inset-0 bg-[linear-gradient(180deg,transparent_45%,rgba(0,0,0,0.55)_70%,rgba(0,0,0,0.92)_100%)] opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100" />
         </a>
       )}
       <figcaption
         id={titleId}
-        className="pointer-events-none absolute inset-x-1.5 bottom-1.5 line-clamp-1 font-mono text-[10px] uppercase tracking-[0.22em] text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+        className="pointer-events-none absolute inset-x-1.5 bottom-1.5 line-clamp-1 font-mono text-[10px] uppercase tracking-[0.22em] text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.6)] opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
       >
         {hit.source ?? new URL(hit.link).host}
       </figcaption>

@@ -243,14 +243,18 @@ export function ExampleVisualMatrix({
               referrerPolicy="no-referrer"
               className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
             />
-            <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,24,23,0)_22%,rgba(8,24,23,0.86)_100%)]" />
-            <span className="absolute left-2 top-2 rounded-sm border border-border-strong bg-background/92 px-2 py-1 text-[11px] font-black uppercase text-foreground shadow-sm backdrop-blur-md">
+            <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,24,23,0)_18%,rgba(8,24,23,0.55)_55%,rgba(8,24,23,0.94)_100%)]" />
+            <span className="absolute left-2 top-2 rounded-sm border border-border-strong bg-background/95 px-2 py-1 text-[11px] font-black uppercase text-foreground shadow-sm backdrop-blur-md">
               {tile.year ?? tile.brand ?? hit.source ?? "Visual"}
             </span>
             <span className="absolute inset-x-0 bottom-0 p-2.5 text-white">
-              <span className="block text-[15px] font-black leading-tight drop-shadow-sm">{tile.name}</span>
+              <span className="block text-[15px] font-black leading-tight [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]">
+                {tile.name}
+              </span>
               {tile.brand ? (
-                <span className="mt-0.5 block text-[12px] font-semibold text-white/78">{tile.brand}</span>
+                <span className="mt-0.5 block text-[12px] font-semibold text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.55)]">
+                  {tile.brand}
+                </span>
               ) : null}
             </span>
           </a>

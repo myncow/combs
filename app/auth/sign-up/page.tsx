@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { UnlockHintIcon } from "@/components/auth-status-icon";
 import { sanitizeRedirectTo } from "@/lib/auth/redirect";
 import { signUpWithEmail } from "./actions";
 
@@ -17,7 +19,12 @@ export default function SignUpPage() {
   return (
     <div className="mx-auto flex max-w-md flex-col gap-8 px-5 py-14">
       <div>
-        <h1 className="font-sans text-[32px] font-semibold tracking-[-0.015em] text-foreground">
+        <span className="inline-flex items-center gap-2 border border-border bg-background px-2 py-1 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          <UnlockHintIcon className="text-foreground/85" />
+          Unlock generation
+        </span>
+        <h1 className="mt-3 inline-flex items-center gap-2 font-sans text-[32px] font-semibold tracking-[-0.015em] text-foreground">
+          <Sparkles className="h-6 w-6 text-primary" aria-hidden strokeWidth={2} />
           Create account
         </h1>
         <p className="mt-2 font-sans text-[15px] leading-[1.55] text-muted-foreground">

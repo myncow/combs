@@ -36,18 +36,38 @@ describe("SignedOutHome", () => {
     ];
 
     render(
-      <SignedOutHome signInHref="/auth/sign-in?x=1" leaderboardHref="/leaderboard" preview={preview} />,
+      <SignedOutHome
+        signInHref="/auth/sign-in?x=1"
+        signUpHref="/auth/sign-up?x=1"
+        leaderboardHref="/leaderboard"
+        preview={preview}
+      />,
     );
 
     expect(screen.getByText(/two-axis visual maps/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /sign in to build/i })).toHaveAttribute("href", "/auth/sign-in?x=1");
+    expect(screen.getByRole("link", { name: /create account/i })).toHaveAttribute(
+      "href",
+      "/auth/sign-up?x=1",
+    );
+    expect(
+      screen
+        .getAllByRole("link", { name: /^sign in$/i })
+        .some((el) => el.getAttribute("href") === "/auth/sign-in?x=1"),
+    ).toBe(true);
     expect(screen.getByRole("link", { name: /view full top list/i })).toHaveAttribute("href", "/leaderboard");
     expect(screen.getByText("Featured story")).toBeInTheDocument();
     expect(screen.getByText(/signed out/i)).toBeInTheDocument();
   });
 
   it("does not render live builder controls (topic field, suggestions fetch, submit flow)", () => {
-    render(<SignedOutHome signInHref="/auth/sign-in" leaderboardHref="/leaderboard" preview={[]} />);
+    render(
+      <SignedOutHome
+        signInHref="/auth/sign-in"
+        signUpHref="/auth/sign-up"
+        leaderboardHref="/leaderboard"
+        preview={[]}
+      />,
+    );
 
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(document.querySelector("#create-map-topic")).toBeNull();

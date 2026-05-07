@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SignedOutIcon } from "@/components/auth-status-icon";
 import { sanitizeRedirectTo } from "@/lib/auth/redirect";
 import { signInWithEmail } from "./actions";
 
@@ -17,7 +18,11 @@ export default function SignInPage() {
   return (
     <div className="mx-auto flex max-w-md flex-col gap-8 px-5 py-14">
       <div>
-        <h1 className="font-sans text-[32px] font-semibold tracking-[-0.015em] text-foreground">
+        <span className="inline-flex items-center gap-2 border border-border bg-background px-2 py-1 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          <SignedOutIcon className="text-muted-foreground" />
+          Welcome back
+        </span>
+        <h1 className="mt-3 font-sans text-[32px] font-semibold tracking-[-0.015em] text-foreground">
           Sign in
         </h1>
         <p className="mt-2 font-sans text-[15px] leading-[1.55] text-muted-foreground">

@@ -26,6 +26,14 @@ export default async function HomePage() {
 
   const preview = await loadHomeLeaderboardPreview();
   const signInHref = `/auth/sign-in?redirectTo=${encodeURIComponent("/")}`;
+  const signUpHref = `/auth/sign-up?redirectTo=${encodeURIComponent("/")}`;
 
-  return <SignedOutHome signInHref={signInHref} leaderboardHref="/leaderboard" preview={preview} />;
+  return (
+    <SignedOutHome
+      signInHref={signInHref}
+      signUpHref={signUpHref}
+      leaderboardHref="/leaderboard"
+      preview={preview}
+    />
+  );
 }

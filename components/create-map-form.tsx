@@ -646,7 +646,21 @@ export function CreateMapForm() {
 
           {!authPending && !isSignedIn ? (
             <p className="shrink-0 text-[13px] text-muted-foreground">
-              Browse the top list signed out. Sign in when you want to generate your own map.
+              Browse the top list signed out.{" "}
+              <a
+                href={signInHref}
+                className="text-foreground underline decoration-border underline-offset-4 hover:text-primary"
+              >
+                Sign in
+              </a>{" "}
+              or{" "}
+              <a
+                href={buildAuthRedirectHref("/auth/sign-up", pathname, searchParams)}
+                className="text-foreground underline decoration-border underline-offset-4 hover:text-primary"
+              >
+                create an account
+              </a>{" "}
+              to generate your own map.
             </p>
           ) : null}
 
