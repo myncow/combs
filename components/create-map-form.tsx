@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Lock, RefreshCw, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import { entryTransition } from "@/lib/motion";
 import { axisPairKey } from "@/components/axis-pair-suggestion-card";
 import { ResponsiveAxesSlot } from "@/components/responsive-axes-slot";
 import { dispatchLibraryRefresh } from "@/lib/client-events";
+import { authClient } from "@/lib/auth/client";
+import { buildAuthRedirectHref } from "@/lib/auth/redirect";
 import type { SuggestAxisPairInput } from "@/lib/schema";
 
 /** Short examples for rotating placeholder (empty field, not focused). Visual, axis-friendly hints. */
@@ -110,6 +112,7 @@ function buildDraftUrl(currentUrl: URL, draft: Pick<DraftFromUrl, "topic" | "loc
 }
 
 export function CreateMapForm() {
+  const { data: session, isPending: authPending } = authClient.useSession();
   const [topic, setTopic] = useState("");
   const [topicFocused, setTopicFocused] = useState(false);
   const [animatedPlaceholder, setAnimatedPlaceholder] = useState("");
@@ -121,6 +124,8 @@ export function CreateMapForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const suggestSeq = useRef(0);
   const hasMounted = useRef(false);
   const topicTrimRef = useRef("");
@@ -130,6 +135,8 @@ export function CreateMapForm() {
   const suggestAbortRef = useRef<AbortController | null>(null);
 
   const topicTrim = topic.trim();
+  const isSignedIn = Boolean(session?.user);
+  const signInHref = buildAuthRedirectHref("/auth/sign-in", pathname, searchParams);
   const hasDraft = topicTrim !== "" || lockedPair !== null || requestedLockedPairKey !== null;
 
   useEffect(() => {
@@ -253,6 +260,10 @@ export function CreateMapForm() {
   }, [topic, topicFocused]);
 
   const executeSuggestFetch = useCallback(async (force: boolean) => {
+    if (authPending || !isSignedIn) {
+      return;
+    }
+
     const t = topicTrimRef.current;
     if (t.length < 2) {
       return;
@@ -322,9 +333,12 @@ export function CreateMapForm() {
         setSuggestLoading(false);
       }
     }
-  }, []);
+  }, [authPending, isSignedIn]);
 
   useEffect(() => {
+    if (authPending || !isSignedIn) {
+      return;
+    }
     if (topicTrim.length < 2) {
       return;
     }
@@ -332,7 +346,7 @@ export function CreateMapForm() {
       void executeSuggestFetch(false);
     }, SUGGEST_DEBOUNCE_MS);
     return () => window.clearTimeout(t);
-  }, [topicTrim, executeSuggestFetch]);
+  }, [authPending, executeSuggestFetch, isSignedIn, topicTrim]);
 
   function togglePair(p: SuggestAxisPairInput) {
     const key = axisPairKey(p);
@@ -369,6 +383,15 @@ export function CreateMapForm() {
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (authPending) {
+      return;
+    }
+
+    if (!isSignedIn) {
+      router.push(signInHref);
+      return;
+    }
+
     const topicStr = topic.trim();
     if (topicStr.length < 2) {
       setError("Enter a topic (at least 2 characters).");
@@ -388,6 +411,11 @@ export function CreateMapForm() {
       const payload = (await res.json().catch(() => null)) as
         | { slug?: string; error?: string }
         | null;
+
+      if (res.status === 401) {
+        router.push(signInHref);
+        return;
+      }
 
       if (!res.ok || !payload?.slug) {
         setError(
@@ -414,7 +442,11 @@ export function CreateMapForm() {
     topic !== "" ? "" : topicFocused ? TOPIC_FOCUS_PLACEHOLDER : animatedPlaceholder;
 
   const suggestLiveMessage =
-    !canSuggest
+    authPending
+      ? "Checking account status."
+      : !isSignedIn
+        ? "Sign in to unlock axis suggestions."
+        : !canSuggest
       ? "Enter a topic to see suggested axis pairings."
       : suggestLoading
         ? "Sketching axis frames."
@@ -504,6 +536,7 @@ export function CreateMapForm() {
                 <button
                   type="button"
                   onClick={() => void executeSuggestFetch(true)}
+                  disabled={!isSignedIn || authPending}
                   className="shrink-0 text-[12px] text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
                 >
                   Refresh
@@ -516,7 +549,11 @@ export function CreateMapForm() {
                 {suggestLiveMessage}
               </p>
 
-              {!canSuggest ? (
+              {authPending ? (
+                <p className="text-[13px] text-muted-foreground">Checking your account…</p>
+              ) : !isSignedIn ? (
+                <p className="text-[13px] text-muted-foreground">Sign in to unlock axis suggestions and map generation.</p>
+              ) : !canSuggest ? (
                 <p className="text-[13px] text-muted-foreground">
                   Start with a category, scene, collection, or product space.
                 </p>
@@ -607,7 +644,13 @@ export function CreateMapForm() {
             </p>
           ) : null}
 
-          <Button type="submit" disabled={busy} size="lg" className="mt-auto h-11 w-full shrink-0 md:max-w-56">
+          {!authPending && !isSignedIn ? (
+            <p className="shrink-0 text-[13px] text-muted-foreground">
+              Browse the top list signed out. Sign in when you want to generate your own map.
+            </p>
+          ) : null}
+
+          <Button type="submit" disabled={busy || authPending} size="lg" className="mt-auto h-11 w-full shrink-0 md:max-w-56">
             <AnimatePresence mode="wait" initial={false}>
               {busy ? (
                 <motion.span
@@ -630,7 +673,7 @@ export function CreateMapForm() {
                   exit={{ opacity: 0, y: -2 }}
                   transition={entryTransition()}
                 >
-                  Build map
+                  {isSignedIn ? "Build map" : "Sign in to build"}
                   <ArrowRight className="h-4 w-4" />
                 </motion.span>
               )}

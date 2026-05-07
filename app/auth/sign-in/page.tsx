@@ -2,12 +2,17 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { sanitizeRedirectTo } from "@/lib/auth/redirect";
 import { signInWithEmail } from "./actions";
 
 export default function SignInPage() {
+  const searchParams = useSearchParams();
   const [state, formAction, isPending] = useActionState(signInWithEmail, null);
+  const redirectTo = sanitizeRedirectTo(searchParams.get("redirectTo"));
+  const signUpHref = `/auth/sign-up?redirectTo=${encodeURIComponent(redirectTo)}`;
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-8 px-5 py-14">
@@ -20,6 +25,7 @@ export default function SignInPage() {
         </p>
       </div>
       <form action={formAction} className="flex flex-col gap-6">
+        <input type="hidden" name="redirectTo" value={redirectTo} />
         <div className="flex flex-col gap-2">
           <label htmlFor="email" className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
             Email
@@ -49,7 +55,7 @@ export default function SignInPage() {
       </form>
       <p className="font-sans text-[14px] text-muted-foreground">
         No account?{" "}
-        <Link href="/auth/sign-up" className="text-foreground underline-offset-4 hover:underline">
+        <Link href={signUpHref} className="text-foreground underline-offset-4 hover:underline">
           Create one
         </Link>
       </p>

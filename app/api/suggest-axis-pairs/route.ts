@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { suggestAxisPairs } from "@/lib/map-engine";
 import { checkRateLimit, getRequesterId, moderateText } from "@/lib/guards";
+import { auth } from "@/lib/auth/server";
 import { mapBriefSchema, suggestAxisPairsRequestSchema } from "@/lib/schema";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  const requesterId = await getRequesterId();
+  const { data: session } = await auth.getSession();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Sign in to unlock axis suggestions." }, { status: 401 });
+  }
+
+  const requesterId = session.user.id || (await getRequesterId());
   const rateLimit = checkRateLimit(`suggest-axis-pairs:${requesterId}`);
   if (!rateLimit.allowed) {
     return NextResponse.json({ error: "Rate limit exceeded. Try again shortly." }, { status: 429 });

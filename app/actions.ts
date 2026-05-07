@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { auth } from "@/lib/auth/server";
 import {
   DegenerateImageError,
   materializeCellImageAsset,
@@ -32,7 +33,15 @@ export async function createMapAction(
   _previousState: CreateMapActionState,
   formData: FormData,
 ): Promise<CreateMapActionState> {
-  const requesterId = await getRequesterId();
+  const { data: session } = await auth.getSession();
+  if (!session?.user) {
+    return {
+      status: "error",
+      message: "Sign in to build maps.",
+    };
+  }
+
+  const requesterId = session.user.id || (await getRequesterId());
   const rateLimit = checkRateLimit(requesterId);
   if (!rateLimit.allowed) {
     return {
@@ -108,7 +117,15 @@ export async function visualizeCellAction(
   _previousState: VisualizeCellActionState,
   formData: FormData,
 ): Promise<VisualizeCellActionState> {
-  const requesterId = await getRequesterId();
+  const { data: session } = await auth.getSession();
+  if (!session?.user) {
+    return {
+      status: "error",
+      message: "Sign in to generate images.",
+    };
+  }
+
+  const requesterId = session.user.id || (await getRequesterId());
   const rateLimit = checkRateLimit(requesterId);
   if (!rateLimit.allowed) {
     return {
@@ -261,6 +278,14 @@ export async function publishGapSpotlightAction(
   _previousState: PublishGapSpotlightActionState,
   formData: FormData,
 ): Promise<PublishGapSpotlightActionState> {
+  const { data: session } = await auth.getSession();
+  if (!session?.user) {
+    return {
+      status: "error",
+      message: "Sign in to publish to the top list.",
+    };
+  }
+
   const parsed = publishGapSpotlightSchema.safeParse({
     mapSlug: String(formData.get("mapSlug") ?? ""),
     cellId: String(formData.get("cellId") ?? ""),

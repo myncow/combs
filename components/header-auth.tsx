@@ -1,13 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth/client";
+import { buildAuthRedirectHref } from "@/lib/auth/redirect";
 
 export function HeaderAuth() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { data: session, isPending } = authClient.useSession();
+  const signInHref = buildAuthRedirectHref("/auth/sign-in", pathname, searchParams);
 
   if (isPending) {
     return (
@@ -20,11 +24,8 @@ export function HeaderAuth() {
   if (!session?.user) {
     return (
       <div className="ml-auto flex items-center gap-2">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/auth/sign-in">Sign in</Link>
-        </Button>
         <Button variant="outline" size="sm" asChild>
-          <Link href="/auth/sign-up">Sign up</Link>
+          <Link href={signInHref}>Sign in</Link>
         </Button>
       </div>
     );

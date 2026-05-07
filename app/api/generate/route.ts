@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { mapBriefSchema } from "@/lib/schema";
 import { checkRateLimit, getRequesterId, moderateText } from "@/lib/guards";
+import { auth } from "@/lib/auth/server";
 import { runMapGenerationCore } from "@/lib/map-generation-runner";
 
 export async function POST(req: NextRequest) {
-  const requesterId = await getRequesterId();
+  const { data: session } = await auth.getSession();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Sign in to build maps." }, { status: 401 });
+  }
+
+  const requesterId = session.user.id || (await getRequesterId());
   const rateLimit = checkRateLimit(requesterId);
   if (!rateLimit.allowed) {
     return NextResponse.json(

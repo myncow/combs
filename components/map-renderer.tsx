@@ -39,7 +39,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowUpRight,
   ChevronDown,
@@ -54,6 +54,8 @@ import {
   X,
 } from "lucide-react";
 import { visualizeCellAction, type VisualizeCellActionState } from "@/app/actions";
+import { authClient } from "@/lib/auth/client";
+import { buildAuthRedirectHref } from "@/lib/auth/redirect";
 import { dispatchLibraryRefresh } from "@/lib/client-events";
 import { CELL_IMAGE_MODEL } from "@/lib/config";
 import { IMAGE_MODEL_CHANGE_EVENT, IMAGE_MODEL_STORAGE_KEY, readStoredImageModel } from "@/lib/model-preference";
@@ -577,8 +579,16 @@ function MapRendererInner({
   yDimension: MapDocument["dimensions"][number];
   live: boolean;
 }) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { data: session, isPending: authPending } = authClient.useSession();
   const columns = xDimension.values;
   const rows = yDimension.values;
+  const isSignedIn = Boolean(session?.user);
+  const signInHref = useMemo(
+    () => buildAuthRedirectHref("/auth/sign-in", pathname, searchParams),
+    [pathname, searchParams],
+  );
 
   const cellByCoord = useMemo(() => {
     const map = new Map<string, MapCell>();
@@ -705,6 +715,9 @@ function MapRendererInner({
                 onOpen={() => setActiveCellId(cell.id)}
                 active={activeCellId === cell.id}
                 specimen={pickSpecimen(cell)}
+                isSignedIn={isSignedIn}
+                authPending={authPending}
+                signInHref={signInHref}
               />
             );
             if (live) {
@@ -896,6 +909,9 @@ function MapRendererInner({
                         onOpen={() => setActiveCellId(cell.id)}
                         active={activeCellId === cell.id}
                         specimen={pickSpecimen(cell)}
+                        isSignedIn={isSignedIn}
+                        authPending={authPending}
+                        signInHref={signInHref}
                       />
                     </motion.div>
                   );
@@ -903,15 +919,18 @@ function MapRendererInner({
                 return (
                   <CellTile
                     key={cell.id}
-                    cell={cell}
-                    colIdx={colIndex}
-                    rowIdx={rowIndex}
-                    onOpen={() => setActiveCellId(cell.id)}
-                    active={activeCellId === cell.id}
-                    specimen={pickSpecimen(cell)}
-                    style={position}
-                  />
-                );
+                  cell={cell}
+                  colIdx={colIndex}
+                  rowIdx={rowIndex}
+                  onOpen={() => setActiveCellId(cell.id)}
+                  active={activeCellId === cell.id}
+                  specimen={pickSpecimen(cell)}
+                  isSignedIn={isSignedIn}
+                  authPending={authPending}
+                  signInHref={signInHref}
+                  style={position}
+                />
+              );
               })}
             </Fragment>
             );
@@ -939,6 +958,9 @@ function MapRendererInner({
             ? rowCode(rows.indexOf(activeCell.coordinates[yDimension.key]))
             : ""
         }
+        isSignedIn={isSignedIn}
+        authPending={authPending}
+        signInHref={signInHref}
       />
     </div>
     </VisualizeRegistryProvider>
@@ -952,6 +974,9 @@ function CellTile({
   onOpen,
   active,
   specimen,
+  isSignedIn,
+  authPending,
+  signInHref,
   style,
 }: {
   cell: MapCell;
@@ -960,6 +985,9 @@ function CellTile({
   onOpen: () => void;
   active: boolean;
   specimen: MapExample | null;
+  isSignedIn: boolean;
+  authPending: boolean;
+  signInHref: string;
   style?: React.CSSProperties;
 }) {
   const entry = useVisualizeCell(cell.id);
@@ -983,6 +1011,8 @@ function CellTile({
   const sketchFormId = visualizeFormId(cell.id);
   const isPendingViz = entry?.isPending ?? false;
   const sketchCopy = visualizationActionCopy(hasGeneratedViz, isPendingViz);
+  const canUseGeneration = canGenerate && isSignedIn && !authPending;
+  const showSignInForGeneration = canGenerate && !isSignedIn && !authPending;
 
   const display = statusDisplay[cell.status];
   const code = `${rowCode(rowIdx)}·${columnCode(colIdx)}`;
@@ -1066,7 +1096,7 @@ function CellTile({
               <ImageIcon className="h-3.5 w-3.5" aria-hidden strokeWidth={2.15} />
             </a>
           ) : null}
-          {canGenerate ? (
+          {canUseGeneration ? (
             isPendingViz ? (
               <div
                 className={cn(tileEmptyActionClass, "w-20 cursor-default px-2 hover:translate-y-0")}
@@ -1087,6 +1117,15 @@ function CellTile({
                 <Sparkles className="h-3.5 w-3.5" aria-hidden strokeWidth={2.15} />
               </button>
             )
+          ) : showSignInForGeneration ? (
+            <a
+              href={signInHref}
+              aria-label={`Sign in to generate ${cell.label}`}
+              title="Sign in to generate"
+              className={tileEmptyActionClass}
+            >
+              <Sparkles className="h-3.5 w-3.5" aria-hidden strokeWidth={2.15} />
+            </a>
           ) : null}
         </div>
       ) : null}
@@ -1196,6 +1235,9 @@ function CellDrawer({
   yValue,
   colCode,
   rowCode: rowCodeValue,
+  isSignedIn,
+  authPending,
+  signInHref,
 }: {
   cell: MapCell | null;
   document: MapDocument;
@@ -1206,6 +1248,9 @@ function CellDrawer({
   yValue?: string;
   colCode: string;
   rowCode: string;
+  isSignedIn: boolean;
+  authPending: boolean;
+  signInHref: string;
 }) {
   const reduceMotion = useReducedMotion();
   const drawerId = "cell-drawer";
@@ -1291,6 +1336,9 @@ function CellDrawer({
                   yValue={yValue}
                   colCode={colCode}
                   rowCodeValue={rowCodeValue}
+                  isSignedIn={isSignedIn}
+                  authPending={authPending}
+                  signInHref={signInHref}
                 />
               </motion.div>
             </AnimatePresence>
@@ -1312,6 +1360,9 @@ function DrawerBody({
   yValue,
   colCode,
   rowCodeValue,
+  isSignedIn,
+  authPending,
+  signInHref,
 }: {
   cell: MapCell;
   document: MapDocument;
@@ -1322,6 +1373,9 @@ function DrawerBody({
   yValue?: string;
   colCode: string;
   rowCodeValue: string;
+  isSignedIn: boolean;
+  authPending: boolean;
+  signInHref: string;
 }) {
   const reduceMotion = useReducedMotion();
   const entry = useVisualizeCell(cell.id);
@@ -1356,7 +1410,9 @@ function DrawerBody({
   const displayCaption = display ? finalizeVisualizationCaption(display.caption, cell) : undefined;
   const canGenerate = canGenerateVisualization(cell.status);
   const showVisualizationSection = canGenerate || !!display;
-  const canPublishSpotlight = canGenerate && !!display?.imageUrl;
+  const canUseGeneration = canGenerate && isSignedIn && !authPending;
+  const showSignInForGeneration = canGenerate && !isSignedIn && !authPending;
+  const canPublishSpotlight = canUseGeneration && !!display?.imageUrl;
   const visualizationCopy = visualizationActionCopy(!!display, isPending);
 
   useEffect(() => {
@@ -1526,7 +1582,25 @@ function DrawerBody({
             }
           >
             {!display ? (
-              canGenerate ? (
+              authPending ? (
+                <div className="space-y-3">
+                  <p className="text-[14px] leading-[1.55] text-muted-foreground">
+                    Checking your account status…
+                  </p>
+                </div>
+              ) : showSignInForGeneration ? (
+                <div className="space-y-3">
+                  <p className="text-[14px] leading-[1.55] text-muted-foreground">
+                    Sign in to generate a grounded scene for this cell.
+                  </p>
+                  <Button asChild size="lg">
+                    <a href={signInHref}>
+                      <Sparkles className="h-4 w-4" aria-hidden />
+                      Sign in to generate
+                    </a>
+                  </Button>
+                </div>
+              ) : canUseGeneration ? (
                 <div className="space-y-3">
                   {isPending ? (
                     <IndeterminateLoadingBar label={visualizationCopy.pendingLabel} />
@@ -1609,7 +1683,7 @@ function DrawerBody({
                         : "Copy unavailable in this browser."}
                   </p>
                 ) : null}
-                {canGenerate ? (
+                {canUseGeneration ? (
                   <div className="flex flex-wrap gap-2">
                     <Button
                       type="submit"
@@ -1632,6 +1706,15 @@ function DrawerBody({
                         Publish to top list
                       </Button>
                     ) : null}
+                  </div>
+                ) : showSignInForGeneration ? (
+                  <div className="flex flex-wrap gap-2">
+                    <Button asChild size="sm">
+                      <a href={signInHref}>
+                        <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                        Sign in for generation tools
+                      </a>
+                    </Button>
                   </div>
                 ) : null}
                 {canPublishSpotlight ? (
