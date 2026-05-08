@@ -164,7 +164,7 @@ function formatReferenceImageLines(bundle: VisualGroundingBundle) {
 function statusBriefFor(cell: MapCell): string {
   switch (cell.status) {
     case "gap":
-      return "This cell is a plausible but underfilled frontier. Render a finished, believable in-domain example assembled from visible traits in the grounded examples.";
+      return "This cell is an unfilled frontier — no documented example exists at this exact coordinate intersection. Hypothesize what a credible in-domain subject would look like *if it existed*. Treat the two coordinates as the binding visible constraints; treat surrounding cells as evidence for the medium and lighting language, not as a starting subject to copy.";
     case "tension":
       return "This cell is a hard-but-viable edge case. Render a finished in-domain example under specific visual assumptions; do not dramatize tension or make the subject look broken.";
     case "impossible":
@@ -179,7 +179,7 @@ function statusBriefFor(cell: MapCell): string {
 function plausibilityConstructionFor(cell: MapCell): string {
   switch (cell.status) {
     case "gap":
-      return "Build the image by combining the most relevant visible traits from direct and adjacent examples into one coherent, already-existing-looking subject.";
+      return "Compose a single, novel-but-believable subject by combining the visible traits demanded by the two coordinates. Source the medium, palette, lighting and scale language from the direct and adjacent examples — but do not lift any one of them as the subject. The viewer should be able to point at every coordinate-bearing feature in the frame and say where it satisfies which axis. Avoid renaming or relabeling — there is no name plate; the image alone communicates the hypothesis.";
     case "tension":
       return "Choose a concrete visual compromise inside the same subject category that lets both coordinates coexist: a specialized body plan, support structure, use context, material choice, process stage, or environmental setup.";
     case "impossible":

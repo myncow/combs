@@ -14,6 +14,7 @@
 import { OpenImageSearchLink, PersistedReferenceThumbnails, type ExampleImageHit } from "@/components/example-image-thumbnails";
 import { GapSpotlightSheet } from "@/components/gap-spotlight-sheet";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { finalizeVisualizationCaption } from "@/lib/visualization-caption";
 import { labelForImageModelId } from "@/lib/image-model-options";
 import { cn, exampleHasImageQuery, exampleImageSearchQuery, googleImagesSearchUrl } from "@/lib/utils";
@@ -77,6 +78,13 @@ const tileQuickActionClass =
  */
 const tileEmptyActionClass =
   "pointer-events-auto inline-flex h-8 w-8 items-center justify-center border border-[color:color-mix(in_srgb,var(--status-color)_55%,var(--border-strong))] bg-[color:color-mix(in_srgb,var(--status-color)_18%,var(--card))] text-foreground shadow-[0_1px_6px_rgba(0,0,0,0.08)] backdrop-blur-sm transition-[background-color,border-color,color,transform,opacity] duration-150 hover:-translate-y-px hover:bg-[color:color-mix(in_srgb,var(--status-color)_28%,var(--card))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:translate-y-0";
+
+/**
+ * Labeled "Sketch" pill used inside an unfilled gap cell. Bigger than the
+ * icon-only chip so the invitation reads at a glance.
+ */
+const sketchPillClass =
+  "pointer-events-auto inline-flex items-center gap-1.5 border border-primary/55 bg-[color:color-mix(in_srgb,var(--primary)_14%,var(--card))] px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground shadow-[0_1px_8px_rgba(0,0,0,0.08)] backdrop-blur-sm transition-[background-color,border-color,color,transform,opacity] duration-150 hover:-translate-y-px hover:bg-[color:color-mix(in_srgb,var(--primary)_24%,var(--card))] hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:translate-y-0";
 
 function VizModelOverlay({ modelId, className }: { modelId: string; className?: string }) {
   return (
@@ -265,8 +273,8 @@ const statusDisplay: Record<
   },
   rare: {
     label: "Rare",
-    color: "color-mix(in srgb, var(--foreground) 48%, var(--background))",
-    tileLeftBar: "before:bg-foreground/40",
+    color: "color-mix(in srgb, var(--foreground) 72%, var(--background))",
+    tileLeftBar: "before:bg-foreground/55",
   },
   gap: {
     label: "Gap",
@@ -275,13 +283,13 @@ const statusDisplay: Record<
   },
   tension: {
     label: "Tension",
-    color: "color-mix(in srgb, var(--primary) 46%, var(--destructive))",
-    tileLeftBar: "before:bg-foreground/70",
+    color: "color-mix(in srgb, var(--primary) 70%, var(--foreground) 30%)",
+    tileLeftBar: "before:bg-primary/85",
   },
   impossible: {
     label: "Impossible",
     color: "var(--destructive)",
-    tileLeftBar: "before:bg-foreground/40",
+    tileLeftBar: "before:bg-destructive",
   },
 };
 
@@ -342,13 +350,15 @@ function IndeterminateLoadingBar({
 }
 
 /**
- * StatusMark — a small square (~10–12px) whose shape + stroke + color
- * encode the status. Color-blind safe.
+ * StatusMark — a 14–16px square whose shape + stroke + color encode the
+ * status. Designed to read at a glance and remain color-blind safe by
+ * pairing every color with a distinct shape.
  */
-function StatusMark({ status, size = 12 }: { status: MapCellStatus; size?: number }) {
+function StatusMark({ status, size = 14 }: { status: MapCellStatus; size?: number }) {
   const dim = { width: size, height: size };
   const base = "inline-block shrink-0";
   const statusColor = statusDisplay[status].color;
+  const stroke = 2;
 
   if (status === "existing") {
     return <span aria-hidden className={base} style={{ ...dim, backgroundColor: statusColor }} />;
@@ -357,18 +367,18 @@ function StatusMark({ status, size = 12 }: { status: MapCellStatus; size?: numbe
     return (
       <span
         aria-hidden
-        className={cn(base, "bg-transparent")}
-        style={{ ...dim, border: `1px solid ${statusColor}` }}
+        className={cn(base, "flex items-center justify-center")}
+        style={{ ...dim, border: `${stroke}px solid ${statusColor}`, backgroundColor: "transparent" }}
       />
     );
   }
   if (status === "gap") {
-    const dot = Math.max(2, Math.round(size * 0.3));
+    const dot = Math.max(3, Math.round(size * 0.36));
     return (
       <span
         aria-hidden
-        className={cn(base, "flex items-center justify-center bg-transparent")}
-        style={{ ...dim, border: `1px solid ${statusColor}` }}
+        className={cn(base, "flex items-center justify-center")}
+        style={{ ...dim, border: `${stroke}px solid ${statusColor}`, backgroundColor: "transparent" }}
       >
         <span className="block" style={{ width: dot, height: dot, backgroundColor: statusColor }} />
       </span>
@@ -381,9 +391,11 @@ function StatusMark({ status, size = 12 }: { status: MapCellStatus; size?: numbe
         className={base}
         style={{
           ...dim,
-          border: `1px solid ${statusColor}`,
+          border: `${stroke}px solid ${statusColor}`,
+          backgroundColor: "transparent",
           backgroundImage:
-            `linear-gradient(to top right, transparent calc(50% - 0.6px), ${statusColor} calc(50% - 0.6px), ${statusColor} calc(50% + 0.6px), transparent calc(50% + 0.6px))`,
+            `linear-gradient(to top right, transparent calc(50% - 1px), ${statusColor} calc(50% - 1px), ${statusColor} calc(50% + 1px), transparent calc(50% + 1px)),` +
+            `linear-gradient(to top left, transparent calc(50% - 1px), ${statusColor} calc(50% - 1px), ${statusColor} calc(50% + 1px), transparent calc(50% + 1px))`,
         }}
       />
     );
@@ -394,9 +406,9 @@ function StatusMark({ status, size = 12 }: { status: MapCellStatus; size?: numbe
       className={base}
       style={{
         ...dim,
-        border: `1px solid ${statusColor}`,
+        backgroundColor: statusColor,
         backgroundImage:
-          `repeating-linear-gradient(135deg, ${statusColor} 0 1px, transparent 1px 3px)`,
+          `repeating-linear-gradient(135deg, color-mix(in srgb, var(--background) 70%, transparent) 0 1.5px, transparent 1.5px 4px)`,
       }}
     />
   );
@@ -412,14 +424,17 @@ const STATUS_LEGEND_ITEMS: Array<{ status: MapCellStatus; description: string }>
 
 function StatusLegend() {
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-2">
+    <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-3">
+      <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+        Legend
+      </span>
       {STATUS_LEGEND_ITEMS.map(({ status, description }) => (
         <div key={status} className="flex items-center gap-2">
-          <StatusMark status={status} size={11} />
-          <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-foreground">
+          <StatusMark status={status} size={14} />
+          <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground">
             {statusDisplay[status].label}
           </span>
-          <span className="font-mono text-[11px] text-muted-foreground/70 normal-case tracking-normal hidden sm:inline">
+          <span className="text-[12px] leading-none text-muted-foreground">
             {description}
           </span>
         </div>
@@ -513,6 +528,10 @@ function resolvePreviewImage(
   if (effectiveVizUrl) {
     return { url: effectiveVizUrl, alt: `Visualization for ${cell.label}` };
   }
+  // Gap cells stay empty until the user explicitly sketches them — even if
+  // the engine attached reference images to nearby examples, we don't want
+  // the tile to imply the gap has been filled.
+  if (cell.status === "gap") return null;
   const ref = feature?.referenceImages?.[0];
   if (!ref?.thumbnail) return null;
   return {
@@ -695,7 +714,7 @@ function MapRendererInner({
             // Same image-pending hold as the desktop matrix: keep image-
             // eligible cells in placeholder until their reference image lands.
             if (live) {
-              const expectsImage = cellFirstSearchableQuery(cell) !== null;
+              const expectsImage = cell.status !== "gap" && cellFirstSearchableQuery(cell) !== null;
               const cellHasImage = cell.examples.some(exampleHasReferenceImage);
               if (expectsImage && !cellHasImage) {
                 return (
@@ -874,7 +893,7 @@ function MapRendererInner({
                 // that don't expect an image (gap/impossible / no searchable
                 // example) skip this wait and render immediately.
                 if (live) {
-                  const expectsImage = cellFirstSearchableQuery(cell) !== null;
+                  const expectsImage = cell.status !== "gap" && cellFirstSearchableQuery(cell) !== null;
                   const cellHasImage = cell.examples.some(exampleHasReferenceImage);
                   if (expectsImage && !cellHasImage) {
                     return (
@@ -1084,49 +1103,88 @@ function CellTile({
 
       {!hasLoadedVisual && (firstSearchableQuery || canGenerate) ? (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center gap-1.5">
-          {firstSearchableQuery ? (
-            <a
-              href={googleImagesSearchUrl(firstSearchableQuery)}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`Search Google Images for ${firstSearchableQuery}`}
-              title={`Search "${firstSearchableQuery}" on Google Images`}
-              className={tileEmptyActionClass}
-            >
-              <ImageIcon className="h-3.5 w-3.5" aria-hidden strokeWidth={2.15} />
-            </a>
-          ) : null}
-          {canUseGeneration ? (
-            isPendingViz ? (
-              <div
-                className={cn(tileEmptyActionClass, "w-20 cursor-default px-2 hover:translate-y-0")}
-                aria-label={`${sketchCopy.pendingLabel} ${cell.label}`}
-                title={sketchCopy.pendingLabel}
-              >
-                <IndeterminateLoadingBar label={`${sketchCopy.pendingLabel} ${cell.label}`} thin className="w-full" />
-              </div>
-            ) : (
-              <button
-                type="submit"
-                form={sketchFormId}
-                disabled={!entry?.formAction}
-                aria-label={`${sketchCopy.actionLabel} for ${cell.label}`}
-                title={sketchCopy.actionLabel}
-                className={tileEmptyActionClass}
+          {cell.status === "gap" ? (
+            canUseGeneration ? (
+              isPendingViz ? (
+                <div
+                  className={cn(sketchPillClass, "cursor-default hover:translate-y-0")}
+                  aria-label={`Sketching ${cell.label}`}
+                  title="Sketching…"
+                >
+                  <Spinner size="sm" className="opacity-80" />
+                  <span>Sketching…</span>
+                </div>
+              ) : (
+                <button
+                  type="submit"
+                  form={sketchFormId}
+                  disabled={!entry?.formAction}
+                  aria-label={`Sketch this gap: ${cell.label}`}
+                  title="Sketch this gap"
+                  className={sketchPillClass}
+                >
+                  <Sparkles className="h-3.5 w-3.5" aria-hidden strokeWidth={2.15} />
+                  <span>Sketch</span>
+                </button>
+              )
+            ) : showSignInForGeneration ? (
+              <a
+                href={signInHref}
+                aria-label={`Sign in to sketch ${cell.label}`}
+                title="Sign in to sketch this gap"
+                className={sketchPillClass}
               >
                 <Sparkles className="h-3.5 w-3.5" aria-hidden strokeWidth={2.15} />
-              </button>
-            )
-          ) : showSignInForGeneration ? (
-            <a
-              href={signInHref}
-              aria-label={`Sign in to generate ${cell.label}`}
-              title="Sign in to generate"
-              className={tileEmptyActionClass}
-            >
-              <Sparkles className="h-3.5 w-3.5" aria-hidden strokeWidth={2.15} />
-            </a>
-          ) : null}
+                <span>Sign in to sketch</span>
+              </a>
+            ) : null
+          ) : (
+            <>
+              {firstSearchableQuery ? (
+                <a
+                  href={googleImagesSearchUrl(firstSearchableQuery)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Search Google Images for ${firstSearchableQuery}`}
+                  title={`Search "${firstSearchableQuery}" on Google Images`}
+                  className={tileEmptyActionClass}
+                >
+                  <ImageIcon className="h-3.5 w-3.5" aria-hidden strokeWidth={2.15} />
+                </a>
+              ) : null}
+              {canUseGeneration ? (
+                isPendingViz ? (
+                  <div
+                    className={cn(tileEmptyActionClass, "w-20 cursor-default px-2 hover:translate-y-0")}
+                    aria-label={`${sketchCopy.pendingLabel} ${cell.label}`}
+                    title={sketchCopy.pendingLabel}
+                  >
+                    <IndeterminateLoadingBar label={`${sketchCopy.pendingLabel} ${cell.label}`} thin className="w-full" />
+                  </div>
+                ) : (
+                  <button
+                    type="submit"
+                    form={sketchFormId}
+                    disabled={!entry?.formAction}
+                    aria-label={`${sketchCopy.actionLabel} for ${cell.label}`}
+                    title={sketchCopy.actionLabel}
+                    className={tileEmptyActionClass}
+                  >
+                    <Sparkles className="h-3.5 w-3.5" aria-hidden strokeWidth={2.15} />
+                  </button>
+                )
+              ) : showSignInForGeneration ? (
+                <a
+                  href={signInHref}
+                  aria-label={`Sign in to generate ${cell.label}`}
+                  title="Sign in to generate"
+                  className={tileEmptyActionClass}
+                >
+                  <Sparkles className="h-3.5 w-3.5" aria-hidden strokeWidth={2.15} />
+                </a>
+              ) : null}
+            </>
+          )}
         </div>
       ) : null}
     </div>
