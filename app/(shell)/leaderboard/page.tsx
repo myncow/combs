@@ -43,21 +43,19 @@ export default async function LeaderboardPage({
   const [featured, ...rest] = entries.items;
 
   return (
-    <main className="mx-auto flex w-full max-w-[1240px] flex-1 flex-col gap-8 overflow-y-auto overscroll-contain px-5 py-6 md:px-8 md:py-8">
-      <section className="border border-border bg-card p-5 md:p-7">
-        <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-primary">Top list</p>
-        <h1 className="mt-3 max-w-3xl font-sans text-[34px] font-semibold leading-[0.98] tracking-[-0.03em] text-foreground md:text-[48px]">
-          The best community-published frontier concepts, ranked by how compelling they feel.
+    <main className="mx-auto flex w-full max-w-[1240px] flex-1 flex-col gap-8 overflow-y-auto overscroll-contain px-5 py-8 md:px-8 md:py-10">
+      <header>
+        <h1 className="font-sans text-[26px] font-semibold leading-tight tracking-[-0.02em] text-foreground md:text-[32px]">
+          Top list
         </h1>
-        <p className="mt-4 max-w-2xl text-[15px] leading-6 text-muted-foreground">
-          These are not whole maps. Each spotlight isolates one promising frontier cell, pairs it with a generated image,
-          and turns it into a shareable concept card that other people can vote up or down.
+        <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-muted-foreground">
+          Frontier cells published by the community. Vote on the ones that feel right.
         </p>
-        <div className="mt-5 flex flex-wrap gap-2">
+        <div className="mt-5 flex flex-wrap items-center gap-2">
           <Link
             href={`/leaderboard?sort=top${filters.topicFamily ? `&topicFamily=${encodeURIComponent(filters.topicFamily)}` : ""}`}
             className={
-              "border px-3 py-2 font-mono text-[11px] uppercase tracking-[0.2em] transition-colors " +
+              "border px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.2em] transition-colors " +
               (filters.sort === "top"
                 ? "border-foreground bg-foreground text-background"
                 : "border-border bg-background text-muted-foreground hover:text-foreground")
@@ -68,7 +66,7 @@ export default async function LeaderboardPage({
           <Link
             href={`/leaderboard?sort=new${filters.topicFamily ? `&topicFamily=${encodeURIComponent(filters.topicFamily)}` : ""}`}
             className={
-              "border px-3 py-2 font-mono text-[11px] uppercase tracking-[0.2em] transition-colors " +
+              "border px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.2em] transition-colors " +
               (filters.sort === "new"
                 ? "border-foreground bg-foreground text-background"
                 : "border-border bg-background text-muted-foreground hover:text-foreground")
@@ -76,42 +74,32 @@ export default async function LeaderboardPage({
           >
             New
           </Link>
-        </div>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Badge variant={!filters.topicFamily ? "default" : "muted"} className="px-3 py-2">
+          <span aria-hidden className="mx-1 h-4 w-px bg-border" />
+          <Badge variant={!filters.topicFamily ? "default" : "muted"} className="px-3 py-1.5">
             <Link href={`/leaderboard?sort=${filters.sort}`}>All</Link>
           </Badge>
           {topicFamilies.map((family) => (
             <Badge
               key={family}
               variant={filters.topicFamily === family ? "accent" : "muted"}
-              className="px-3 py-2"
+              className="px-3 py-1.5"
             >
               <Link href={`/leaderboard?sort=${filters.sort}&topicFamily=${encodeURIComponent(family)}`}>
                 {family}
               </Link>
             </Badge>
           ))}
-        </div>
-      </section>
-
-      {featured ? (
-        <>
-          <AsciiDivider variant="label" label="Featured" />
-          <LeaderboardCard entry={featured} rank={1} featured />
-        </>
-      ) : null}
-
-      <section className="space-y-5">
-        <AsciiDivider variant="label" label="More spotlights" />
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="tagline text-2xl text-foreground">More spotlights</h2>
-          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+          <span className="ml-auto font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground tabular-nums">
             {entries.total === 1 ? "1 spotlight" : `${entries.total} spotlights`}
-          </p>
+          </span>
         </div>
+      </header>
 
-        {rest.length ? (
+      {featured ? <LeaderboardCard entry={featured} rank={1} featured /> : null}
+
+      {rest.length ? (
+        <>
+          <AsciiDivider />
           <div className="grid gap-5">
             {rest.map((entry, index) => (
               <LeaderboardCard
@@ -121,14 +109,14 @@ export default async function LeaderboardPage({
               />
             ))}
           </div>
-        ) : featured ? null : (
-          <div className="border border-border bg-card px-5 py-10 text-center">
-            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-              No spotlights yet.
-            </p>
-          </div>
-        )}
-      </section>
+        </>
+      ) : featured ? null : (
+        <div className="border border-border bg-card px-5 py-10 text-center">
+          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+            No spotlights yet.
+          </p>
+        </div>
+      )}
     </main>
   );
 }

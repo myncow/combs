@@ -26,19 +26,19 @@ vi.mock("@/components/map-card", () => ({
   MapCard: () => <li />,
 }));
 
-describe("ExplorerSidebar signed-out", () => {
-  it("defaults to Top list and routes the New map CTA to home (sign-in is gated by submit)", () => {
+describe("ExplorerSidebar", () => {
+  it("renders a single library rail with the New map CTA, no tabs or sign-in CTAs", () => {
     render(
       <ExplorerSidebar
         isSignedIn={false}
         initialMaps={{ items: [], total: 0 }}
-        initialLeaderboard={[]}
       />,
     );
 
-    expect(screen.getByRole("button", { name: /top list/i })).toHaveAttribute("aria-pressed", "true");
     const newMap = screen.getByRole("link", { name: /new map/i });
     expect(newMap).toHaveAttribute("href", "/");
+    expect(screen.queryByRole("button", { name: /^top list$/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^maps$/i })).toBeNull();
     expect(screen.queryByRole("link", { name: /create account/i })).toBeNull();
   });
 });

@@ -1,11 +1,10 @@
 "use client";
 
-import { SignedIn } from "@neondatabase/auth/react";
 import { HeaderAuth } from "@/components/header-auth";
-import { ImageModelPicker } from "@/components/image-model-picker";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { MouseEvent } from "react";
+import { cn } from "@/lib/utils";
 
 function LogoMark({ className = "" }: { className?: string }) {
   return (
@@ -59,9 +58,11 @@ export function SiteHeader() {
     router.push("/");
   }
 
+  const isLeaderboard = pathname?.startsWith("/leaderboard") ?? false;
+
   return (
     <header className="sticky top-0 z-20 shrink-0 border-b border-border bg-[color:color-mix(in_srgb,var(--background)_92%,transparent)] backdrop-blur-md">
-      <div className="mx-auto flex max-w-[1240px] items-center gap-3 px-5 py-2.5 md:px-8 md:py-2">
+      <div className="mx-auto flex max-w-[1240px] items-center gap-5 px-5 py-2.5 md:px-8 md:py-2">
         <Link
           href="/"
           aria-label="Raster — home"
@@ -73,10 +74,19 @@ export function SiteHeader() {
             Raster
           </span>
         </Link>
-        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 sm:gap-3">
-          <SignedIn>
-            <ImageModelPicker />
-          </SignedIn>
+        <nav aria-label="Primary" className="flex items-center">
+          <Link
+            href="/leaderboard"
+            aria-current={isLeaderboard ? "page" : undefined}
+            className={cn(
+              "rounded-sm px-2 py-1 font-mono text-[11px] uppercase tracking-[0.18em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              isLeaderboard ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            Top list
+          </Link>
+        </nav>
+        <div className="ml-auto flex shrink-0 items-center">
           <HeaderAuth />
         </div>
       </div>

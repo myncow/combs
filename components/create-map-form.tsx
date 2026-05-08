@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Lock, RefreshCw, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ImageModelPicker } from "@/components/image-model-picker";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { entryTransition } from "@/lib/motion";
@@ -458,92 +459,47 @@ export function CreateMapForm() {
 
   return (
     <form onSubmit={onSubmit} className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <section className="flex min-h-0 min-w-0 flex-1 flex-col border border-border bg-card/35">
-        <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3 md:px-5">
-          <div>
-            <p className="font-mono text-[10px] font-medium uppercase leading-none tracking-[0.22em] text-foreground/80">
-              1. Define Input
-            </p>
-            <p className="mt-1.5 max-w-[40rem] text-[13px] leading-snug text-muted-foreground">
-              Start with the topic. Suggested axes will appear as you type, and the table itself is generated after you submit.
-            </p>
-          </div>
-          <span className="shrink-0 border border-border bg-background px-1.5 py-0.5 font-mono text-[9px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            Input
-          </span>
-        </div>
-
-        <div className="flex min-h-0 flex-1 flex-col gap-5 px-4 py-4 md:px-5 md:py-5">
-          <div className="shrink-0 space-y-3">
-            <div className="flex items-baseline justify-between gap-3">
-              <label
-                htmlFor="create-map-topic"
-                className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground"
-              >
-                Topic
-              </label>
-              <p className="text-[12px] text-muted-foreground">2+ characters to start suggestions</p>
-            </div>
-            <Input
-              id="create-map-topic"
-              name="topic"
-              required
-              autoComplete="off"
-              spellCheck={false}
-              value={topic}
-              onFocus={() => setTopicFocused(true)}
-              onBlur={() => setTopicFocused(false)}
-              onChange={(e) => {
-                const v = e.target.value;
-                const nextTrim = v.trim();
-                const prevTrim = topicTrim;
-                setTopic(v);
-                if (nextTrim !== prevTrim) {
-                  lastFetchedSuggestKeyRef.current = null;
-                  pendingSuggestKeyRef.current = null;
-                  setPairs([]);
-                  setLockedPair(null);
-                  setRequestedLockedPairKey(null);
-                }
-                if (nextTrim.length < 2) {
-                  lastFetchedSuggestKeyRef.current = null;
-                  pendingSuggestKeyRef.current = null;
-                  setSuggestErr(null);
-                  setSuggestLoading(false);
-                }
-              }}
-              placeholder={topicPlaceholder}
-              className={
-                "min-h-[3.35rem] border-border/55 bg-transparent py-1 pb-1.5 font-semibold leading-[1.2] tracking-[-0.035em] text-foreground " +
-                "placeholder-shown:font-medium placeholder-shown:tracking-[-0.022em] " +
-                "placeholder:font-normal placeholder:italic placeholder:tracking-[-0.02em] placeholder:text-muted-foreground/48 " +
-                "text-[clamp(1.3rem,4vw,1.75rem)] md:min-h-[3.75rem] md:text-[clamp(1.45rem,3.4vw,1.95rem)]"
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col gap-6 py-1 md:py-2">
+          <Input
+            id="create-map-topic"
+            name="topic"
+            required
+            autoComplete="off"
+            spellCheck={false}
+            aria-label="Topic"
+            value={topic}
+            onFocus={() => setTopicFocused(true)}
+            onBlur={() => setTopicFocused(false)}
+            onChange={(e) => {
+              const v = e.target.value;
+              const nextTrim = v.trim();
+              const prevTrim = topicTrim;
+              setTopic(v);
+              if (nextTrim !== prevTrim) {
+                lastFetchedSuggestKeyRef.current = null;
+                pendingSuggestKeyRef.current = null;
+                setPairs([]);
+                setLockedPair(null);
+                setRequestedLockedPairKey(null);
               }
-            />
-          </div>
+              if (nextTrim.length < 2) {
+                lastFetchedSuggestKeyRef.current = null;
+                pendingSuggestKeyRef.current = null;
+                setSuggestErr(null);
+                setSuggestLoading(false);
+              }
+            }}
+            placeholder={topicPlaceholder}
+            className={
+              "shrink-0 min-h-[3.35rem] border-0 border-b border-border bg-transparent rounded-none px-0 py-1 pb-2 font-semibold leading-[1.2] tracking-[-0.035em] text-foreground focus-visible:border-foreground focus-visible:ring-0 " +
+              "placeholder-shown:font-medium placeholder-shown:tracking-[-0.022em] " +
+              "placeholder:font-normal placeholder:italic placeholder:tracking-[-0.02em] placeholder:text-muted-foreground/48 " +
+              "text-[clamp(1.3rem,4vw,1.75rem)] md:min-h-[3.75rem] md:text-[clamp(1.45rem,3.4vw,1.95rem)]"
+            }
+          />
 
           <ResponsiveAxesSlot>
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <p className="font-mono text-[9px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                  Axis Suggestions
-                </p>
-                <p className="mt-1 text-[13px] leading-snug text-muted-foreground">
-                  Leave it open for automatic framing, or lock a pair before generating.
-                </p>
-              </div>
-              {pairs.length > visiblePairs.length ? (
-                <button
-                  type="button"
-                  onClick={() => void executeSuggestFetch(true)}
-                  disabled={!isSignedIn || authPending}
-                  className="shrink-0 text-[12px] text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
-                >
-                  Refresh
-                </button>
-              ) : null}
-            </div>
-
             <div aria-live="polite" aria-busy={suggestLoading} className="min-h-[3rem] space-y-2">
               <p className="sr-only" role="status">
                 {suggestLiveMessage}
@@ -553,11 +509,11 @@ export function CreateMapForm() {
                 <p className="text-[13px] text-muted-foreground">Checking your account…</p>
               ) : !isSignedIn ? (
                 <p className="text-[13px] text-muted-foreground">
-                  Type a topic to preview the flow. Building the map will prompt you to sign in.
+                  Suggested axes appear once you sign in. You can build a map either way.
                 </p>
               ) : !canSuggest ? (
                 <p className="text-[13px] text-muted-foreground">
-                  Start with a category, scene, collection, or product space.
+                  Type a topic — suggested axis pairs appear here.
                 </p>
               ) : suggestLoading ? (
                 <p className="flex items-center gap-2 text-[13px] text-muted-foreground">
@@ -577,7 +533,7 @@ export function CreateMapForm() {
                   </button>
                 </div>
               ) : pairs.length === 0 ? (
-                <p className="text-[13px] text-muted-foreground">Keep typing. Suggested frames will appear automatically.</p>
+                <p className="text-[13px] text-muted-foreground">Keep typing.</p>
               ) : (
                 <ul className="grid gap-2 md:grid-cols-2">
                   {visiblePairs.map((pair) => {
@@ -646,7 +602,9 @@ export function CreateMapForm() {
             </p>
           ) : null}
 
-          <Button type="submit" disabled={busy || authPending} size="lg" className="mt-auto h-11 w-full shrink-0 md:max-w-56">
+          <div className="mt-auto flex flex-col gap-3 pt-2 md:flex-row md:items-end md:justify-between md:gap-4">
+            <ImageModelPicker />
+            <Button type="submit" disabled={busy || authPending} size="lg" className="h-11 w-full shrink-0 md:w-auto md:min-w-44">
             <AnimatePresence mode="wait" initial={false}>
               {busy ? (
                 <motion.span
@@ -675,6 +633,7 @@ export function CreateMapForm() {
               )}
             </AnimatePresence>
           </Button>
+          </div>
         </div>
       </section>
     </form>
