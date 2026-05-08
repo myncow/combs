@@ -6,10 +6,8 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MapCard } from "@/components/map-card";
-import { SignedOutIcon } from "@/components/auth-status-icon";
 import { LIBRARY_REFRESH_EVENT } from "@/lib/client-events";
 import { entryTransition } from "@/lib/motion";
-import { buildAuthRedirectHref } from "@/lib/auth/redirect";
 import type { ListedLeaderboardEntry, SavedMap } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -32,8 +30,6 @@ export function ExplorerSidebar({
 }: ExplorerSidebarProps) {
   const pathname = usePathname() ?? "/";
   const searchParams = useSearchParams();
-  const signInHref = buildAuthRedirectHref("/auth/sign-in", pathname, searchParams);
-  const signUpHref = buildAuthRedirectHref("/auth/sign-up", pathname, searchParams);
   const topicFamily = searchParams.get("topicFamily") ?? undefined;
   const reduceMotion = useReducedMotion() ?? false;
 
@@ -159,31 +155,20 @@ export function ExplorerSidebar({
       )}
       aria-label="Library and suggested axes"
     >
-      {/* Primary path: new map when signed in; sign-in CTA when signed out */}
-      <div className="shrink-0 space-y-1.5 border-b border-border px-2 py-2">
+      {/* Primary path: new map. Signed-out users land on the create form and are
+          redirected to sign-in only when they submit. */}
+      <div className="shrink-0 border-b border-border px-2 py-2">
         <Link
-          href={isSignedIn ? "/" : signInHref}
-          aria-label={isSignedIn ? "New map" : "Sign in to build maps"}
+          href="/"
+          aria-label="New map"
           className={cn(
             "inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-sm border border-border bg-card px-3 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-foreground transition-[border-color,background-color,color] duration-150 hover:border-primary/35 hover:bg-[color:color-mix(in_srgb,var(--primary)_6%,var(--card))] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             collapsed && "md:px-0",
           )}
         >
-          {isSignedIn ? (
-            <Plus className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden strokeWidth={2.5} />
-          ) : (
-            <SignedOutIcon className="text-primary" />
-          )}
-          <span className={cn(collapsed && "md:hidden")}>{isSignedIn ? "New map" : "Sign in to build"}</span>
+          <Plus className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden strokeWidth={2.5} />
+          <span className={cn(collapsed && "md:hidden")}>New map</span>
         </Link>
-        {!isSignedIn && !collapsed ? (
-          <Link
-            href={signUpHref}
-            className="inline-flex w-full items-center justify-center gap-1.5 rounded-sm border border-transparent px-2 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            New here? <span className="text-foreground underline decoration-border underline-offset-4">Create account</span>
-          </Link>
-        ) : null}
       </div>
 
       {/* Panel toggle row */}

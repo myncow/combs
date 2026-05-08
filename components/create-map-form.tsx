@@ -445,7 +445,7 @@ export function CreateMapForm() {
     authPending
       ? "Checking account status."
       : !isSignedIn
-        ? "Sign in to unlock axis suggestions."
+        ? "Suggestions unlock once you sign in."
         : !canSuggest
       ? "Enter a topic to see suggested axis pairings."
       : suggestLoading
@@ -552,7 +552,9 @@ export function CreateMapForm() {
               {authPending ? (
                 <p className="text-[13px] text-muted-foreground">Checking your account…</p>
               ) : !isSignedIn ? (
-                <p className="text-[13px] text-muted-foreground">Sign in to unlock axis suggestions and map generation.</p>
+                <p className="text-[13px] text-muted-foreground">
+                  Type a topic to preview the flow. Building the map will prompt you to sign in.
+                </p>
               ) : !canSuggest ? (
                 <p className="text-[13px] text-muted-foreground">
                   Start with a category, scene, collection, or product space.
@@ -644,26 +646,6 @@ export function CreateMapForm() {
             </p>
           ) : null}
 
-          {!authPending && !isSignedIn ? (
-            <p className="shrink-0 text-[13px] text-muted-foreground">
-              Browse the top list signed out.{" "}
-              <a
-                href={signInHref}
-                className="text-foreground underline decoration-border underline-offset-4 hover:text-primary"
-              >
-                Sign in
-              </a>{" "}
-              or{" "}
-              <a
-                href={buildAuthRedirectHref("/auth/sign-up", pathname, searchParams)}
-                className="text-foreground underline decoration-border underline-offset-4 hover:text-primary"
-              >
-                create an account
-              </a>{" "}
-              to generate your own map.
-            </p>
-          ) : null}
-
           <Button type="submit" disabled={busy || authPending} size="lg" className="mt-auto h-11 w-full shrink-0 md:max-w-56">
             <AnimatePresence mode="wait" initial={false}>
               {busy ? (
@@ -687,7 +669,7 @@ export function CreateMapForm() {
                   exit={{ opacity: 0, y: -2 }}
                   transition={entryTransition()}
                 >
-                  {isSignedIn ? "Build map" : "Sign in to build"}
+                  Build map
                   <ArrowRight className="h-4 w-4" />
                 </motion.span>
               )}

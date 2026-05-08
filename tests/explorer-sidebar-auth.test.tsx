@@ -27,7 +27,7 @@ vi.mock("@/components/map-card", () => ({
 }));
 
 describe("ExplorerSidebar signed-out", () => {
-  it("defaults to Top list, sign-in primary CTA, and lock affordance", () => {
+  it("defaults to Top list and routes the New map CTA to home (sign-in is gated by submit)", () => {
     render(
       <ExplorerSidebar
         isSignedIn={false}
@@ -37,8 +37,8 @@ describe("ExplorerSidebar signed-out", () => {
     );
 
     expect(screen.getByRole("button", { name: /top list/i })).toHaveAttribute("aria-pressed", "true");
-    const buildLink = screen.getByRole("link", { name: /sign in to build/i });
-    expect(buildLink).toHaveAttribute("href", "/auth/sign-in?redirectTo=%2F");
-    expect(buildLink.querySelector("svg")).toBeTruthy();
+    const newMap = screen.getByRole("link", { name: /new map/i });
+    expect(newMap).toHaveAttribute("href", "/");
+    expect(screen.queryByRole("link", { name: /create account/i })).toBeNull();
   });
 });
