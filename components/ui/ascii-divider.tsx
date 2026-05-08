@@ -26,12 +26,16 @@ export function AsciiDivider({
     <div
       aria-hidden
       className={cn(
-        "pointer-events-none flex w-full select-none items-center gap-2 font-mono text-[11px] leading-none tracking-[0.18em] text-muted-foreground/70",
+        "pointer-events-none flex w-full select-none items-center gap-2 py-2 font-mono text-[13px] leading-none text-muted-foreground",
         className,
       )}
     >
       <span className="flex-1 overflow-hidden whitespace-nowrap">{FILL}</span>
-      {center ? <span className="shrink-0 px-1">{center}</span> : null}
+      {center ? (
+        <span className="shrink-0 px-1 tracking-[0.22em] text-foreground/80">
+          {center}
+        </span>
+      ) : null}
       <span className="flex-1 overflow-hidden whitespace-nowrap text-right">
         {FILL}
       </span>
