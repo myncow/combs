@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { ExplorerSidebar } from "@/components/explorer-sidebar";
-import { auth } from "@/lib/auth/server";
+import { getAuth } from "@/lib/auth/server";
 import { hasDatabaseUrl } from "@/lib/db/client";
 import type { ListedLeaderboardEntry, SavedMap } from "@/lib/types";
 import { listLeaderboardEntries, listMaps } from "@/lib/store";
@@ -9,7 +9,7 @@ import { listLeaderboardEntries, listMaps } from "@/lib/store";
 export const dynamic = "force-dynamic";
 
 async function ExplorerSidebarLoader() {
-  const { data: session } = await auth.getSession();
+  const { data: session } = await getAuth().getSession();
   const isSignedIn = Boolean(session?.user);
 
   let mapsResult: { items: SavedMap[]; total: number } = { items: [], total: 0 };

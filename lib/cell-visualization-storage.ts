@@ -17,6 +17,7 @@ export type MaterializedCellImage = {
  * placeholder pixels and "stub" payloads from upstream image models.
  */
 const MIN_IMAGE_BYTES = 4 * 1024;
+const GENERATED_CELL_VIZ_DIR = "generated-cell-viz";
 
 type ImageFormat = "png" | "jpg" | "webp" | "gif";
 
@@ -66,7 +67,10 @@ export class DegenerateImageError extends Error {
 }
 
 /**
- * Writes image bytes under `public/cell-viz/{slug}/{cellId}.ext` and returns a site path.
+ * Writes image bytes under `public/generated-cell-viz/{slug}/{cellId}.ext` and returns a site path.
+ * We intentionally avoid the historical `public/cell-viz` tree here because
+ * Vercel traces that directory into server actions and can blow past the
+ * 250 MB function size limit on routes that import those actions.
  * Appends a `?v={timestamp}` cache-buster so regenerations produce a new URL string
  * even though the file path is stable (the browser otherwise serves the stale image).
  *
@@ -106,12 +110,12 @@ export async function materializeCellImageAsset(
     const ext = format;
     const dirSeg = safeSegment(mapSlug);
     const cellSeg = safeSegment(cellId);
-    const dir = join(process.cwd(), "public", "cell-viz", dirSeg);
+    const dir = join(process.cwd(), "public", GENERATED_CELL_VIZ_DIR, dirSeg);
     await mkdir(dir, { recursive: true });
     const filename = `${cellSeg}.${ext}`;
     await writeFile(join(dir, filename), buffer);
     return {
-      url: `/cell-viz/${dirSeg}/${filename}?v=${Date.now()}`,
+      url: `/${GENERATED_CELL_VIZ_DIR}/${dirSeg}/${filename}?v=${Date.now()}`,
       byteHash,
       byteLength,
     };

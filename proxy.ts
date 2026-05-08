@@ -1,9 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/server";
+import { getAuth } from "@/lib/auth/server";
 
-const neonAuthProxy = auth.middleware({
-  loginUrl: "/auth/sign-in",
-});
+type NeonAuthProxy = ReturnType<ReturnType<typeof getAuth>["middleware"]>;
+type NeonAuthProxyRestArgs = Parameters<NeonAuthProxy> extends [any, ...infer Rest] ? Rest : never;
+
+let neonAuthProxy: NeonAuthProxy | null = null;
+
+function getNeonAuthProxy() {
+  if (!neonAuthProxy) {
+    neonAuthProxy = getAuth().middleware({
+      loginUrl: "/auth/sign-in",
+    });
+  }
+
+  return neonAuthProxy;
+}
 
 function getCanonicalSiteUrl() {
   const raw = process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL;
@@ -44,14 +55,14 @@ function maybeRedirectToCanonicalHost(request: NextRequest) {
   return NextResponse.redirect(redirectUrl, 308);
 }
 
-export function proxy(request: NextRequest, ...args: Parameters<typeof neonAuthProxy> extends [any, ...infer Rest] ? Rest : never) {
+export function proxy(request: NextRequest, ...args: NeonAuthProxyRestArgs) {
   const redirect = maybeRedirectToCanonicalHost(request);
   if (redirect) {
     return redirect;
   }
 
   if (request.nextUrl.pathname.startsWith("/account")) {
-    return neonAuthProxy(request, ...args);
+    return getNeonAuthProxy()(request, ...args);
   }
 
   return NextResponse.next();

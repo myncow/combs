@@ -1,6 +1,6 @@
 import { SignedOutHome } from "@/components/signed-out-home";
 import { NewMapHome } from "@/components/new-map-home";
-import { auth } from "@/lib/auth/server";
+import { getAuth } from "@/lib/auth/server";
 import { hasDatabaseUrl } from "@/lib/db/client";
 import { listLeaderboardEntries } from "@/lib/store";
 import type { ListedLeaderboardEntry } from "@/lib/types";
@@ -20,7 +20,7 @@ async function loadHomeLeaderboardPreview(): Promise<ListedLeaderboardEntry[]> {
 }
 
 export default async function HomePage() {
-  const { data: session } = await auth.getSession();
+  const { data: session } = await getAuth().getSession();
 
   if (session?.user) {
     return <NewMapHome />;

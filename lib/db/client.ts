@@ -1,19 +1,20 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "@/lib/db/schema";
+import { getDatabaseUrl } from "@/lib/env";
 
 let dbInstance: ReturnType<typeof drizzle<typeof schema>> | null = null;
 let sqlClient: ReturnType<typeof postgres> | null = null;
 
 export function hasDatabaseUrl() {
-  return Boolean(process.env.DATABASE_URL?.trim());
+  return Boolean(getDatabaseUrl());
 }
 
 export function getDb() {
-  const url = process.env.DATABASE_URL?.trim();
+  const url = getDatabaseUrl();
   if (!url) {
     throw new Error(
-      "DATABASE_URL is required. Set it to a Postgres connection string (see .env.example).",
+      "DATABASE_URL is required. Set DATABASE_URL or DATABASE_URL_UNPOOLED to a Postgres connection string (see .env.example).",
     );
   }
 

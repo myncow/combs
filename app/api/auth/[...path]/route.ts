@@ -1,3 +1,6 @@
-import { auth } from "@/lib/auth/server";
+import { getAuth } from "@/lib/auth/server";
 
-export const { GET, POST } = auth.handler();
+type AuthHandler = ReturnType<ReturnType<typeof getAuth>["handler"]>;
+
+export const GET = (...args: Parameters<AuthHandler["GET"]>) => getAuth().handler().GET(...args);
+export const POST = (...args: Parameters<AuthHandler["POST"]>) => getAuth().handler().POST(...args);

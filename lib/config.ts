@@ -1,16 +1,17 @@
 import { CURATED_IMAGE_MODELS } from "@/lib/image-model-options";
+import { readEnv } from "@/lib/env";
 
 const openRouterPrimaryModel =
-  process.env.OPENROUTER_MODEL ?? "google/gemini-3.1-flash-lite-preview";
+  readEnv("OPENROUTER_MODEL") ?? "google/gemini-3.1-flash-lite-preview";
 const openRouterFallbackModel =
-  process.env.OPENROUTER_FALLBACK_MODEL ?? "google/gemini-3-flash-preview";
-const openRouterAppHttpTitle = process.env.OPENROUTER_APP_NAME ?? "Lattice";
+  readEnv("OPENROUTER_FALLBACK_MODEL") ?? "google/gemini-3-flash-preview";
+const openRouterAppHttpTitle = readEnv("OPENROUTER_APP_NAME") ?? "Lattice";
 
 /** Env-specific chat models allowed for research / suggest steps (unioned with the static list). */
 const openRouterExtraAllowedChatModels = Array.from(
   new Set(
-    [process.env.OPENROUTER_RESEARCH_MODEL, process.env.OPENROUTER_SUGGEST_MODEL].filter(
-      (m): m is string => typeof m === "string" && m.trim().length > 0,
+    [readEnv("OPENROUTER_RESEARCH_MODEL"), readEnv("OPENROUTER_SUGGEST_MODEL")].filter(
+      (m): m is string => typeof m === "string",
     ),
   ),
 );
@@ -39,13 +40,13 @@ export const appConfig = {
   openRouter: {
     model: openRouterPrimaryModel,
     fallbackModel: openRouterFallbackModel,
-    researchModel: process.env.OPENROUTER_RESEARCH_MODEL ?? openRouterPrimaryModel,
+    researchModel: readEnv("OPENROUTER_RESEARCH_MODEL") ?? openRouterPrimaryModel,
     /** Axis-pair suggestions only; defaults to primary chat model. */
-    suggestModel: process.env.OPENROUTER_SUGGEST_MODEL ?? openRouterPrimaryModel,
-    siteUrl: process.env.OPENROUTER_SITE_URL ?? "http://localhost:3004",
+    suggestModel: readEnv("OPENROUTER_SUGGEST_MODEL") ?? openRouterPrimaryModel,
+    siteUrl: readEnv("OPENROUTER_SITE_URL") ?? "http://localhost:3004",
     appHttpTitle: openRouterAppHttpTitle,
     researchHttpTitle:
-      process.env.OPENROUTER_RESEARCH_HTTP_TITLE ?? `${openRouterAppHttpTitle} Research Engine`,
+      readEnv("OPENROUTER_RESEARCH_HTTP_TITLE") ?? `${openRouterAppHttpTitle} Research Engine`,
     allowedModels: [
       openRouterPrimaryModel,
       openRouterFallbackModel,

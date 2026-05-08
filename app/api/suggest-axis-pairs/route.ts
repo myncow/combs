@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { suggestAxisPairs } from "@/lib/map-engine";
 import { checkRateLimit, getRequesterId, moderateText } from "@/lib/guards";
-import { auth } from "@/lib/auth/server";
+import { getAuth } from "@/lib/auth/server";
 import { mapBriefSchema, suggestAxisPairsRequestSchema } from "@/lib/schema";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  const { data: session } = await auth.getSession();
+  const { data: session } = await getAuth().getSession();
   if (!session?.user) {
     return NextResponse.json({ error: "Sign in to unlock axis suggestions." }, { status: 401 });
   }

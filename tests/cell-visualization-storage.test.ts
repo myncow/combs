@@ -49,10 +49,12 @@ describe("materializeCellImageAsset validation", () => {
 
     expect(result.byteHash).toMatch(/^[a-f0-9]{64}$/);
     expect(result.byteLength).toBe(8192);
-    expect(result.url).toMatch(/^\/cell-viz\/test-slug\/cell-42\.png\?v=\d+$/);
+    expect(result.url).toMatch(/^\/generated-cell-viz\/test-slug\/cell-42\.png\?v=\d+$/);
 
     // Sanity: file actually exists on disk and matches.
-    const persisted = await readFile(join(dir, "public", "cell-viz", "test-slug", "cell-42.png"));
+    const persisted = await readFile(
+      join(dir, "public", "generated-cell-viz", "test-slug", "cell-42.png"),
+    );
     expect(persisted.length).toBe(8192);
 
     cwdSpy.mockRestore();

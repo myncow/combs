@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/auth/server";
+import { getAuth } from "@/lib/auth/server";
 import {
   DegenerateImageError,
   materializeCellImageAsset,
@@ -33,7 +33,7 @@ export async function createMapAction(
   _previousState: CreateMapActionState,
   formData: FormData,
 ): Promise<CreateMapActionState> {
-  const { data: session } = await auth.getSession();
+  const { data: session } = await getAuth().getSession();
   if (!session?.user) {
     return {
       status: "error",
@@ -117,7 +117,7 @@ export async function visualizeCellAction(
   _previousState: VisualizeCellActionState,
   formData: FormData,
 ): Promise<VisualizeCellActionState> {
-  const { data: session } = await auth.getSession();
+  const { data: session } = await getAuth().getSession();
   if (!session?.user) {
     return {
       status: "error",
@@ -278,7 +278,7 @@ export async function publishGapSpotlightAction(
   _previousState: PublishGapSpotlightActionState,
   formData: FormData,
 ): Promise<PublishGapSpotlightActionState> {
-  const { data: session } = await auth.getSession();
+  const { data: session } = await getAuth().getSession();
   if (!session?.user) {
     return {
       status: "error",

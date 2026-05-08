@@ -1,3 +1,5 @@
+import { readFirstEnv } from "@/lib/env";
+
 function normalizeBaseUrl(raw: string): URL {
   const trimmed = raw.trim().replace(/\/$/, "");
   const withScheme =
@@ -11,8 +13,7 @@ function normalizeBaseUrl(raw: string): URL {
  * Last resort: localhost for dev.
  */
 export function getSiteUrl(): URL {
-  const explicit =
-    process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? process.env.VERCEL_URL;
+  const explicit = readFirstEnv(["SITE_URL", "NEXT_PUBLIC_SITE_URL", "VERCEL_URL"]);
   if (explicit) {
     return normalizeBaseUrl(explicit);
   }
