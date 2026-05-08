@@ -11,7 +11,7 @@
  * we still set it and pair it with an explicit "Open original" fallback.
  */
 
-import { OpenImageSearchLink, PersistedReferenceThumbnails, type ExampleImageHit } from "@/components/example-image-thumbnails";
+import { PersistedReferenceThumbnails, type ExampleImageHit } from "@/components/example-image-thumbnails";
 import { GapSpotlightSheet } from "@/components/gap-spotlight-sheet";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -34,7 +34,6 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useId,
   useMemo,
   useRef,
   useState,
@@ -299,6 +298,22 @@ function statusColorStyle(status: MapCellStatus): React.CSSProperties & { "--sta
 
 function canGenerateVisualization(status: MapCellStatus) {
   return status === "gap" || status === "tension" || status === "impossible";
+}
+
+/**
+ * Cells whose `label` is not a documented subject name (gap = no documented
+ * example; impossible = ruled out). Use the coordinate intersection as the
+ * drawer title for these.
+ */
+function isUnnamedCell(cell: MapCell): boolean {
+  return cell.status === "gap" || cell.status === "impossible";
+}
+
+function coordinateTitle(yValue?: string, xValue?: string): string {
+  const a = (yValue ?? "").trim();
+  const b = (xValue ?? "").trim();
+  if (a && b) return `${a} × ${b}`;
+  return a || b || "Unfilled cell";
 }
 
 function cellFirstSearchableQuery(cell: MapCell): string | null {
@@ -1048,13 +1063,13 @@ function CellTile({
         canGenerate
           ? "bg-[color:color-mix(in_srgb,var(--status-color)_38%,var(--card))]"
           : "bg-[color:color-mix(in_srgb,var(--status-color)_11%,var(--card))]",
-        "transition-[background-color,opacity,box-shadow,transform] duration-150 ease-out",
+        "transition-[background-color,box-shadow] duration-150 ease-out",
         "before:pointer-events-none before:absolute before:left-0 before:top-0 before:h-full before:content-['']",
         canGenerate ? "before:w-[3px]" : "before:w-[2px]",
         "before:bg-[var(--status-color)]",
         canGenerate
-          ? "outline-none cursor-pointer hover:bg-[color:color-mix(in_srgb,var(--status-color)_50%,var(--card))] hover:[transform:translateY(-1px)]"
-          : "outline-none cursor-pointer hover:bg-[color:color-mix(in_srgb,var(--status-color)_17%,var(--card))] hover:[transform:translateY(-1px)]",
+          ? "outline-none cursor-pointer hover:bg-[color:color-mix(in_srgb,var(--status-color)_50%,var(--card))]"
+          : "outline-none cursor-pointer hover:bg-[color:color-mix(in_srgb,var(--status-color)_17%,var(--card))]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         active && "[box-shadow:inset_0_0_0_1px_var(--status-color)]",
       )}
@@ -1192,10 +1207,17 @@ function CellTile({
 }
 
 function CellPreviewImage({ image }: { image: { url: string; alt: string } }) {
-  const imgClass =
-    "live-image-reveal h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03]";
+  // Hover lift/scale removed: the parent tile shifted by 1px while the inner
+  // <img> scaled at the same time, and the two compositing layers never
+  // resolved to the same subpixel grid — the border/edge flickered. The bg
+  // color shift on the parent now carries the hover state on its own.
   return (
-    <div className={cn(TILE_VISUAL_FRAME_CLASS, "flex items-center justify-center bg-[color:color-mix(in_srgb,var(--foreground)_6%,var(--background))]")}>
+    <div
+      className={cn(
+        TILE_VISUAL_FRAME_CLASS,
+        "flex items-center justify-center bg-[color:color-mix(in_srgb,var(--foreground)_6%,var(--background))]",
+      )}
+    >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         key={image.url}
@@ -1205,7 +1227,7 @@ function CellPreviewImage({ image }: { image: { url: string; alt: string } }) {
         height={480}
         loading="lazy"
         referrerPolicy="no-referrer"
-        className={imgClass}
+        className="live-image-reveal h-full w-full object-cover [transform:translateZ(0)]"
       />
     </div>
   );
@@ -1512,52 +1534,28 @@ function DrawerBody({
   const cellCode = `${rowCodeValue}·${colCode}`;
 
   const referenceGalleryItems = useMemo(() => buildCellReferenceGallery(cell), [cell]);
-  const exampleListEntries = useMemo(() => {
-    const entries: { example: MapExample; idx: number; referenceFlatBase: number }[] = [];
-    let base = 0;
-    for (let idx = 0; idx < cell.examples.length; idx++) {
-      const example = cell.examples[idx]!;
-      const imageCount = (example.referenceImages ?? []).filter((h) => h.thumbnail && h.link).length;
-      entries.push({ example, idx, referenceFlatBase: base });
-      base += imageCount;
-    }
-    return entries;
-  }, [cell.examples]);
   const [referenceGalleryIndex, setReferenceGalleryIndex] = useState(0);
   const referenceGalleryDisplayIndex =
     referenceGalleryItems.length === 0
       ? 0
       : Math.min(referenceGalleryIndex, referenceGalleryItems.length - 1);
 
-  const handlePickReference = useCallback((flatIndex: number) => {
-    setReferenceGalleryIndex(flatIndex);
-    requestAnimationFrame(() => {
-      window.document.getElementById("drawer-reference-gallery")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    });
-  }, []);
-
   return (
     <>
-      <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-border bg-card px-6 py-5">
+      <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-border bg-card px-6 py-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
             <span className="text-foreground">{cellCode}</span>
-            <span className="text-muted-foreground">·</span>
+            <span aria-hidden>·</span>
             <StatusMark status={cell.status} size={10} />
-            <span>{statusDisplay[cell.status].label}</span>
+            <span className="text-foreground">{statusDisplay[cell.status].label}</span>
           </div>
-          {cell.status !== "gap" && cell.status !== "impossible" ? (
-            <h3 className="mt-3 font-sans text-[26px] font-semibold leading-[1.1] tracking-[-0.015em] text-foreground">
-              {cell.label}
-            </h3>
-          ) : (
-            <h3 className="mt-3 font-sans text-[18px] font-normal leading-[1.1] tracking-[-0.01em] text-muted-foreground/50 italic">
-              Unnamed
-            </h3>
-          )}
-          <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+          <h3 className="mt-2.5 font-sans text-[22px] font-semibold leading-[1.15] tracking-[-0.015em] text-foreground">
+            {isUnnamedCell(cell) ? coordinateTitle(yValue, xValue) : cell.label}
+          </h3>
+          <p className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
             {yLabel}: <span className="text-foreground">{yValue ?? "—"}</span>
-            <span className="mx-2 text-muted-foreground">·</span>
+            <span className="mx-2">·</span>
             {xLabel}: <span className="text-foreground">{xValue ?? "—"}</span>
           </p>
         </div>
@@ -1572,7 +1570,9 @@ function DrawerBody({
         </button>
       </header>
 
-      {referenceGalleryItems.length ? (
+      {/* Existing/rare cells lead with their documented evidence; gap-style
+          cells lead with framing + a sketch action and put references last. */}
+      {!isUnnamedCell(cell) && referenceGalleryItems.length ? (
         <DrawerReferenceGallery
           document={document}
           cell={cell}
@@ -1583,23 +1583,38 @@ function DrawerBody({
       ) : null}
 
       <motion.div
-        className="flex-1 space-y-8 px-6 py-6"
+        className="flex-1 space-y-7 px-6 py-6"
         initial={reduceMotion ? undefined : "hidden"}
         animate={reduceMotion ? undefined : "visible"}
         variants={{
           hidden: {},
-          // delayChildren waits ~⅓ of the panel slide (MOTION_DURATION.base 0.32s)
-          // so sections settle into place AFTER the panel is most of the way in,
-          // not racing against it.
           visible: { transition: { staggerChildren: 0.05, delayChildren: 0.12 } },
         }}
       >
-        <SectionBlock label="Explanation">
+        {isUnnamedCell(cell) ? (
+          <motion.section
+            variants={DRAWER_SECTION_VARIANTS}
+            className="border-l-2 border-primary/55 bg-[color:color-mix(in_srgb,var(--primary)_5%,transparent)] px-4 py-3"
+          >
+            <p className="text-[14px] leading-[1.55] text-foreground">
+              <span className="font-semibold">
+                {cell.status === "gap"
+                  ? "Nothing documented sits here."
+                  : "This cell is ruled out by the map logic."}
+              </span>{" "}
+              {cell.status === "gap"
+                ? "Sketch what one might look like — the visuals below are reference evidence used to ground the sketch, not examples of this cell."
+                : "If you sketch one, the visuals below are evidence used to render the closest plausible version, not documented instances."}
+            </p>
+          </motion.section>
+        ) : null}
+
+        <motion.section variants={DRAWER_SECTION_VARIANTS}>
           <p className="font-sans text-[15px] leading-[1.55] text-foreground">
             {cell.explanation}
           </p>
           {!!cell.badges.length && (
-            <ul className="mt-4 flex flex-wrap gap-1.5 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+            <ul className="mt-3 flex flex-wrap gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
               {cell.badges.map((badge) => (
                 <li key={badge} className="border border-border bg-background px-2 py-1 text-foreground">
                   {badge}
@@ -1607,79 +1622,37 @@ function DrawerBody({
               ))}
             </ul>
           )}
-        </SectionBlock>
-
-        {cell.examples.length ? (
-          <SectionBlock
-            label={`Examples · ${cell.examples.length}`}
-            description="References and sources."
-          >
-            <ol className="space-y-6">
-              {exampleListEntries.map(({ example, idx, referenceFlatBase }) => (
-                <li key={`${cell.id}-${example.name}-${idx}`}>
-                  <ExampleBlock
-                    document={document}
-                    cell={cell}
-                    example={example}
-                    index={idx}
-                    referenceFlatBase={referenceFlatBase}
-                    activeReferenceGalleryIndex={referenceGalleryDisplayIndex}
-                    onPickReference={handlePickReference}
-                  />
-                </li>
-              ))}
-            </ol>
-          </SectionBlock>
-        ) : null}
+        </motion.section>
 
         {showVisualizationSection ? (
-          <SectionBlock
-            label="Visualization"
-            description={
-              display || !canGenerate ? undefined : "Sketch a grounded scene for this cell."
-            }
-          >
+          <motion.section variants={DRAWER_SECTION_VARIANTS}>
             {!display ? (
               authPending ? (
-                <div className="space-y-3">
-                  <p className="text-[14px] leading-[1.55] text-muted-foreground">
-                    Checking your account status…
-                  </p>
-                </div>
+                <p className="text-[14px] leading-[1.55] text-muted-foreground">
+                  Checking your account status…
+                </p>
               ) : showSignInForGeneration ? (
-                <div className="space-y-3">
-                  <p className="text-[14px] leading-[1.55] text-muted-foreground">
-                    Sign in to generate a grounded scene for this cell.
-                  </p>
-                  <Button asChild size="lg">
-                    <a href={signInHref}>
-                      <Sparkles className="h-4 w-4" aria-hidden />
-                      Sign in to generate
-                    </a>
-                  </Button>
-                </div>
+                <Button asChild size="lg">
+                  <a href={signInHref}>
+                    <Sparkles className="h-4 w-4" aria-hidden />
+                    Sign in to sketch
+                  </a>
+                </Button>
               ) : canUseGeneration ? (
-                <div className="space-y-3">
-                  {isPending ? (
-                    <IndeterminateLoadingBar label={visualizationCopy.pendingLabel} />
-                  ) : (
-                    <>
-                      <p className="text-[14px] leading-[1.55] text-muted-foreground">
-                        This image pass is meant to suggest a grounded scene, not assert a final answer.
-                      </p>
-                      <Button
-                        type="submit"
-                        form={vizFormId}
-                        disabled={!isFormReady}
-                        aria-label={`${visualizationCopy.buttonLabel} ${cell.label}`}
-                        size="lg"
-                      >
-                        <ImageIcon className="h-4 w-4" aria-hidden />
-                        {visualizationCopy.buttonLabel}
-                      </Button>
-                    </>
-                  )}
-                </div>
+                isPending ? (
+                  <IndeterminateLoadingBar label={visualizationCopy.pendingLabel} />
+                ) : (
+                  <Button
+                    type="submit"
+                    form={vizFormId}
+                    disabled={!isFormReady}
+                    aria-label={`${visualizationCopy.buttonLabel} ${cell.label}`}
+                    size="lg"
+                  >
+                    <ImageIcon className="h-4 w-4" aria-hidden />
+                    {visualizationCopy.buttonLabel}
+                  </Button>
+                )
               ) : null
             ) : (
               <div className="space-y-3">
@@ -1715,7 +1688,6 @@ function DrawerBody({
                     <IconChip
                       as="a"
                       href={display.imageUrl}
-                      // See file header: cross-origin thumbs may ignore `download`, but we still set it.
                       download={buildDownloadName(document, cell, display.imageUrl)}
                       label={`Download ${cell.label}`}
                     >
@@ -1761,36 +1733,29 @@ function DrawerBody({
                         size="sm"
                       >
                         <Sparkles className="h-3.5 w-3.5" aria-hidden />
-                        Publish to top list
+                        Publish
                       </Button>
                     ) : null}
                   </div>
                 ) : showSignInForGeneration ? (
-                  <div className="flex flex-wrap gap-2">
-                    <Button asChild size="sm">
-                      <a href={signInHref}>
-                        <Sparkles className="h-3.5 w-3.5" aria-hidden />
-                        Sign in for generation tools
-                      </a>
-                    </Button>
-                  </div>
-                ) : null}
-                {canPublishSpotlight ? (
-                  <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                    Publish this generated frontier cell as a spotlight card for the leaderboard.
-                  </p>
+                  <Button asChild size="sm">
+                    <a href={signInHref}>
+                      <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                      Sign in
+                    </a>
+                  </Button>
                 ) : null}
                 {display.prompt ? (
-                  <div className="border-t border-border pt-3">
+                  <div>
                     <button
                       type="button"
                       onClick={() => setIsPromptOpen((prev) => !prev)}
                       aria-expanded={isPromptOpen}
-                      className="flex w-full items-center justify-between gap-2 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     >
-                      <span>Image prompt</span>
+                      <span>Prompt</span>
                       <ChevronDown
-                        className={cn("h-3.5 w-3.5 transition-transform duration-150", isPromptOpen && "rotate-180")}
+                        className={cn("h-3 w-3 transition-transform duration-150", isPromptOpen && "rotate-180")}
                         aria-hidden
                       />
                     </button>
@@ -1805,7 +1770,7 @@ function DrawerBody({
                           className="inline-flex items-center gap-1.5 border border-border bg-background px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition-colors duration-150 hover:border-border-strong hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                         >
                           <Copy className="h-3 w-3" aria-hidden />
-                          {didCopyPrompt ? "Copied" : "Copy prompt"}
+                          {didCopyPrompt ? "Copied" : "Copy"}
                         </button>
                       </div>
                     ) : null}
@@ -1818,7 +1783,22 @@ function DrawerBody({
                 {state.message}
               </p>
             ) : null}
-          </SectionBlock>
+          </motion.section>
+        ) : null}
+
+        {/* Reference evidence — placed last for unnamed cells so the sketch
+            framing is the first thing users read. Hidden when no images. */}
+        {isUnnamedCell(cell) && referenceGalleryItems.length ? (
+          <motion.section variants={DRAWER_SECTION_VARIANTS}>
+            <DrawerReferenceGallery
+              document={document}
+              cell={cell}
+              items={referenceGalleryItems}
+              index={referenceGalleryDisplayIndex}
+              onIndexChange={setReferenceGalleryIndex}
+              embedded
+            />
+          </motion.section>
         ) : null}
       </motion.div>
 
@@ -1851,38 +1831,14 @@ function DrawerBody({
   );
 }
 
-function SectionBlock({
-  label,
-  description,
-  children,
-}: {
-  label: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <motion.section
-      variants={{
-        hidden: { opacity: 0, y: 8 },
-        visible: {
-          opacity: 1,
-          y: 0,
-          transition: { duration: MOTION_DURATION.short, ease: MOTION_EASE.out },
-        },
-      }}
-    >
-      <header className="mb-4 flex items-baseline justify-between gap-3 border-b border-border pb-2">
-        <h4 className="font-mono text-[11px] uppercase tracking-[0.24em] text-primary">{label}</h4>
-        {description ? (
-          <p className="text-right font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            {description}
-          </p>
-        ) : null}
-      </header>
-      {children}
-    </motion.section>
-  );
-}
+const DRAWER_SECTION_VARIANTS = {
+  hidden: { opacity: 0, y: 8 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: MOTION_DURATION.short, ease: MOTION_EASE.out },
+  },
+};
 
 function DrawerReferenceGallery({
   document,
@@ -1890,12 +1846,20 @@ function DrawerReferenceGallery({
   items,
   index,
   onIndexChange,
+  embedded = false,
 }: {
   document: MapDocument;
   cell: MapCell;
   items: CellReferenceGalleryItem[];
   index: number;
   onIndexChange: (next: number) => void;
+  /**
+   * When the gallery sits inside the body (gap-style cells), drop the
+   * sticky-card chrome and use a flush layout. The framing label also shifts
+   * from "Reference images" to "Visual evidence" to make clear that these
+   * inputs ground the sketch and aren't documented examples.
+   */
+  embedded?: boolean;
 }) {
   const reduceMotion = useReducedMotion();
   const stripRef = useRef<HTMLDivElement>(null);
@@ -1928,18 +1892,32 @@ function DrawerReferenceGallery({
     item.imageIndex,
   );
 
+  const headingLabel = embedded ? "Visual evidence" : "Examples";
+  const headingHelper = embedded
+    ? "Used to ground the sketch — not documented examples of this cell."
+    : null;
+
   return (
     <section
       id="drawer-reference-gallery"
-      className="shrink-0 border-b border-border bg-card px-6 py-5"
-      aria-label="Reference images for this cell"
+      className={cn(
+        embedded ? "" : "shrink-0 border-b border-border bg-card px-6 py-5",
+      )}
+      aria-label={embedded ? "Visual evidence used to sketch this cell" : "Reference images for this cell"}
     >
-      <div className="mb-3 flex items-baseline justify-between gap-2">
-        <h4 className="font-mono text-[11px] uppercase tracking-[0.24em] text-primary">Reference images</h4>
-        <span className="font-mono text-[11px] tabular-nums tracking-[0.14em] text-muted-foreground">
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <h4 className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          {headingLabel}
+        </h4>
+        <span className="font-mono text-[10px] tabular-nums tracking-[0.14em] text-muted-foreground">
           {index + 1} / {items.length}
         </span>
       </div>
+      {headingHelper ? (
+        <p className="mb-3 text-[12px] leading-snug text-muted-foreground">
+          {headingHelper}
+        </p>
+      ) : null}
 
       {/* Hero image — single hairline frame, sharp corners, no inset shadow.
        * Matches the project's --radius-sm: 0 design token. */}
@@ -2041,170 +2019,6 @@ function DrawerReferenceGallery({
 
 const galleryNavButtonClass =
   "absolute top-1/2 z-20 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center border border-border bg-background/92 text-foreground shadow-[0_2px_12px_rgba(0,0,0,0.14)] backdrop-blur-md transition-[background-color,border-color,color] duration-150 hover:bg-card hover:border-foreground/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:border-white/15 dark:shadow-[0_2px_16px_rgba(0,0,0,0.42)]";
-
-function ExampleBlock({
-  document,
-  cell,
-  example,
-  index,
-  referenceFlatBase,
-  activeReferenceGalleryIndex,
-  onPickReference,
-}: {
-  document: MapDocument;
-  cell: MapCell;
-  example: MapExample;
-  index: number;
-  referenceFlatBase: number;
-  activeReferenceGalleryIndex: number;
-  onPickReference: (flatIndex: number) => void;
-}) {
-  const images = (example.referenceImages ?? []).filter((h) => h.thumbnail && h.link);
-
-  return (
-    <article className="border-l border-border pl-4">
-      <header className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground tabular-nums">
-            Example {index + 1}
-          </p>
-          <h5 className="mt-1 font-sans text-[17px] font-semibold leading-[1.2] tracking-[-0.005em] text-foreground">
-            {example.name}
-          </h5>
-          {example.brand || example.year ? (
-            <p className="mt-1 font-mono text-[12px] uppercase tracking-[0.2em] text-muted-foreground">
-              {[example.brand, example.year].filter(Boolean).join(" · ")}
-            </p>
-          ) : null}
-        </div>
-        {exampleHasImageQuery(exampleImageSearchQuery(example)) ? (
-          <OpenImageSearchLink
-            query={exampleImageSearchQuery(example)}
-            className="mt-0.5 shrink-0 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition-colors duration-150 hover:text-foreground"
-          />
-        ) : null}
-      </header>
-      {example.evidenceNote ? (
-        <p className="mt-3 text-[14px] leading-[1.55] text-muted-foreground">{example.evidenceNote}</p>
-      ) : example.description ? (
-        <p className="mt-3 text-[14px] leading-[1.55] text-muted-foreground">{example.description}</p>
-      ) : null}
-      {images.length ? (
-        <div className="mt-3 flex gap-2 overflow-x-auto overscroll-x-contain pb-1 pt-0.5 [scrollbar-width:thin]">
-          {images.map((hit, idx) => {
-            const flatIndex = referenceFlatBase + idx;
-            return (
-              <div key={`${hit.link}-${idx}`} className="relative w-[5.25rem] shrink-0 sm:w-[5.75rem]">
-                <ReferenceTile
-                  hit={hit}
-                  downloadName={buildRefDownloadName(document, cell, example, hit.thumbnail!, idx)}
-                  selected={activeReferenceGalleryIndex === flatIndex}
-                  onSelect={() => onPickReference(flatIndex)}
-                />
-              </div>
-            );
-          })}
-        </div>
-      ) : null}
-    </article>
-  );
-}
-
-function ReferenceTile({
-  hit,
-  downloadName,
-  selected,
-  onSelect,
-}: {
-  hit: ExampleImageHit;
-  downloadName: string;
-  selected?: boolean;
-  onSelect?: () => void;
-}) {
-  const id = useId();
-  const titleId = `${id}-title`;
-  return (
-    <figure
-      className={cn(
-        "group relative isolate aspect-square overflow-hidden bg-muted/40 outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background",
-        selected && "ring-2 ring-primary ring-offset-2 ring-offset-background",
-      )}
-    >
-      {onSelect ? (
-        <button
-          type="button"
-          onClick={onSelect}
-          aria-labelledby={titleId}
-          aria-pressed={selected}
-          className="absolute inset-0 z-0 outline-none"
-          title={hit.title ?? hit.source ?? "Show in reference gallery"}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={hit.thumbnail!}
-            alt={hit.title ?? ""}
-            width={320}
-            height={320}
-            loading="lazy"
-            referrerPolicy="no-referrer"
-            className="h-full w-full object-cover"
-          />
-          <span className="absolute inset-0 bg-[linear-gradient(180deg,transparent_45%,rgba(0,0,0,0.55)_70%,rgba(0,0,0,0.92)_100%)] opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100" />
-        </button>
-      ) : (
-        <a
-          href={hit.link}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-labelledby={titleId}
-          className="absolute inset-0 z-0 outline-none"
-          title={hit.title ?? hit.source ?? "Open source"}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={hit.thumbnail!}
-            alt={hit.title ?? ""}
-            width={320}
-            height={320}
-            loading="lazy"
-            referrerPolicy="no-referrer"
-            className="h-full w-full object-cover"
-          />
-          <span className="absolute inset-0 bg-[linear-gradient(180deg,transparent_45%,rgba(0,0,0,0.55)_70%,rgba(0,0,0,0.92)_100%)] opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100" />
-        </a>
-      )}
-      <figcaption
-        id={titleId}
-        className="pointer-events-none absolute inset-x-1.5 bottom-1.5 line-clamp-1 font-mono text-[10px] uppercase tracking-[0.22em] text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.6)] opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
-      >
-        {hit.source ?? new URL(hit.link).host}
-      </figcaption>
-      <div className="pointer-events-auto absolute right-1 top-1 z-10 flex gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
-        <a
-          href={hit.thumbnail!}
-          download={downloadName}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={mediaOverlayControlSmClass}
-          aria-label={`Download reference image${hit.title ? ` for ${hit.title}` : ""}`}
-          title="Download"
-        >
-          <Download className="h-3 w-3" aria-hidden strokeWidth={2.25} />
-        </a>
-        <a
-          href={hit.link}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={mediaOverlayControlSmClass}
-          aria-label={`Open source${hit.title ? ` for ${hit.title}` : ""}`}
-          title="Open original"
-        >
-          <ArrowUpRight className="h-3 w-3" aria-hidden strokeWidth={2.25} />
-        </a>
-      </div>
-    </figure>
-  );
-}
 
 type IconChipProps =
   | ({
