@@ -17,7 +17,7 @@ async function ExplorerSidebarLoader() {
 
   if (hasDatabaseUrl()) {
     try {
-      mapsResult = await listMaps({ pageSize: 48, status: "live", page: 1 });
+      mapsResult = await listMaps({ pageSize: 48, status: "library", page: 1 });
     } catch (err) {
       hydrationError =
         err instanceof Error

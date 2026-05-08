@@ -372,7 +372,7 @@ export async function castLeaderboardVote({
   return serializeLeaderboardEntry(updatedEntry);
 }
 
-export type MapListingVisibility = MapVisibility | "live";
+export type MapListingVisibility = MapVisibility | "live" | "library";
 
 export async function listMaps({
   topicFamily,
@@ -386,7 +386,15 @@ export async function listMaps({
   pageSize?: number;
 }) {
   const db = getDb();
-  const statusFilter = status === "live" ? ne(mapsTable.status, "failed") : eq(mapsTable.status, status);
+  // "live" = public-facing (excludes failed). "library" = the user's own
+  // sidebar/dashboard view, where failed attempts must remain visible so
+  // they can be retried or deleted.
+  const statusFilter =
+    status === "live"
+      ? ne(mapsTable.status, "failed")
+      : status === "library"
+        ? inArray(mapsTable.status, ["published", "generating", "failed"])
+        : eq(mapsTable.status, status);
 
   const conditions = [statusFilter];
   if (topicFamily && topicFamily !== "All") {

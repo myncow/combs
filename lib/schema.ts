@@ -226,7 +226,7 @@ export const leaderboardVoteResultSchema = z.object({
 
 export const mapFiltersSchema = z.object({
   topicFamily: z.string().optional(),
-  status: z.enum(["published", "internal", "failed", "live"]).optional(),
+  status: z.enum(["published", "internal", "failed", "live", "library"]).optional(),
   sort: z
     .enum(["recent", "quality"])
     .default("recent")

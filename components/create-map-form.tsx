@@ -502,7 +502,7 @@ export function CreateMapForm() {
             <div
               aria-live="polite"
               aria-busy={suggestLoading}
-              className="h-[12.5rem] space-y-2 overflow-y-auto overscroll-contain pr-0.5"
+              className="min-h-[12.5rem] space-y-2"
             >
               <p className="sr-only" role="status">
                 {suggestLiveMessage}
@@ -538,11 +538,11 @@ export function CreateMapForm() {
               ) : pairs.length === 0 ? (
                 <p className="text-[13px] text-muted-foreground">Keep typing.</p>
               ) : (
-                <ul className="grid gap-2 md:grid-cols-2">
+                <ul className="grid auto-rows-fr gap-2 md:grid-cols-2">
                   {visiblePairs.map((pair) => {
                     const selected = lockedPair !== null && axisPairKey(lockedPair) === axisPairKey(pair);
                     return (
-                      <li key={axisPairKey(pair)}>
+                      <li key={axisPairKey(pair)} className="flex">
                         <button
                           type="button"
                           onClick={() => togglePair(pair)}
@@ -553,7 +553,7 @@ export function CreateMapForm() {
                               : `Select frame ${pair.primary.label} by ${pair.secondary.label}`
                           }
                           className={
-                            "group flex w-full flex-col gap-1.5 border px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring " +
+                            "group flex h-full w-full flex-col gap-1.5 border px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring " +
                             (selected
                               ? "border-primary/40 bg-[color:color-mix(in_srgb,var(--primary)_7%,transparent)]"
                               : "border-border/70 hover:border-border hover:bg-foreground/[0.025]")
@@ -565,7 +565,7 @@ export function CreateMapForm() {
                             {pair.secondary.label}
                           </span>
                           {pair.rationale ? (
-                            <span className="text-[12px] leading-snug text-muted-foreground">{pair.rationale}</span>
+                            <span className="line-clamp-2 text-[12px] leading-snug text-muted-foreground">{pair.rationale}</span>
                           ) : null}
                         </button>
                       </li>

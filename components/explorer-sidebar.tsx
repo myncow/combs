@@ -34,7 +34,7 @@ export function ExplorerSidebar({
   const [loadErr, setLoadErr] = useState<string | null>(() => initialHydrationError ?? null);
 
   const loadMaps = useCallback(async () => {
-    const qs = new URLSearchParams({ pageSize: "48", sort: "recent", status: "live", page: "1" });
+    const qs = new URLSearchParams({ pageSize: "48", sort: "recent", status: "library", page: "1" });
     if (topicFamily) qs.set("topicFamily", topicFamily);
     const res = await fetch(`/api/maps?${qs}`, { cache: "no-store" });
     if (!res.ok) {

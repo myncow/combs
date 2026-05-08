@@ -116,9 +116,16 @@ html.dark body::before {
   }
 }
 
-body > * {
-  position: relative;
-  z-index: 1;
+/* Lift the app shell above body::before's paper grain (z-index: 0) without
+ * affecting portal-rendered overlays. Wrapped in @layer base so Tailwind
+ * utilities (e.g. `.fixed`, `.absolute`, `z-[90]`) in the utilities layer
+ * still win — otherwise portaled drawers/modals fall into normal document
+ * flow because `position: relative` overrides their `position: fixed`. */
+@layer base {
+  body > * {
+    position: relative;
+    z-index: 1;
+  }
 }
 
 h1,
