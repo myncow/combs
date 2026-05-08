@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { AsciiDivider } from "@/components/ui/ascii-divider";
 import type { ListedLeaderboardEntry } from "@/lib/types";
 
 type SignedOutHomeProps = {
@@ -45,8 +46,9 @@ export function SignedOutHome({
 
       {cards.length > 0 ? (
         <section aria-label="Top spotlights">
-          <div className="flex items-end justify-between gap-3 border-b border-border pb-3">
-            <h2 className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+          <AsciiDivider className="mb-5" />
+          <div className="flex items-end justify-between gap-3 pb-3">
+            <h2 className="tagline text-[14px] text-muted-foreground">
               Top spotlights
             </h2>
             <Link

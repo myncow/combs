@@ -4,6 +4,7 @@ import { getRequesterId } from "@/lib/guards";
 import { leaderboardFiltersSchema } from "@/lib/schema";
 import { listLeaderboardEntries, listLeaderboardTopicFamilies } from "@/lib/store";
 import { LeaderboardCard } from "@/components/leaderboard-card";
+import { AsciiDivider } from "@/components/ui/ascii-divider";
 import { Badge } from "@/components/ui/badge";
 
 export default async function LeaderboardPage({
@@ -94,11 +95,17 @@ export default async function LeaderboardPage({
         </div>
       </section>
 
-      {featured ? <LeaderboardCard entry={featured} rank={1} featured /> : null}
+      {featured ? (
+        <>
+          <AsciiDivider variant="label" label="Featured" />
+          <LeaderboardCard entry={featured} rank={1} featured />
+        </>
+      ) : null}
 
       <section className="space-y-5">
+        <AsciiDivider variant="label" label="More spotlights" />
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-sans text-2xl font-semibold tracking-[-0.02em] text-foreground">More spotlights</h2>
+          <h2 className="tagline text-2xl text-foreground">More spotlights</h2>
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
             {entries.total === 1 ? "1 spotlight" : `${entries.total} spotlights`}
           </p>

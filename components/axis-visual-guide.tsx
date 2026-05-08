@@ -81,7 +81,11 @@ export function AxisVisualGuide({
         <p className="mb-3 shrink-0 px-2 text-center text-[13px] font-semibold leading-snug tracking-[-0.01em] text-foreground normal-case">
           {pairTitle}
         </p>
-        <div className="flex min-h-0 flex-1 overflow-hidden border border-border bg-background/65">
+        <div className="relative flex min-h-0 flex-1 overflow-hidden border border-border bg-background/65">
+          <span aria-hidden className="pointer-events-none absolute left-0 top-0 z-10 select-none font-mono text-[10px] leading-none text-foreground/70">+</span>
+          <span aria-hidden className="pointer-events-none absolute right-0 top-0 z-10 select-none font-mono text-[10px] leading-none text-foreground/70">+</span>
+          <span aria-hidden className="pointer-events-none absolute bottom-0 left-0 z-10 select-none font-mono text-[10px] leading-none text-foreground/70">+</span>
+          <span aria-hidden className="pointer-events-none absolute bottom-0 right-0 z-10 select-none font-mono text-[10px] leading-none text-foreground/70">+</span>
           <table className="w-full border-collapse text-left">
             <thead>
               <tr>

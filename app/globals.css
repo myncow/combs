@@ -91,9 +91,11 @@ h6 {
   letter-spacing: -0.01em;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+@layer base {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
 button,
@@ -313,4 +315,14 @@ textarea {
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--muted-foreground);
+}
+
+/* Mono uppercase tagline — for secondary callouts and section headlines
+ * (not primary hero H1s). Sized inline by the consumer (e.g. text-2xl). */
+.tagline {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
