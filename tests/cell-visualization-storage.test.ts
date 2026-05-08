@@ -49,7 +49,10 @@ describe("materializeCellImageAsset validation", () => {
 
     expect(result.byteHash).toMatch(/^[a-f0-9]{64}$/);
     expect(result.byteLength).toBe(8192);
-    expect(result.url).toMatch(/^\/generated-cell-viz\/test-slug\/cell-42\.png\?v=\d+$/);
+    // Cache-buster is the first 8 hex chars of the SHA-256 byte hash so
+    // identical re-renders reuse the same URL while new bytes invalidate it.
+    expect(result.url).toMatch(/^\/generated-cell-viz\/test-slug\/cell-42\.png\?v=[a-f0-9]{8}$/);
+    expect(result.url.endsWith(`?v=${result.byteHash.slice(0, 8)}`)).toBe(true);
 
     // Sanity: file actually exists on disk and matches.
     const persisted = await readFile(

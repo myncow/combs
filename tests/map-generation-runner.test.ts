@@ -37,7 +37,14 @@ import type { NormalizedMapBrief, MapDocument } from "@/lib/types";
 import { runMapGenerationCore } from "@/lib/map-generation-runner";
 
 describe("runMapGenerationCore", () => {
+  // The runner now fails fast when OPENROUTER_API_KEY is missing so
+  // operators get a clear "set this env var" message instead of the generic
+  // "brief normalization unavailable". Set it for the mocked happy-path
+  // tests below; the missing-key path has its own dedicated test.
+  const originalApiKey = process.env.OPENROUTER_API_KEY;
+
   beforeEach(() => {
+    process.env.OPENROUTER_API_KEY = "test-key";
     buildMapJobMock.mockReset();
     saveMapMock.mockReset();
     logGenerationRunMock.mockReset();
@@ -53,7 +60,35 @@ describe("runMapGenerationCore", () => {
   });
 
   afterEach(() => {
+    if (originalApiKey === undefined) {
+      delete process.env.OPENROUTER_API_KEY;
+    } else {
+      process.env.OPENROUTER_API_KEY = originalApiKey;
+    }
     vi.clearAllMocks();
+  });
+
+  it("returns a clear configuration error when OPENROUTER_API_KEY is missing", async () => {
+    delete process.env.OPENROUTER_API_KEY;
+    const brief = {
+      topic: "x",
+      combines: "",
+      candidateDimensions: [],
+      inferDimensions: false,
+      audience: "",
+      tone: "",
+      mustIncludeExamples: [],
+      mustAvoid: [],
+    };
+
+    const out = await runMapGenerationCore(brief);
+
+    expect(out.outcome).toBe("error");
+    if (out.outcome === "error") {
+      expect(out.message).toContain("OPENROUTER_API_KEY");
+    }
+    expect(buildMapJobMock).not.toHaveBeenCalled();
+    expect(saveMapMock).not.toHaveBeenCalled();
   });
 
   it("logs metrics on rejection without saving a map", async () => {

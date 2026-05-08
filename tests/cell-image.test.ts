@@ -330,7 +330,10 @@ describe("cell image prompting", () => {
     expect(prompt).toContain("Use other visual examples as the main source of truth");
     expect(prompt).toContain("## Plausibility construction");
     expect(prompt).toContain("Persisted visual references available to you");
-    expect(prompt).toContain("Ref 1: Direct evidence from Virginia rail");
+    // Gap cells fold their `cell.examples` into ambient reference imagery
+    // rather than direct anchors — these examples come from post-hoc visual
+    // probing, not from documented evidence.
+    expect(prompt).toContain('Ref 1: Ambient search candidate for "Wetland waders"');
     expect(prompt).toContain("Red-winged blackbird");
     expect(prompt).toContain("#0f766e");
     expect(prompt).toContain("Generate a single square image for this map cell");
@@ -371,13 +374,34 @@ describe("cell image prompting", () => {
   });
 
   it("builds a grounding bundle from direct examples, neighboring anchors, and reference images", () => {
+    // Gap cells skip directEvidence (no documented anchor exists by
+    // definition); their cell.examples are ambient search candidates that
+    // surface as referenceImages with explicit ambient framing.
     const bundle = buildCellVisualGroundingBundle(groundedBirdDocument, birdCell);
 
-    expect(bundle.directEvidence[0]?.name).toBe("Virginia rail");
+    expect(bundle.directEvidence).toHaveLength(0);
     expect(bundle.neighborEvidence.some((cue) => cue.name === "Red-winged blackbird")).toBe(true);
     expect(bundle.neighborEvidence.some((cue) => cue.name === "Green heron")).toBe(true);
     expect(bundle.referenceImages.length).toBeGreaterThanOrEqual(3);
+    expect(
+      bundle.referenceImages.some((image) => image.reason.startsWith("Ambient search candidate")),
+    ).toBe(true);
     expect(bundle.styleSpec.accentHex).toBe("#0f766e");
+  });
+
+  it("uses direct-evidence framing for anchor (existing/rare) cells", () => {
+    // Sanity: a non-gap cell with the same example continues to use
+    // documented-anchor framing rather than ambient.
+    const anchorCell: MapCell = { ...birdCell, status: "rare" };
+    const bundle = buildCellVisualGroundingBundle(
+      { ...groundedBirdDocument, cells: [anchorCell, ...groundedBirdDocument.cells.slice(1)] },
+      anchorCell,
+    );
+
+    expect(bundle.directEvidence[0]?.name).toBe("Virginia rail");
+    expect(
+      bundle.referenceImages.some((image) => image.reason.startsWith("Direct evidence from")),
+    ).toBe(true);
   });
 
   it("reuses the persisted visual style spec across regenerations", () => {

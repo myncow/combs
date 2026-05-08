@@ -1807,6 +1807,16 @@ async function modelGenerateMapCells(
     totalBatches: number,
   ) => void | Promise<void>,
 ) {
+  // PERF NOTE (see plans/do-an-overall-evaluation-purrfect-whistle.md, P0.4):
+  // `instructions` below — including `researchSection` — is computed once per
+  // run but sent verbatim with every cell batch (typically 4–8 batches). On a
+  // grounded run with a long research pack, that's >50% of the cells-phase
+  // token bill repeated per batch. The proper fix is provider-aware prompt
+  // caching: split the request into a stable system prefix (research +
+  // brief + skeleton + universalMapContract) with `cache_control: ephemeral`
+  // and a per-batch user payload carrying just `requiredMatrix`. Anthropic
+  // caches it; Gemini needs the separate context-caching API. Deferred until
+  // we add a per-model caching strategy in lib/openrouter.ts.
   const researchSection = formatResearchForPrompt(research, "cells");
   const groundingState = getResearchGroundingState(research);
   const researchNotice =

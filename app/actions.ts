@@ -134,6 +134,14 @@ export async function visualizeCellAction(
     };
   }
 
+  if (!process.env.OPENROUTER_API_KEY) {
+    return {
+      status: "error",
+      message:
+        "Image generation is not configured: set OPENROUTER_API_KEY in the server environment to enable sketches.",
+    };
+  }
+
   const documentJson = formData.get("document");
   const cellJson = formData.get("cell");
 
@@ -202,7 +210,7 @@ export async function visualizeCellAction(
           error: {
             status: "error",
             message:
-              "No idea image came back from the model. Check OPENROUTER_API_KEY and model availability.",
+              "The image model returned no image. This usually clears on retry — if it persists, the configured model may be temporarily unavailable.",
           },
         };
       }

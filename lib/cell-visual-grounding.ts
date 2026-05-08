@@ -118,7 +118,16 @@ export function buildCellVisualGroundingBundle(document: MapDocument, cell: MapC
   const narrative = collapseWhitespace([document.summary, document.intro].filter(Boolean).join(" ")).slice(0, 500);
   const styleSpec = resolveMapVisualSeries(document).styleSpec;
 
-  const directEvidence = cell.examples.slice(0, 3).map((example) => toExampleCue(document, example, "direct", []));
+  // Frontier (gap) cells have no documented direct evidence by definition —
+  // any examples attached to them came from the post-hoc visual probe and
+  // are search candidates, not anchors. Calling them "Direct evidence" in
+  // the prompt causes the model to lift them as the subject. Treat them as
+  // ambient reference imagery only and surface no `directEvidence` cues.
+  const isFrontierCell = cell.status === "gap";
+  const directEvidence = isFrontierCell
+    ? []
+    : cell.examples.slice(0, 3).map((example) => toExampleCue(document, example, "direct", []));
+
   const neighborCells = neighborAnchorCells(document, cell).slice(0, 4);
   const neighborEvidence = neighborCells
     .flatMap(({ cell: neighbor, sharedAxisLabels }) =>
@@ -128,7 +137,13 @@ export function buildCellVisualGroundingBundle(document: MapDocument, cell: MapC
 
   const referenceImages = dedupeByUrl([
     ...cell.examples.flatMap((example) =>
-      referenceImagesFromExample(example, `Direct evidence from ${example.name}`, 2),
+      referenceImagesFromExample(
+        example,
+        isFrontierCell
+          ? `Ambient search candidate for "${cell.label}" — use for material/texture/lighting language only, not as the subject`
+          : `Direct evidence from ${example.name}`,
+        2,
+      ),
     ),
     ...neighborCells.flatMap(({ cell: neighbor, sharedAxisLabels }) =>
       neighbor.examples.flatMap((example) =>
@@ -147,7 +162,9 @@ export function buildCellVisualGroundingBundle(document: MapDocument, cell: MapC
           .map((cue) => cue.name)
           .slice(0, 2)
           .join(", ")}.`
-      : "",
+      : isFrontierCell
+        ? "No documented anchor sits at this exact intersection — synthesise the subject from the coordinate constraints and the neighbouring anchor language. Treat any attached references as ambient material/lighting cues only."
+        : "",
     neighborEvidence.some((cue) => cue.sharedAxisLabels.length)
       ? `Borrow structure, setting, or process cues from adjacent anchor cells that share ${Array.from(
           new Set(neighborEvidence.flatMap((cue) => cue.sharedAxisLabels)),

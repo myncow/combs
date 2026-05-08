@@ -71,8 +71,12 @@ export class DegenerateImageError extends Error {
  * We intentionally avoid the historical `public/cell-viz` tree here because
  * Vercel traces that directory into server actions and can blow past the
  * 250 MB function size limit on routes that import those actions.
- * Appends a `?v={timestamp}` cache-buster so regenerations produce a new URL string
- * even though the file path is stable (the browser otherwise serves the stale image).
+ *
+ * The returned URL carries a content-addressed `?v={byteHash[0..8]}` query so
+ * re-rendering with new bytes produces a new URL (forcing browser cache miss),
+ * while a re-render that produces *identical* bytes reuses the same URL —
+ * cleaner than `Date.now()` which would race in the same millisecond and
+ * would needlessly invalidate caches on identical re-runs.
  *
  * Validates the buffer:
  * - Must be at least MIN_IMAGE_BYTES so we never persist 1×1 placeholders.
@@ -105,6 +109,7 @@ export async function materializeCellImageAsset(
 
   const byteHash = createHash("sha256").update(buffer).digest("hex");
   const byteLength = buffer.byteLength;
+  const cacheBuster = byteHash.slice(0, 8);
 
   try {
     const ext = format;
@@ -115,7 +120,7 @@ export async function materializeCellImageAsset(
     const filename = `${cellSeg}.${ext}`;
     await writeFile(join(dir, filename), buffer);
     return {
-      url: `/${GENERATED_CELL_VIZ_DIR}/${dirSeg}/${filename}?v=${Date.now()}`,
+      url: `/${GENERATED_CELL_VIZ_DIR}/${dirSeg}/${filename}?v=${cacheBuster}`,
       byteHash,
       byteLength,
     };

@@ -85,6 +85,18 @@ export async function runMapGenerationCore(
   const collector = new GenerationMetricsCollector();
   const reserved = options?.reservedMap ?? null;
 
+  // Fail fast and unambiguously when generation is unconfigured. Without the
+  // API key, `buildMapJob` would silently produce a `null` normalized brief
+  // and surface as the generic "Brief normalization unavailable" message —
+  // which leaves users (or operators) guessing whether the model failed,
+  // the prompt was rejected, or env config is wrong.
+  if (!process.env.OPENROUTER_API_KEY) {
+    const message =
+      "Map generation is not configured: set OPENROUTER_API_KEY in the server environment.";
+    if (reserved) await markReservedMapFailed(reserved.id, message);
+    return { outcome: "error", message, metrics: null };
+  }
+
   try {
     const mergedSink = withMetricsGenerationSink(options?.sink, collector);
     const { result, normalizedBrief, document } = await buildMapJob(briefInput, mergedSink, collector, {
@@ -95,7 +107,8 @@ export async function runMapGenerationCore(
     const inputBrief = briefInput as MapBrief;
 
     if (!normalizedBrief) {
-      const message = "Brief normalization unavailable.";
+      const message =
+        "Brief normalization came back empty. The model returned no structured brief — try a more specific topic, or check that OPENROUTER_API_KEY has access to the configured model.";
       if (reserved) await markReservedMapFailed(reserved.id, message);
       await logGenerationRun({
         id: `run_${crypto.randomUUID()}`,
@@ -131,8 +144,14 @@ export async function runMapGenerationCore(
     }
 
     if (result.status !== "success" || !document) {
+      // Prefer the engine's specific error (e.g. "Cell batch parse failed",
+      // "Visual probe rejected the axis labels", "Coordinate mismatch in cell
+      // A·03"). Fall back to a clear message that names the gate that failed
+      // — `canAutoPublish` checks ≥9 cells, ≥1 notable gap or impossible
+      // combo, ≥2 distinct examples per existing cell, ≥1 per rare cell.
       const message =
-        result.error ?? "The generated map did not meet structural publish requirements.";
+        result.error ??
+        "The generated map didn't meet the publish gate (≥9 cells, at least one notable gap or impossible combo, and ≥2 distinct examples per existing cell). Try a more concrete topic.";
       if (reserved) await markReservedMapFailed(reserved.id, message);
       await logGenerationRun({
         id: `run_${crypto.randomUUID()}`,
