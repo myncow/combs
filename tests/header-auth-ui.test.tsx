@@ -2,10 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { HeaderAuth } from "@/components/header-auth";
 
+type MockUser = { id: string; name?: string | null; email?: string | null };
+
 const { mockSession } = vi.hoisted(() => ({
   mockSession: {
     current: { data: null, isPending: false } as {
-      data: { user: { id: string } } | null;
+      data: { user: MockUser } | null;
       isPending: boolean;
     },
   },
@@ -56,15 +58,31 @@ describe("HeaderAuth", () => {
       "href",
       "/auth/sign-in?redirectTo=" + encodeURIComponent("/maps/abc?q=1"),
     );
-    expect(screen.queryByRole("button", { name: /account/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /account menu/i })).not.toBeInTheDocument();
   });
 
-  it("renders a subtle account icon button when signed in", () => {
-    mockSession.current = { data: { user: { id: "u1" } }, isPending: false };
+  it("shows the user's name on the account button when signed in", () => {
+    mockSession.current = {
+      data: { user: { id: "u1", name: "Armin", email: "armin@surreal.ai" } },
+      isPending: false,
+    };
     render(<HeaderAuth />);
 
-    expect(screen.getByRole("button", { name: /account/i })).toBeInTheDocument();
+    const button = screen.getByRole("button", { name: /account menu for armin/i });
+    expect(button).toBeInTheDocument();
+    expect(button).toHaveTextContent("Armin");
     expect(screen.queryByRole("link", { name: /sign in/i })).not.toBeInTheDocument();
+  });
+
+  it("falls back to the email local-part when no display name is set", () => {
+    mockSession.current = {
+      data: { user: { id: "u1", email: "armin@surreal.ai" } },
+      isPending: false,
+    };
+    render(<HeaderAuth />);
+
+    const button = screen.getByRole("button", { name: /account menu for armin/i });
+    expect(button).toHaveTextContent("armin");
   });
 
   it("renders an empty placeholder while session is resolving", () => {
@@ -73,7 +91,6 @@ describe("HeaderAuth", () => {
 
     expect(screen.queryByRole("link")).toBeNull();
     expect(screen.queryByRole("button")).toBeNull();
-    // The placeholder div keeps the slot's reserved width.
     expect(container.firstChild).toBeTruthy();
   });
 });

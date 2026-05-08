@@ -58,7 +58,7 @@ function subscribeToTheme(onChange: () => void) {
   };
 }
 
-export function SettingsMenu({ collapsed = false }: { collapsed?: boolean }) {
+export function SettingsMenu() {
   const triggerId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -118,8 +118,7 @@ export function SettingsMenu({ collapsed = false }: { collapsed?: boolean }) {
         aria-label="Open settings"
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "inline-flex h-9 items-center justify-center border border-border bg-background text-muted-foreground transition-colors duration-150 hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-          collapsed ? "w-9" : "w-9 shrink-0",
+          "inline-flex h-9 w-9 shrink-0 items-center justify-center border border-border bg-background text-muted-foreground transition-colors duration-150 hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           open && "border-foreground/40 text-foreground",
         )}
       >
@@ -130,7 +129,7 @@ export function SettingsMenu({ collapsed = false }: { collapsed?: boolean }) {
         <div
           role="dialog"
           aria-label="Settings"
-          className="absolute left-0 top-full z-30 mt-1 w-[min(320px,90vw)] origin-top-left border border-border bg-card shadow-md"
+          className="absolute right-0 top-full z-30 mt-1 w-[min(320px,90vw)] origin-top-right border border-border bg-card shadow-md"
         >
           <div className="flex items-center justify-between border-b border-border px-3 py-2">
             <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">

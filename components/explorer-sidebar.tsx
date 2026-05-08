@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { MapCard } from "@/components/map-card";
-import { SettingsMenu } from "@/components/settings-menu";
 import { LIBRARY_REFRESH_EVENT } from "@/lib/client-events";
 import { entryTransition } from "@/lib/motion";
 import type { SavedMap } from "@/lib/types";
@@ -124,7 +123,7 @@ export function ExplorerSidebar({
       )}
       aria-label={isSignedIn ? "Your maps" : "Recent maps"}
     >
-      <div className={cn("flex shrink-0 items-center gap-1.5 border-b border-border px-2 py-2", collapsed && "md:flex-col md:gap-1")}>
+      <div className="flex shrink-0 items-center gap-1.5 border-b border-border px-2 py-2">
         <Link
           href="/"
           aria-label="New map"
@@ -136,7 +135,6 @@ export function ExplorerSidebar({
           <Plus className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden strokeWidth={2.5} />
           <span className={cn(collapsed && "md:hidden")}>New map</span>
         </Link>
-        <SettingsMenu collapsed={collapsed} />
         <button
           type="button"
           onClick={() => setCollapsed((c) => !c)}

@@ -1,6 +1,7 @@
 "use client";
 
 import { HeaderAuth } from "@/components/header-auth";
+import { SettingsMenu } from "@/components/settings-menu";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { MouseEvent } from "react";
@@ -86,7 +87,8 @@ export function SiteHeader() {
             Top list
           </Link>
         </nav>
-        <div className="ml-auto flex shrink-0 items-center">
+        <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          <SettingsMenu />
           <HeaderAuth />
         </div>
       </div>
