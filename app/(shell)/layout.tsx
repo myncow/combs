@@ -6,6 +6,8 @@ import { hasDatabaseUrl } from "@/lib/db/client";
 import type { ListedLeaderboardEntry, SavedMap } from "@/lib/types";
 import { listLeaderboardEntries, listMaps } from "@/lib/store";
 
+export const dynamic = "force-dynamic";
+
 async function ExplorerSidebarLoader() {
   const { data: session } = await auth.getSession();
   const isSignedIn = Boolean(session?.user);

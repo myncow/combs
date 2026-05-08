@@ -5,6 +5,8 @@ import { hasDatabaseUrl } from "@/lib/db/client";
 import { listLeaderboardEntries } from "@/lib/store";
 import type { ListedLeaderboardEntry } from "@/lib/types";
 
+export const dynamic = "force-dynamic";
+
 async function loadHomeLeaderboardPreview(): Promise<ListedLeaderboardEntry[]> {
   if (!hasDatabaseUrl()) {
     return [];
