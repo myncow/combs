@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { ExplorerSidebar } from "@/components/explorer-sidebar";
+import { DEFAULT_SITE_SETTINGS } from "@/lib/content-defaults";
 import { getAuth } from "@/lib/auth/server";
 import { hasDatabaseUrl } from "@/lib/db/client";
-import type { SavedMap } from "@/lib/types";
-import { listMaps } from "@/lib/store";
+import type { NavigationLink, SavedMap, SiteSettings } from "@/lib/types";
+import { getNavigation, getSiteSettings, listMaps } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,14 @@ async function ExplorerSidebarLoader() {
   );
 }
 
-export default function ShellLayout({ children }: { children: React.ReactNode }) {
+export default async function ShellLayout({ children }: { children: React.ReactNode }) {
+  const footerData: { settings: SiteSettings; links: NavigationLink[] } = hasDatabaseUrl()
+    ? await Promise.all([getSiteSettings(), getNavigation("footer_primary")]).then(([settings, links]) => ({
+        settings,
+        links,
+      }))
+    : { settings: DEFAULT_SITE_SETTINGS, links: [] };
+
   return (
     <>
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
@@ -51,19 +59,32 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
         </div>
         <div className="order-1 flex min-h-0 min-w-0 flex-1 flex-col md:order-2">{children}</div>
       </div>
-      <ShellFooter />
+      <ShellFooter settings={footerData.settings} links={footerData.links} />
     </>
   );
 }
 
-function ShellFooter() {
+function ShellFooter({
+  settings,
+  links,
+}: {
+  settings: SiteSettings;
+  links: NavigationLink[];
+}) {
   const year = new Date().getFullYear();
   return (
     <footer className="shrink-0 border-t border-border md:hidden">
       <div className="mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-3 px-5 py-4 font-mono text-[12px] uppercase tracking-[0.22em] text-muted-foreground md:px-8">
-        <Link href="/" className="hover:text-foreground">
-          Raster · two-axis visual maps
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link href="/" className="hover:text-foreground">
+            {settings.footerCopy}
+          </Link>
+          {links.map((link) => (
+            <Link key={link.id} href={link.href} className="hover:text-foreground">
+              {link.label}
+            </Link>
+          ))}
+        </div>
         <span className="tabular-nums">{year}</span>
       </div>
     </footer>

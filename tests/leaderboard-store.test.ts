@@ -16,7 +16,9 @@ import { testBreadMapDocument } from "./fixtures/bread-map-document";
 async function truncateStoreTables() {
   const db = getDb();
   await db.execute(
-    sql.raw("TRUNCATE leaderboard_votes, leaderboard_entries, generation_runs, maps RESTART IDENTITY CASCADE"),
+    sql.raw(
+      "TRUNCATE spotlight_votes, spotlights, map_generation_runs, media_assets, map_example_reference_images, map_featured_examples, map_examples, map_cell_badges, map_cell_coordinates, map_callouts, map_constraints, map_cells, map_axis_values, map_axes, leaderboard_votes, leaderboard_entries, generation_runs, maps RESTART IDENTITY CASCADE",
+    ),
   );
 }
 

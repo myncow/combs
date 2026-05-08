@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { mapFiltersSchema } from "@/lib/schema";
-import { listMaps } from "@/lib/store";
+import { getPageByKey, listMaps } from "@/lib/store";
 
 export default async function GalleryPage({
   searchParams,
@@ -31,12 +31,15 @@ export default async function GalleryPage({
     pageSize: filters.pageSize,
     status: filters.status ?? "live",
   });
+  const pageContent = await getPageByKey("gallery");
+  const intro = pageContent?.key === "gallery" ? pageContent.intro : "Thumbnails and titles are in the sidebar.";
+  const heading = pageContent?.key === "gallery" ? pageContent.heading : "Maps";
 
   return (
     <main className="mx-auto w-full max-w-lg flex-1 overflow-y-auto overscroll-contain px-5 py-6 md:px-8 md:py-8">
-      <h1 className="font-sans text-xl font-semibold tracking-tight text-foreground md:text-2xl">Maps</h1>
+      <h1 className="font-sans text-xl font-semibold tracking-tight text-foreground md:text-2xl">{heading}</h1>
       <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-        Thumbnails and titles are in the sidebar.{" "}
+        {intro}{" "}
         {filters.topicFamily ? (
           <>
             Filter: <span className="text-foreground">{filters.topicFamily}</span>.{" "}

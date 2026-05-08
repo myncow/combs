@@ -6,7 +6,10 @@ import "./globals.css";
 import { NeonAuthProviders } from "@/components/neon-auth-providers";
 import { SiteHeader } from "@/components/site-header";
 import { ThemeBootstrap } from "@/components/theme-bootstrap";
+import { DEFAULT_SITE_SETTINGS } from "@/lib/content-defaults";
+import { hasDatabaseUrl } from "@/lib/db/client";
 import { getSiteUrl } from "@/lib/site-url";
+import { getNavigation, getSiteSettings } from "@/lib/store";
 import { THEME_STORAGE_KEY, parseThemeCookie } from "@/lib/theme-preference";
 import { cn } from "@/lib/utils";
 
@@ -22,33 +25,34 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
-const SITE_DESCRIPTION =
-  "Raster maps a topic across two picturable traits and marks the cells with no picture yet.";
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = hasDatabaseUrl() ? await getSiteSettings() : DEFAULT_SITE_SETTINGS;
 
-export const metadata: Metadata = {
-  metadataBase: getSiteUrl(),
-  title: {
-    default: "Raster — two-axis visual maps",
-    template: "%s · Raster",
-  },
-  description: SITE_DESCRIPTION,
-  applicationName: "Raster",
-  icons: {
-    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
-    shortcut: "/favicon.svg",
-  },
-  openGraph: {
-    title: "Raster — two-axis visual maps",
-    description: SITE_DESCRIPTION,
-    siteName: "Raster",
-    type: "website",
-  },
-  twitter: {
-    card: "summary",
-    title: "Raster — two-axis visual maps",
-    description: SITE_DESCRIPTION,
-  },
-};
+  return {
+    metadataBase: getSiteUrl(),
+    title: {
+      default: settings.defaultSeoTitle,
+      template: settings.metadataTitleTemplate,
+    },
+    description: settings.defaultSeoDescription,
+    applicationName: settings.appName,
+    icons: {
+      icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+      shortcut: "/favicon.svg",
+    },
+    openGraph: {
+      title: settings.openGraphTitle,
+      description: settings.openGraphDescription,
+      siteName: settings.appName,
+      type: "website",
+    },
+    twitter: {
+      card: "summary",
+      title: settings.openGraphTitle,
+      description: settings.openGraphDescription,
+    },
+  };
+}
 
 export default async function RootLayout({
   children,
@@ -58,6 +62,9 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const cookiePref = parseThemeCookie(cookieStore.get(THEME_STORAGE_KEY)?.value);
   const ssrDark = (cookiePref ?? "system") === "dark";
+  const [settings, headerLinks] = hasDatabaseUrl()
+    ? await Promise.all([getSiteSettings(), getNavigation("header_primary")])
+    : [DEFAULT_SITE_SETTINGS, []];
 
   return (
     <html
@@ -70,7 +77,7 @@ export default async function RootLayout({
         <ThemeBootstrap />
         <NeonAuthProviders>
           <div className="flex h-dvh flex-col overflow-hidden">
-            <SiteHeader />
+            <SiteHeader brandName={settings.appName} primaryLinks={headerLinks} />
             <div className="flex min-h-0 flex-1 flex-col">{children}</div>
           </div>
         </NeonAuthProviders>

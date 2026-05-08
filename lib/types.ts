@@ -12,12 +12,18 @@ export const MAP_VISUAL_SERIES_PRESETS = [
 ] as const;
 export const LEADERBOARD_SORTS = ["top", "new"] as const;
 export const LEADERBOARD_VOTE_DIRECTIONS = ["up", "down"] as const;
+export const NAVIGATION_LOCATIONS = ["header_primary", "footer_primary", "footer_legal"] as const;
+export const PAGE_STATUSES = ["draft", "published", "archived"] as const;
+export const PAGE_TEMPLATES = ["home", "listing"] as const;
 
 export type MapCellStatus = (typeof MAP_CELL_STATUSES)[number];
 export type MapVisibility = (typeof MAP_VISIBILITY)[number];
 export type MapVisualSeriesPresetId = (typeof MAP_VISUAL_SERIES_PRESETS)[number];
 export type LeaderboardSort = (typeof LEADERBOARD_SORTS)[number];
 export type LeaderboardVoteDirection = (typeof LEADERBOARD_VOTE_DIRECTIONS)[number];
+export type NavigationLocation = (typeof NAVIGATION_LOCATIONS)[number];
+export type PageStatus = (typeof PAGE_STATUSES)[number];
+export type PageTemplate = (typeof PAGE_TEMPLATES)[number];
 
 export interface MapVisualStyleSpec {
   medium: string;
@@ -259,6 +265,60 @@ export interface ExamplePrompt {
   whyItWorks: string;
   traits?: [string, string, string];
 }
+
+export interface SiteSettings {
+  id: string;
+  appName: string;
+  defaultSeoTitle: string;
+  defaultSeoDescription: string;
+  metadataTitleTemplate: string;
+  openGraphTitle: string;
+  openGraphDescription: string;
+  footerCopy: string;
+  supportEmail?: string | null;
+  contactUrl?: string | null;
+  updatedAt: string;
+  publishedAt?: string | null;
+}
+
+export interface NavigationLink {
+  id: string;
+  location: NavigationLocation;
+  label: string;
+  href: string;
+  sortOrder: number;
+  isEnabled: boolean;
+}
+
+export interface HomePageContent {
+  key: "home";
+  slug: string;
+  title: string;
+  seoTitle: string;
+  seoDescription: string;
+  heroTitle: string;
+  heroBody: string;
+  primaryCtaLabel: string;
+  primaryCtaHref: string;
+  sectionEyebrow: string;
+  sectionTitle: string;
+  sectionSummary: string;
+}
+
+export interface ListingPageContent {
+  key: "gallery" | "leaderboard";
+  slug: string;
+  title: string;
+  seoTitle: string;
+  seoDescription: string;
+  heading: string;
+  intro: string;
+  helperText: string;
+  emptyStateTitle: string;
+  emptyStateBody: string;
+}
+
+export type PageContent = HomePageContent | ListingPageContent;
 
 export interface GenerationRun {
   id: string;

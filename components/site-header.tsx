@@ -5,6 +5,7 @@ import { SettingsMenu } from "@/components/settings-menu";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { MouseEvent } from "react";
+import type { NavigationLink } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 function LogoMark({ className = "" }: { className?: string }) {
@@ -30,7 +31,13 @@ function LogoMark({ className = "" }: { className?: string }) {
   );
 }
 
-export function SiteHeader() {
+export function SiteHeader({
+  brandName = "Raster",
+  primaryLinks = [],
+}: {
+  brandName?: string;
+  primaryLinks?: NavigationLink[];
+}) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -59,8 +66,6 @@ export function SiteHeader() {
     router.push("/");
   }
 
-  const isLeaderboard = pathname?.startsWith("/leaderboard") ?? false;
-
   return (
     <header className="sticky top-0 z-20 shrink-0 border-b border-border bg-[color:color-mix(in_srgb,var(--background)_92%,transparent)] backdrop-blur-md">
       <div className="mx-auto flex max-w-[1240px] items-center gap-5 px-5 py-2.5 md:px-8 md:py-2">
@@ -72,20 +77,29 @@ export function SiteHeader() {
         >
           <LogoMark className="text-foreground" />
           <span className="font-sans text-[15px] font-semibold uppercase leading-none tracking-[0.08em]">
-            Raster
+            {brandName}
           </span>
         </Link>
         <nav aria-label="Primary" className="flex items-center">
-          <Link
-            href="/leaderboard"
-            aria-current={isLeaderboard ? "page" : undefined}
-            className={cn(
-              "rounded-sm px-2 py-1 font-mono text-[11px] uppercase tracking-[0.18em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              isLeaderboard ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            Top list
-          </Link>
+          {primaryLinks.map((link) => {
+            const isActive =
+              link.href === "/"
+                ? pathname === "/"
+                : pathname?.startsWith(link.href) ?? false;
+            return (
+              <Link
+                key={link.id}
+                href={link.href}
+                aria-current={isActive ? "page" : undefined}
+                className={cn(
+                  "rounded-sm px-2 py-1 font-mono text-[11px] uppercase tracking-[0.18em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                  isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
         </nav>
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
           <SettingsMenu />

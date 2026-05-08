@@ -30,6 +30,7 @@ Create a Postgres database, point `DATABASE_URL` at it, then apply schema:
 
 ```bash
 pnpm db:migrate
+pnpm db:backfill
 pnpm dev
 ```
 
@@ -39,7 +40,10 @@ Other commands:
 pnpm lint
 pnpm test
 pnpm build
+pnpm db:backfill
 ```
+
+`pnpm db:backfill` seeds editorial site content and backfills existing document-era map and leaderboard rows into the relational schema used by the current app.
 
 ### Tests and Postgres
 
