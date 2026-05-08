@@ -5,7 +5,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Lock, RefreshCw, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ImageModelPicker } from "@/components/image-model-picker";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { entryTransition } from "@/lib/motion";
@@ -458,9 +457,9 @@ export function CreateMapForm() {
             : `${pairs.length} frames suggested.`;
 
   return (
-    <form onSubmit={onSubmit} className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="flex min-h-0 flex-1 flex-col gap-6 py-1 md:py-2">
+    <form onSubmit={onSubmit} className="flex min-w-0 flex-col">
+      <section className="flex min-w-0 flex-col">
+        <div className="flex flex-col gap-6 py-1 md:py-2">
           <Input
             id="create-map-topic"
             name="topic"
@@ -500,7 +499,11 @@ export function CreateMapForm() {
           />
 
           <ResponsiveAxesSlot>
-            <div aria-live="polite" aria-busy={suggestLoading} className="min-h-[3rem] space-y-2">
+            <div
+              aria-live="polite"
+              aria-busy={suggestLoading}
+              className="h-[12.5rem] space-y-2 overflow-y-auto overscroll-contain pr-0.5"
+            >
               <p className="sr-only" role="status">
                 {suggestLiveMessage}
               </p>
@@ -602,9 +605,12 @@ export function CreateMapForm() {
             </p>
           ) : null}
 
-          <div className="mt-auto flex flex-col gap-3 pt-2 md:flex-row md:items-end md:justify-between md:gap-4">
-            <ImageModelPicker />
-            <Button type="submit" disabled={busy || authPending} size="lg" className="h-11 w-full shrink-0 md:w-auto md:min-w-44">
+          <Button
+            type="submit"
+            disabled={busy || authPending}
+            size="lg"
+            className="h-11 w-full shrink-0 md:w-auto md:min-w-44 md:self-end"
+          >
             <AnimatePresence mode="wait" initial={false}>
               {busy ? (
                 <motion.span
@@ -633,7 +639,6 @@ export function CreateMapForm() {
               )}
             </AnimatePresence>
           </Button>
-          </div>
         </div>
       </section>
     </form>

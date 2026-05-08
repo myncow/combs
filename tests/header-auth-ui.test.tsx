@@ -2,12 +2,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { HeaderAuth } from "@/components/header-auth";
 
-const { mockIsSignedIn } = vi.hoisted(() => ({
-  mockIsSignedIn: { current: false },
+const { mockSession } = vi.hoisted(() => ({
+  mockSession: {
+    current: { data: null, isPending: false } as {
+      data: { user: { id: string } } | null;
+      isPending: boolean;
+    },
+  },
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh: vi.fn() }),
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
   usePathname: () => "/maps/abc",
   useSearchParams: () => new URLSearchParams("?q=1"),
 }));
@@ -27,46 +32,48 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-vi.mock("@neondatabase/auth/react", () => ({
-  SignedIn: ({ children }: { children: React.ReactNode }) =>
-    mockIsSignedIn.current ? <>{children}</> : null,
-  SignedOut: ({ children }: { children: React.ReactNode }) =>
-    mockIsSignedIn.current ? null : <>{children}</>,
-  UserButton: () => <button type="button" aria-label="User menu">user menu</button>,
+vi.mock("@/lib/auth/client", () => ({
+  authClient: {
+    useSession: () => mockSession.current,
+    signOut: vi.fn(),
+  },
 }));
 
 describe("HeaderAuth", () => {
   beforeEach(() => {
-    mockIsSignedIn.current = false;
+    mockSession.current = { data: null, isPending: false };
   });
 
   afterEach(() => {
     cleanup();
   });
 
-  it("shows sign-in and create-account CTAs when signed out", () => {
-    mockIsSignedIn.current = false;
-
+  it("renders a single Sign in icon link when signed out", () => {
     render(<HeaderAuth />);
 
-    expect(screen.getByRole("link", { name: /^sign in$/i })).toHaveAttribute(
+    const link = screen.getByRole("link", { name: /sign in/i });
+    expect(link).toHaveAttribute(
       "href",
       "/auth/sign-in?redirectTo=" + encodeURIComponent("/maps/abc?q=1"),
     );
-    expect(screen.getByRole("link", { name: /create account/i })).toHaveAttribute(
-      "href",
-      "/auth/sign-up?redirectTo=" + encodeURIComponent("/maps/abc?q=1"),
-    );
-    expect(screen.queryByRole("button", { name: /user menu/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /account/i })).not.toBeInTheDocument();
   });
 
-  it("renders the Neon UserButton when authenticated", () => {
-    mockIsSignedIn.current = true;
-
+  it("renders a subtle account icon button when signed in", () => {
+    mockSession.current = { data: { user: { id: "u1" } }, isPending: false };
     render(<HeaderAuth />);
 
-    expect(screen.getByRole("button", { name: /user menu/i })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /^sign in$/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /create account/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /account/i })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /sign in/i })).not.toBeInTheDocument();
+  });
+
+  it("renders an empty placeholder while session is resolving", () => {
+    mockSession.current = { data: null, isPending: true };
+    const { container } = render(<HeaderAuth />);
+
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
+    // The placeholder div keeps the slot's reserved width.
+    expect(container.firstChild).toBeTruthy();
   });
 });

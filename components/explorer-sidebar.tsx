@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { MapCard } from "@/components/map-card";
+import { SettingsMenu } from "@/components/settings-menu";
 import { LIBRARY_REFRESH_EVENT } from "@/lib/client-events";
 import { entryTransition } from "@/lib/motion";
 import type { SavedMap } from "@/lib/types";
@@ -123,22 +124,23 @@ export function ExplorerSidebar({
       )}
       aria-label={isSignedIn ? "Your maps" : "Recent maps"}
     >
-      <div className="flex shrink-0 items-center gap-1 border-b border-border px-2 py-2">
+      <div className={cn("flex shrink-0 items-center gap-1.5 border-b border-border px-2 py-2", collapsed && "md:flex-col md:gap-1")}>
         <Link
           href="/"
           aria-label="New map"
           className={cn(
-            "inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-sm border border-border bg-card px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-foreground transition-[border-color,background-color,color] duration-150 hover:border-primary/35 hover:bg-[color:color-mix(in_srgb,var(--primary)_6%,var(--card))] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-            collapsed && "md:px-0",
+            "inline-flex h-9 flex-1 items-center justify-center gap-2 border border-border bg-card px-3 font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-foreground transition-[border-color,background-color,color] duration-150 hover:border-primary/35 hover:bg-[color:color-mix(in_srgb,var(--primary)_6%,var(--card))] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            collapsed && "md:w-9 md:flex-none md:px-0",
           )}
         >
           <Plus className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden strokeWidth={2.5} />
           <span className={cn(collapsed && "md:hidden")}>New map</span>
         </Link>
+        <SettingsMenu collapsed={collapsed} />
         <button
           type="button"
           onClick={() => setCollapsed((c) => !c)}
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           aria-label={collapsed ? "Expand library" : "Collapse library"}
           title={collapsed ? "Expand" : "Collapse"}
         >
@@ -157,7 +159,7 @@ export function ExplorerSidebar({
               {loadErr}
             </p>
           ) : maps.length ? (
-            <ul className="divide-y divide-border">
+            <ul className="px-1 py-1">
               <AnimatePresence initial={false}>
                 {maps.map((map) => (
                   <motion.li

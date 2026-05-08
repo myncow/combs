@@ -6,13 +6,8 @@ import "./globals.css";
 import { NeonAuthProviders } from "@/components/neon-auth-providers";
 import { SiteHeader } from "@/components/site-header";
 import { ThemeBootstrap } from "@/components/theme-bootstrap";
-import { ThemeSwitcher } from "@/components/theme-switcher";
 import { getSiteUrl } from "@/lib/site-url";
-import {
-  THEME_STORAGE_KEY,
-  parseThemeCookie,
-  type ThemePreference,
-} from "@/lib/theme-preference";
+import { THEME_STORAGE_KEY, parseThemeCookie } from "@/lib/theme-preference";
 import { cn } from "@/lib/utils";
 
 const geistSans = Geist({
@@ -62,8 +57,7 @@ export default async function RootLayout({
 }>) {
   const cookieStore = await cookies();
   const cookiePref = parseThemeCookie(cookieStore.get(THEME_STORAGE_KEY)?.value);
-  const initialThemePreference: ThemePreference = cookiePref ?? "system";
-  const ssrDark = initialThemePreference === "dark";
+  const ssrDark = (cookiePref ?? "system") === "dark";
 
   return (
     <html
@@ -72,16 +66,12 @@ export default async function RootLayout({
       data-scroll-behavior="smooth"
       className={cn(geistSans.variable, geistMono.variable, "h-full antialiased", ssrDark && "dark")}
     >
-      <body className="min-h-dvh bg-background font-sans text-foreground md:h-dvh md:overflow-hidden">
+      <body className="h-dvh overflow-hidden bg-background font-sans text-foreground">
         <ThemeBootstrap />
         <NeonAuthProviders>
-          <div className="flex min-h-dvh flex-col md:h-dvh md:overflow-hidden">
+          <div className="flex h-dvh flex-col overflow-hidden">
             <SiteHeader />
             <div className="flex min-h-0 flex-1 flex-col">{children}</div>
-            <ThemeSwitcher
-              initialPreference={initialThemePreference}
-              initialResolvedDark={ssrDark}
-            />
           </div>
         </NeonAuthProviders>
       </body>

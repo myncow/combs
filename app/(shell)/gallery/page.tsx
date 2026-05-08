@@ -33,7 +33,7 @@ export default async function GalleryPage({
   });
 
   return (
-    <main className="mx-auto w-full max-w-lg px-5 py-6 md:px-8 md:py-8">
+    <main className="mx-auto w-full max-w-lg flex-1 overflow-y-auto overscroll-contain px-5 py-6 md:px-8 md:py-8">
       <h1 className="font-sans text-xl font-semibold tracking-tight text-foreground md:text-2xl">Maps</h1>
       <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
         Thumbnails and titles are in the sidebar.{" "}
