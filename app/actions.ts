@@ -150,7 +150,26 @@ export async function visualizeCellAction(
         message: "This cell uses reference-led browsing rather than generated frontier visuals.",
       };
     }
-    const moderationSource = `${document.title} ${document.domain} ${cell.label} ${cell.explanation}`;
+    // Moderate every string that ends up interpolated into the sketch prompt
+    // or surfaced in the UI. The cell's label/explanation are LLM-generated
+    // (the brief was moderated, but cells weren't), and example names flow
+    // verbatim into both the prompt's grounding cues and the drawer caption.
+    const exampleStrings = (cell.examples ?? []).flatMap((example) => [
+      example.name,
+      example.brand,
+      example.year,
+      example.evidenceNote,
+      example.description,
+    ]);
+    const moderationSource = [
+      document.title,
+      document.domain,
+      cell.label,
+      cell.explanation,
+      ...exampleStrings,
+    ]
+      .filter((value): value is string => typeof value === "string" && value.length > 0)
+      .join(" ");
     const moderated = moderateText(moderationSource);
     if (!moderated.safe) {
       return {
