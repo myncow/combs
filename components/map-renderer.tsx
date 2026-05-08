@@ -460,7 +460,10 @@ function StatusLegend() {
 
 
 function columnCode(index: number) {
-  return String(index + 1);
+  // Zero-padded to the natural width of a draftsman's grid column. Two digits
+  // is enough for any human-scale map and keeps the codes visually anchored
+  // (`A·01`, `B·14`) rather than ragged (`A·1`, `B·14`).
+  return String(index + 1).padStart(2, "0");
 }
 
 function rowCode(index: number) {
@@ -816,7 +819,21 @@ function MapRendererInner({
         </div>
 
         <div className="grid min-h-0 w-full flex-1 gap-px overflow-hidden bg-border" style={matrixGridStyle}>
-          <div className="bg-background" style={{ gridColumn: "1", gridRow: "1" }} aria-hidden />
+          <div
+            className="relative flex items-end justify-end bg-background pb-1.5 pr-1.5"
+            style={{ gridColumn: "1", gridRow: "1" }}
+            aria-hidden
+          >
+            {/* Crosshair where the X and Y axis label rails meet — drafting paper
+                idiom, anchored to the bottom-right of the corner cell so it sits
+                exactly at the matrix origin. */}
+            <span
+              aria-hidden
+              className="font-mono text-[14px] leading-none text-muted-foreground/55"
+            >
+              +
+            </span>
+          </div>
           <div
             className="grid min-h-0 gap-px bg-border"
             style={{
@@ -1375,7 +1392,15 @@ function CellDrawer({
             role="dialog"
             aria-modal="true"
             aria-label={`Detail: ${cell.label}`}
-            className="relative flex h-full w-full max-w-xl flex-col overflow-y-auto overscroll-contain border-l border-border bg-card sm:w-[32rem]"
+            // Status-tinted left rail: 2px primary edge for unnamed (frontier)
+            // cells echoes the cell tile's left bar, so the drawer reads as
+            // "of" that cell rather than as a generic side panel.
+            className={cn(
+              "relative flex h-full w-full max-w-xl flex-col overflow-y-auto overscroll-contain bg-card sm:w-[32rem]",
+              isUnnamedCell(cell)
+                ? "border-l-2 border-primary/55"
+                : "border-l border-border",
+            )}
             initial={reduceMotion ? { opacity: 0 } : { x: 40, opacity: 0 }}
             animate={reduceMotion ? { opacity: 1 } : { x: 0, opacity: 1 }}
             exit={reduceMotion ? { opacity: 0 } : { x: 40, opacity: 0 }}
@@ -1583,7 +1608,7 @@ function DrawerBody({
       ) : null}
 
       <motion.div
-        className="flex-1 space-y-7 px-6 py-6"
+        className="flex-1 px-6 py-6 [&>*+*]:mt-6 [&>*+*]:border-t [&>*+*]:border-border [&>*+*]:pt-6"
         initial={reduceMotion ? undefined : "hidden"}
         animate={reduceMotion ? undefined : "visible"}
         variants={{

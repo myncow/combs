@@ -31,8 +31,8 @@ export function LeaderboardCard({
             className={featured ? "aspect-[4/3] h-full w-full object-cover" : "aspect-[16/11] h-full w-full object-cover"}
           />
           {rank ? (
-            <div className="absolute left-3 top-3 border border-foreground bg-foreground px-2 py-1 font-mono text-[11px] uppercase tracking-[0.22em] text-background">
-              #{rank}
+            <div className="absolute left-3 top-3 border border-foreground bg-foreground px-2 py-1 font-mono text-[11px] uppercase tracking-[0.22em] text-background tabular-nums">
+              #{String(rank).padStart(2, "0")}
             </div>
           ) : null}
         </div>

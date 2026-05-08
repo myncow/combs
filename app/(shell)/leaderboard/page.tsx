@@ -44,14 +44,26 @@ export default async function LeaderboardPage({
 
   return (
     <main className="mx-auto flex w-full max-w-[1240px] flex-1 flex-col gap-8 overflow-y-auto overscroll-contain px-5 py-8 md:px-8 md:py-10">
-      <header>
-        <h1 className="font-sans text-[26px] font-semibold leading-tight tracking-[-0.02em] text-foreground md:text-[32px]">
+      <header className="border-b border-border pb-6">
+        <div className="flex items-baseline gap-3">
+          <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-primary tabular-nums">
+            01
+          </span>
+          <span aria-hidden className="h-px flex-1 bg-border" />
+          <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground tabular-nums">
+            {String(entries.total).padStart(2, "0")} {entries.total === 1 ? "spotlight" : "spotlights"}
+          </span>
+        </div>
+        <h1 className="mt-4 font-sans text-[26px] font-semibold leading-tight tracking-[-0.025em] text-foreground md:text-[32px]">
           Top list
         </h1>
         <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-muted-foreground">
           Frontier cells published by the community. Vote on the ones that feel right.
         </p>
         <div className="mt-5 flex flex-wrap items-center gap-2">
+          <span className="mr-1 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            Filter
+          </span>
           <Link
             href={`/leaderboard?sort=top${filters.topicFamily ? `&topicFamily=${encodeURIComponent(filters.topicFamily)}` : ""}`}
             className={
@@ -89,9 +101,6 @@ export default async function LeaderboardPage({
               </Link>
             </Badge>
           ))}
-          <span className="ml-auto font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground tabular-nums">
-            {entries.total === 1 ? "1 spotlight" : `${entries.total} spotlights`}
-          </span>
         </div>
       </header>
 

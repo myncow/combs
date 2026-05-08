@@ -73,11 +73,52 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
   font-feature-settings: "ss01" 1, "cv11" 1, "kern" 1;
+  font-variant-numeric: tabular-nums;
   font-size: 16px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  position: relative;
+}
+
+/* Paper grain — barely-perceptible noise so the cool paper background reads as
+ * real engineering paper instead of flat fill. Fixed positioning so it never
+ * shifts with scroll. The two stacked radial gradients alternate light/dark
+ * specks at coprime spacings (7px / 11px) to avoid a visible repeat pattern.
+ * Disabled at smaller scales (mobile) where the dot-pitch can alias unpleasantly. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.55;
+  background-image:
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--foreground) 6%, transparent) 0.5px, transparent 1.2px),
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--background) 95%, var(--foreground)) 0.5px, transparent 1.2px);
+  background-size: 7px 7px, 11px 11px;
+  background-position: 0 0, 3px 4px;
+  mix-blend-mode: multiply;
+}
+
+html.dark body::before {
+  opacity: 0.32;
+  mix-blend-mode: screen;
+  background-image:
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--foreground) 12%, transparent) 0.5px, transparent 1.2px),
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--background) 88%, var(--foreground)) 0.5px, transparent 1.2px);
+}
+
+@media (max-width: 480px) {
+  body::before {
+    display: none;
+  }
+}
+
+body > * {
+  position: relative;
+  z-index: 1;
 }
 
 h1,
