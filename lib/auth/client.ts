@@ -1,8 +1,5 @@
 "use client";
 
-import { createAuthClient } from "@neondatabase/auth";
-import { BetterAuthReactAdapter } from "@neondatabase/auth/react";
+import { createAuthClient } from "@neondatabase/auth/next";
 
-export const authClient = createAuthClient("/api/auth", {
-  adapter: BetterAuthReactAdapter(),
-});
+export const authClient = createAuthClient();
