@@ -137,6 +137,10 @@ function inferAssetProvider(url: string): "public_path" | "external_url" | "verc
   return "external_url";
 }
 
+function logReadFallback(scope: string, error: unknown) {
+  console.error(`[store:${scope}] read fallback`, error);
+}
+
 async function ensureMediaAsset(
   db: DbLike,
   {
@@ -707,21 +711,31 @@ async function hydrateSpotlightRows(
 }
 
 export async function listExamplePrompts(): Promise<ExamplePrompt[]> {
-  const db = getDb();
-  const rows = await db.select().from(examplePromptsTable).orderBy(asc(examplePromptsTable.title));
-  return rows.map((row) => ({
-    id: row.id,
-    title: row.title,
-    topicFamily: row.topicFamily,
-    prompt: row.prompt,
-    whyItWorks: row.whyItWorks,
-  }));
+  try {
+    const db = getDb();
+    const rows = await db.select().from(examplePromptsTable).orderBy(asc(examplePromptsTable.title));
+    return rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      topicFamily: row.topicFamily,
+      prompt: row.prompt,
+      whyItWorks: row.whyItWorks,
+    }));
+  } catch (error) {
+    logReadFallback("listExamplePrompts", error);
+    return [];
+  }
 }
 
 export async function listLeaderboardTopicFamilies(): Promise<string[]> {
-  const db = getDb();
-  const rows = await db.select({ topicFamily: spotlightsTable.topicFamilySnapshot }).from(spotlightsTable);
-  return [...new Set(rows.map((row) => row.topicFamily).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  try {
+    const db = getDb();
+    const rows = await db.select({ topicFamily: spotlightsTable.topicFamilySnapshot }).from(spotlightsTable);
+    return [...new Set(rows.map((row) => row.topicFamily).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  } catch (error) {
+    logReadFallback("listLeaderboardTopicFamilies", error);
+    return [];
+  }
 }
 
 export async function listLeaderboardEntries({
@@ -737,39 +751,52 @@ export async function listLeaderboardEntries({
   pageSize?: number;
   requesterId?: string;
 }) {
-  const db = getDb();
-  const whereClause =
-    topicFamily && topicFamily !== "All" ? eq(spotlightsTable.topicFamilySnapshot, topicFamily) : undefined;
-  const rows = await db
-    .select()
-    .from(spotlightsTable)
-    .where(whereClause)
-    .orderBy(
-      sort === "top" ? desc(spotlightsTable.score) : desc(spotlightsTable.publishedAt),
-      desc(spotlightsTable.publishedAt),
-    )
-    .limit(pageSize)
-    .offset((page - 1) * pageSize);
-  const [{ count }] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(spotlightsTable)
-    .where(whereClause);
+  try {
+    const db = getDb();
+    const whereClause =
+      topicFamily && topicFamily !== "All" ? eq(spotlightsTable.topicFamilySnapshot, topicFamily) : undefined;
+    const rows = await db
+      .select()
+      .from(spotlightsTable)
+      .where(whereClause)
+      .orderBy(
+        sort === "top" ? desc(spotlightsTable.score) : desc(spotlightsTable.publishedAt),
+        desc(spotlightsTable.publishedAt),
+      )
+      .limit(pageSize)
+      .offset((page - 1) * pageSize);
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(spotlightsTable)
+      .where(whereClause);
 
-  return {
-    items: await hydrateSpotlightRows(db, rows, requesterId),
-    total: Number(count),
-  };
+    return {
+      items: await hydrateSpotlightRows(db, rows, requesterId),
+      total: Number(count),
+    };
+  } catch (error) {
+    logReadFallback("listLeaderboardEntries", error);
+    return {
+      items: [],
+      total: 0,
+    };
+  }
 }
 
 export async function getLeaderboardEntryBySlug(slug: string, requesterId?: string) {
-  const db = getDb();
-  const rows = await db
-    .select()
-    .from(spotlightsTable)
-    .where(eq(spotlightsTable.slug, slug))
-    .limit(1);
-  if (!rows.length) return null;
-  return (await hydrateSpotlightRows(db, rows, requesterId))[0] ?? null;
+  try {
+    const db = getDb();
+    const rows = await db
+      .select()
+      .from(spotlightsTable)
+      .where(eq(spotlightsTable.slug, slug))
+      .limit(1);
+    if (!rows.length) return null;
+    return (await hydrateSpotlightRows(db, rows, requesterId))[0] ?? null;
+  } catch (error) {
+    logReadFallback("getLeaderboardEntryBySlug", error);
+    return null;
+  }
 }
 
 async function getMapAndCellForSpotlight(db: DbLike, mapSlug: string, cellKey: string) {
@@ -1027,52 +1054,65 @@ export async function listMaps({
   page?: number;
   pageSize?: number;
 }) {
-  const db = getDb();
-  const statusFilter =
-    status === "live"
-      ? ne(mapsTable.status, "failed")
-      : status === "library"
-        ? inArray(mapsTable.status, ["published", "generating", "failed"])
-        : eq(mapsTable.status, status);
+  try {
+    const db = getDb();
+    const statusFilter =
+      status === "live"
+        ? ne(mapsTable.status, "failed")
+        : status === "library"
+          ? inArray(mapsTable.status, ["published", "generating", "failed"])
+          : eq(mapsTable.status, status);
 
-  const conditions = [statusFilter];
-  if (topicFamily && topicFamily !== "All") {
-    conditions.push(eq(mapsTable.topicFamily, topicFamily));
-  }
-
-  const rows = await db
-    .select()
-    .from(mapsTable)
-    .where(and(...conditions))
-    .orderBy(desc(mapsTable.publishedAt))
-    .limit(pageSize)
-    .offset((page - 1) * pageSize);
-
-  const [{ count }] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(mapsTable)
-    .where(and(...conditions));
-
-  const items: SavedMap[] = [];
-  for (const row of rows) {
-    try {
-      items.push(await hydrateSavedMap(db, row as unknown as MapRow));
-    } catch (err) {
-      console.error("[listMaps] skipping unreadable map row:", (row as { slug?: string })?.slug, err);
+    const conditions = [statusFilter];
+    if (topicFamily && topicFamily !== "All") {
+      conditions.push(eq(mapsTable.topicFamily, topicFamily));
     }
-  }
 
-  return {
-    items,
-    total: Number(count),
-  };
+    const rows = await db
+      .select()
+      .from(mapsTable)
+      .where(and(...conditions))
+      .orderBy(desc(mapsTable.publishedAt))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize);
+
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(mapsTable)
+      .where(and(...conditions));
+
+    const items: SavedMap[] = [];
+    for (const row of rows) {
+      try {
+        items.push(await hydrateSavedMap(db, row as unknown as MapRow));
+      } catch (err) {
+        console.error("[listMaps] skipping unreadable map row:", (row as { slug?: string })?.slug, err);
+      }
+    }
+
+    return {
+      items,
+      total: Number(count),
+    };
+  } catch (error) {
+    logReadFallback("listMaps", error);
+    return {
+      items: [],
+      total: 0,
+    };
+  }
 }
 
 export async function getMapBySlug(slug: string) {
-  const db = getDb();
-  const rows = await db.select().from(mapsTable).where(eq(mapsTable.slug, slug)).limit(1);
-  if (!rows.length) return null;
-  return hydrateSavedMap(db, rows[0] as unknown as MapRow);
+  try {
+    const db = getDb();
+    const rows = await db.select().from(mapsTable).where(eq(mapsTable.slug, slug)).limit(1);
+    if (!rows.length) return null;
+    return hydrateSavedMap(db, rows[0] as unknown as MapRow);
+  } catch (error) {
+    logReadFallback("getMapBySlug", error);
+    return null;
+  }
 }
 
 export async function deleteMapBySlug(slug: string) {
