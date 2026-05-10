@@ -6,10 +6,6 @@ import { getDatabaseUrl } from "@/lib/env";
 let dbInstance: ReturnType<typeof drizzle<typeof schema>> | null = null;
 let sqlClient: ReturnType<typeof postgres> | null = null;
 
-export function hasDatabaseUrl() {
-  return Boolean(getDatabaseUrl());
-}
-
 export function getDb() {
   const url = getDatabaseUrl();
   if (!url) {

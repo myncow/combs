@@ -9,8 +9,7 @@
     "lint": "eslint",
     "test": "vitest run --coverage",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:backfill": "tsx scripts/backfill-relational-content.ts"
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "@neondatabase/auth": "0.3.0-beta",

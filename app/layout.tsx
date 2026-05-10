@@ -6,8 +6,6 @@ import "./globals.css";
 import { NeonAuthProviders } from "@/components/neon-auth-providers";
 import { SiteHeader } from "@/components/site-header";
 import { ThemeBootstrap } from "@/components/theme-bootstrap";
-import { DEFAULT_SITE_SETTINGS } from "@/lib/content-defaults";
-import { hasDatabaseUrl } from "@/lib/db/client";
 import { getSiteUrl } from "@/lib/site-url";
 import { getNavigation, getSiteSettings } from "@/lib/store";
 import { THEME_STORAGE_KEY, parseThemeCookie } from "@/lib/theme-preference";
@@ -26,7 +24,7 @@ const geistMono = Geist_Mono({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = hasDatabaseUrl() ? await getSiteSettings() : DEFAULT_SITE_SETTINGS;
+  const settings = await getSiteSettings();
 
   return {
     metadataBase: getSiteUrl(),
@@ -62,9 +60,7 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const cookiePref = parseThemeCookie(cookieStore.get(THEME_STORAGE_KEY)?.value);
   const ssrDark = (cookiePref ?? "system") === "dark";
-  const [settings, headerLinks] = hasDatabaseUrl()
-    ? await Promise.all([getSiteSettings(), getNavigation("header_primary")])
-    : [DEFAULT_SITE_SETTINGS, []];
+  const [settings, headerLinks] = await Promise.all([getSiteSettings(), getNavigation("header_primary")]);
 
   return (
     <html

@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 const buildMapJobMock = vi.fn();
 const saveMapMock = vi.fn();
 const logGenerationRunMock = vi.fn();
+const applyMapPatchMock = vi.fn();
 const getDbMock = vi.fn();
 const updateMock = vi.fn();
 const setMock = vi.fn();
@@ -13,6 +14,7 @@ vi.mock("@/lib/map-engine", () => ({
 }));
 
 vi.mock("@/lib/store", () => ({
+  applyMapPatch: (...args: unknown[]) => applyMapPatchMock(...args),
   saveMap: (...args: unknown[]) => saveMapMock(...args),
   logGenerationRun: (...args: unknown[]) => logGenerationRunMock(...args),
 }));
@@ -48,10 +50,12 @@ describe("runMapGenerationCore", () => {
     buildMapJobMock.mockReset();
     saveMapMock.mockReset();
     logGenerationRunMock.mockReset();
+    applyMapPatchMock.mockReset();
     getDbMock.mockReset();
     updateMock.mockReset();
     setMock.mockReset();
     whereMock.mockReset();
+    applyMapPatchMock.mockResolvedValue({ revision: 1 });
 
     getDbMock.mockReturnValue({ update: updateMock });
     updateMock.mockReturnValue({ set: setMock });
@@ -195,6 +199,13 @@ describe("runMapGenerationCore", () => {
     });
 
     expect(out.outcome).toBe("failed_publish");
+    expect(applyMapPatchMock).toHaveBeenCalledTimes(1);
+    expect(applyMapPatchMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        mapId: "map_reserved",
+        status: "failed",
+      }),
+    );
     expect(updateMock).toHaveBeenCalledTimes(1);
     expect(setMock).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -5,5 +5,8 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const content = await getPageByKey("home");
-  return <NewMapHome content={content?.key === "home" ? content : null} />;
+  if (content?.key !== "home") {
+    throw new Error("Home page content is missing.");
+  }
+  return <NewMapHome content={content} />;
 }

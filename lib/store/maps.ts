@@ -3,9 +3,6 @@ import { appConfig } from "@/lib/config";
 import { getDb } from "@/lib/db/client";
 import {
   examplePromptsTable,
-  legacyGenerationRunsTable,
-  legacyLeaderboardEntriesTable,
-  legacyLeaderboardVotesTable,
   mapAxesTable,
   mapAxisValuesTable,
   mapCalloutsTable,
@@ -426,7 +423,6 @@ type MapRow = {
   intro: string;
   seoTitle: string;
   seoDescription: string;
-  document: MapDocument;
   renderingHints: unknown;
   visualSeries: unknown;
   revision: number;
@@ -435,6 +431,30 @@ type MapRow = {
   publishedAt: Date | string | null;
 };
 
+function buildStoredMapDocument(row: MapRow): MapDocument {
+  return {
+    title: row.title,
+    slug: row.slug,
+    summary: row.summary,
+    intro: row.intro,
+    domain: row.domain,
+    topicFamily: row.topicFamily,
+    dimensions: [],
+    cellSchema: { primaryX: "", primaryY: "" },
+    cells: [],
+    featuredExamples: [],
+    notableGaps: [],
+    impossibleCombos: [],
+    constraints: [],
+    renderingHints: (row.renderingHints as MapDocument["renderingHints"]) ?? { accent: "", gradient: [] },
+    visualSeries: row.visualSeries as MapDocument["visualSeries"],
+    seo: {
+      title: row.seoTitle,
+      description: row.seoDescription,
+    },
+  };
+}
+
 async function hydrateMapDocument(db: DbLike, row: MapRow): Promise<MapDocument> {
   const axisRows = await db
     .select()
@@ -442,7 +462,7 @@ async function hydrateMapDocument(db: DbLike, row: MapRow): Promise<MapDocument>
     .where(eq(mapAxesTable.mapId, row.id))
     .orderBy(asc(mapAxesTable.position));
   if (!axisRows.length) {
-    return row.document;
+    return buildStoredMapDocument(row);
   }
 
   const axisIds = axisRows.map((axis: any) => axis.id);
@@ -605,7 +625,7 @@ async function hydrateMapDocument(db: DbLike, row: MapRow): Promise<MapDocument>
       description: axis.description,
       values: (valuesByAxisId.get(axis.id) ?? []).map((value: any) => value.label),
     })),
-    cellSchema: row.document?.cellSchema ?? { primaryX: axisRows[0]?.axisKey ?? "", primaryY: axisRows[1]?.axisKey ?? "" },
+    cellSchema: { primaryX: axisRows[0]?.axisKey ?? "", primaryY: axisRows[1]?.axisKey ?? "" },
     cells,
     featuredExamples: featuredRows
       .map((featured: any) => exampleById.get(featured.exampleId))
@@ -629,8 +649,8 @@ async function hydrateMapDocument(db: DbLike, row: MapRow): Promise<MapDocument>
       kind: constraint.kind,
       explanation: constraint.explanation,
     })),
-    renderingHints: (row.renderingHints as MapDocument["renderingHints"]) ?? row.document.renderingHints,
-    visualSeries: (row.visualSeries as MapDocument["visualSeries"]) ?? row.document.visualSeries,
+    renderingHints: (row.renderingHints as MapDocument["renderingHints"]) ?? { accent: "", gradient: [] },
+    visualSeries: row.visualSeries as MapDocument["visualSeries"],
     seo: {
       title: row.seoTitle,
       description: row.seoDescription,
@@ -1169,7 +1189,6 @@ export async function saveMap({
       intro: saved.document.intro,
       seoTitle: saved.document.seo.title,
       seoDescription: saved.document.seo.description,
-      document: saved.document,
       renderingHints: saved.document.renderingHints,
       visualSeries: saved.document.visualSeries ?? null,
       publishedAt: status === "published" ? new Date(saved.publishedAt ?? isoNow()) : null,
@@ -1245,7 +1264,6 @@ export async function patchMapCellVisualization(
     await tx
       .update(mapsTable)
       .set({
-        document,
         updatedAt: new Date(),
       })
       .where(eq(mapsTable.slug, slug));
@@ -1318,7 +1336,6 @@ export async function reserveMap({ brief }: { brief: MapBrief }): Promise<{
     intro: "",
     seoTitle: title,
     seoDescription: "",
-    document: placeholder,
     renderingHints: placeholder.renderingHints,
     visualSeries: null,
     revision: 0,
@@ -1348,7 +1365,8 @@ export async function applyMapPatch({
   if (!rows.length) return null;
 
   const row = rows[0] as unknown as MapRow;
-  const next = mutate(row.document);
+  const current = await hydrateMapDocument(db, row);
+  const next = mutate(current);
 
   await db.transaction(async (tx) => {
     const patch: Record<string, unknown> = {
@@ -1359,7 +1377,6 @@ export async function applyMapPatch({
       intro: next.intro,
       seoTitle: next.seo.title,
       seoDescription: next.seo.description,
-      document: next,
       renderingHints: next.renderingHints,
       visualSeries: next.visualSeries ?? null,
       revision: sql`${mapsTable.revision} + 1`,
@@ -1418,119 +1435,4 @@ export async function logGenerationRun(run: GenerationRun) {
     metrics: run.metrics ?? null,
     createdAt: new Date(run.createdAt),
   });
-}
-
-export async function backfillRelationalContent() {
-  const db = getDb();
-
-  const maps = await db.select().from(mapsTable);
-  for (const map of maps) {
-    const row = map as unknown as MapRow;
-    await db.transaction(async (tx) => {
-      await tx
-        .update(mapsTable)
-        .set({
-          intro: row.document?.intro ?? row.intro ?? "",
-          seoTitle: row.document?.seo?.title ?? row.seoTitle ?? row.title,
-          seoDescription: row.document?.seo?.description ?? row.seoDescription ?? "",
-          renderingHints: row.document?.renderingHints ?? row.renderingHints ?? null,
-          visualSeries: row.document?.visualSeries ?? row.visualSeries ?? null,
-        })
-        .where(eq(mapsTable.id, row.id));
-      await syncMapRelations(tx as DbLike, row.id, row.document);
-    });
-  }
-
-  const legacyRuns = await db.select().from(legacyGenerationRunsTable);
-  for (const run of legacyRuns) {
-    const existing = await db
-      .select({ id: mapGenerationRunsTable.id })
-      .from(mapGenerationRunsTable)
-      .where(eq(mapGenerationRunsTable.id, run.id))
-      .limit(1);
-    if (existing.length) continue;
-    await db.insert(mapGenerationRunsTable).values({
-      id: run.id,
-      mapId: run.mapId,
-      status: run.status,
-      model: run.model,
-      fallbackModel: run.fallbackModel,
-      normalizedBrief: run.normalizedBrief,
-      inputBrief: run.inputBrief,
-      error: run.error,
-      metrics: run.metrics,
-      createdAt: run.createdAt,
-    });
-  }
-
-  const legacyEntries = await db.select().from(legacyLeaderboardEntriesTable);
-  for (const entry of legacyEntries) {
-    const existing = await db
-      .select({ id: spotlightsTable.id })
-      .from(spotlightsTable)
-      .where(eq(spotlightsTable.id, entry.id))
-      .limit(1);
-    if (existing.length) continue;
-    const mapRows = await db.select().from(mapsTable).where(eq(mapsTable.id, entry.mapId)).limit(1);
-    const map = mapRows[0];
-    if (!map) continue;
-    const cellRows = await db
-      .select()
-      .from(mapCellsTable)
-      .where(and(eq(mapCellsTable.mapId, entry.mapId), eq(mapCellsTable.cellKey, entry.cellId)))
-      .limit(1);
-    const cell = cellRows[0];
-    if (!cell) continue;
-    const imageAssetId = await ensureMediaAsset(db, {
-      publicUrl: entry.imageUrl,
-      altText: entry.storyTitle,
-    });
-    await db.insert(spotlightsTable).values({
-      id: entry.id,
-      slug: entry.slug,
-      mapId: entry.mapId,
-      cellId: cell.id,
-      mapSlugSnapshot: entry.mapSlug,
-      mapTitleSnapshot: entry.mapTitle,
-      topicFamilySnapshot: entry.topicFamily,
-      cellLabelSnapshot: entry.cellLabel,
-      coordinatesSnapshot: entry.coordinatesSnapshot,
-      imageAssetId,
-      storyTitle: entry.storyTitle,
-      storySummary: entry.storySummary,
-      score: entry.score,
-      upvotes: entry.upvotes,
-      downvotes: entry.downvotes,
-      createdAt: entry.createdAt,
-      publishedAt: entry.publishedAt,
-    });
-  }
-
-  const legacyVotes = await db.select().from(legacyLeaderboardVotesTable);
-  for (const vote of legacyVotes) {
-    const spotlight = await db
-      .select({ id: spotlightsTable.id })
-      .from(spotlightsTable)
-      .where(eq(spotlightsTable.id, vote.entryId))
-      .limit(1);
-    if (!spotlight.length) continue;
-    const existing = await db
-      .select()
-      .from(spotlightVotesTable)
-      .where(
-        and(
-          eq(spotlightVotesTable.spotlightId, vote.entryId),
-          eq(spotlightVotesTable.requesterId, vote.requesterId),
-        ),
-      )
-      .limit(1);
-    if (existing.length) continue;
-    await db.insert(spotlightVotesTable).values({
-      spotlightId: vote.entryId,
-      requesterId: vote.requesterId,
-      direction: vote.direction as LeaderboardVoteDirection,
-      createdAt: vote.createdAt,
-      updatedAt: vote.updatedAt,
-    });
-  }
 }

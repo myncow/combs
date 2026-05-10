@@ -40,15 +40,9 @@ export default async function LeaderboardPage({
     listLeaderboardTopicFamilies(),
   ]);
   const pageContent = await getPageByKey("leaderboard");
-  const heading = pageContent?.key === "leaderboard" ? pageContent.heading : "Top list";
-  const intro =
-    pageContent?.key === "leaderboard"
-      ? pageContent.intro
-      : "Frontier cells published by the community. Vote on the ones that feel right.";
-  const helperText = pageContent?.key === "leaderboard" ? pageContent.helperText : "Filter";
-  const emptyStateTitle = pageContent?.key === "leaderboard" ? pageContent.emptyStateTitle : "No spotlights yet.";
-  const emptyStateBody =
-    pageContent?.key === "leaderboard" ? pageContent.emptyStateBody : "";
+  if (pageContent?.key !== "leaderboard") {
+    throw new Error("Leaderboard page content is missing.");
+  }
 
   const [featured, ...rest] = entries.items;
 
@@ -65,14 +59,14 @@ export default async function LeaderboardPage({
           </span>
         </div>
         <h1 className="mt-4 font-sans text-[26px] font-semibold leading-tight tracking-[-0.025em] text-foreground md:text-[32px]">
-          {heading}
+          {pageContent.heading}
         </h1>
         <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-muted-foreground">
-          {intro}
+          {pageContent.intro}
         </p>
         <div className="mt-5 flex flex-wrap items-center gap-2">
           <span className="mr-1 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-            {helperText}
+            {pageContent.helperText}
           </span>
           <Link
             href={`/leaderboard?sort=top${filters.topicFamily ? `&topicFamily=${encodeURIComponent(filters.topicFamily)}` : ""}`}
@@ -132,9 +126,11 @@ export default async function LeaderboardPage({
       ) : featured ? null : (
         <div className="border border-border bg-card px-5 py-10 text-center">
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-            {emptyStateTitle}
+            {pageContent.emptyStateTitle}
           </p>
-          {emptyStateBody ? <p className="mt-3 text-[14px] text-muted-foreground">{emptyStateBody}</p> : null}
+          {pageContent.emptyStateBody ? (
+            <p className="mt-3 text-[14px] text-muted-foreground">{pageContent.emptyStateBody}</p>
+          ) : null}
         </div>
       )}
     </main>

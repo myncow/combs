@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { ExplorerSidebar } from "@/components/explorer-sidebar";
-import { DEFAULT_SITE_SETTINGS } from "@/lib/content-defaults";
 import { getAuth } from "@/lib/auth/server";
-import { hasDatabaseUrl } from "@/lib/db/client";
 import type { NavigationLink, SavedMap, SiteSettings } from "@/lib/types";
 import { getNavigation, getSiteSettings, listMaps } from "@/lib/store";
 
@@ -12,40 +10,24 @@ export const dynamic = "force-dynamic";
 async function ExplorerSidebarLoader() {
   const { data: session } = await getAuth().getSession();
   const isSignedIn = Boolean(session?.user);
-
-  let mapsResult: { items: SavedMap[]; total: number } = { items: [], total: 0 };
-  let hydrationError: string | undefined;
-
-  if (hasDatabaseUrl()) {
-    try {
-      mapsResult = await listMaps({ pageSize: 48, status: "library", page: 1 });
-    } catch (err) {
-      hydrationError =
-        err instanceof Error
-          ? err.message
-          : typeof err === "string"
-            ? err
-            : "Could not load maps from the database.";
-      console.error("ExplorerSidebarLoader failed:", err);
-    }
-  }
+  const mapsResult = await listMaps({ pageSize: 48, status: "library", page: 1 });
 
   return (
     <ExplorerSidebar
       isSignedIn={isSignedIn}
       initialMaps={{ items: mapsResult.items, total: mapsResult.total }}
-      initialHydrationError={hydrationError}
     />
   );
 }
 
 export default async function ShellLayout({ children }: { children: React.ReactNode }) {
-  const footerData: { settings: SiteSettings; links: NavigationLink[] } = hasDatabaseUrl()
-    ? await Promise.all([getSiteSettings(), getNavigation("footer_primary")]).then(([settings, links]) => ({
-        settings,
-        links,
-      }))
-    : { settings: DEFAULT_SITE_SETTINGS, links: [] };
+  const footerData: { settings: SiteSettings; links: NavigationLink[] } = await Promise.all([
+    getSiteSettings(),
+    getNavigation("footer_primary"),
+  ]).then(([settings, links]) => ({
+    settings,
+    links,
+  }));
 
   return (
     <>

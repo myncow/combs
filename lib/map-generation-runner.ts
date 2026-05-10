@@ -8,6 +8,7 @@ import type { GenerationMetrics } from "@/lib/generation-metrics";
 import { GenerationMetricsCollector } from "@/lib/generation-metrics";
 import { withMetricsGenerationSink } from "@/lib/generation-sink-metrics";
 import type { GenerationStreamSink } from "@/lib/generation-stream";
+import { buildFallbackMapDocument } from "@/lib/map-fallback-document";
 import { buildMapJob } from "@/lib/map-engine";
 import { applyMapPatch, logGenerationRun, saveMap } from "@/lib/store";
 import type {
@@ -55,7 +56,32 @@ function revalidateMapPaths(slug: string) {
  * Mark an already-reserved map row as failed so the live shell can render the
  * error state and the SSE poller can shut down.
  */
-async function markReservedMapFailed(mapId: string, message: string) {
+async function markReservedMapFailed(
+  mapId: string,
+  message: string,
+  options?: {
+    slug?: string;
+    normalizedBrief?: NormalizedMapBrief | null;
+    document?: MapDocument | null;
+  },
+) {
+  const fallbackDocument =
+    options?.document ??
+    (options?.normalizedBrief
+      ? buildFallbackMapDocument(options.normalizedBrief, { slug: options.slug })
+      : null);
+
+  if (fallbackDocument) {
+    await applyMapPatch({
+      mapId,
+      mutate: (current) => ({
+        ...fallbackDocument,
+        slug: current.slug || fallbackDocument.slug,
+      }),
+      status: "failed",
+    });
+  }
+
   const db = getDb();
   await db
     .update(mapsTable)
@@ -127,7 +153,12 @@ export async function runMapGenerationCore(
 
     if (result.status === "rejected") {
       const message = normalizedBrief.guidance?.join(" ") ?? "Brief was rejected.";
-      if (reserved) await markReservedMapFailed(reserved.id, message);
+      if (reserved) {
+        await markReservedMapFailed(reserved.id, message, {
+          slug: reserved.slug,
+          normalizedBrief,
+        });
+      }
       await logGenerationRun({
         id: `run_${crypto.randomUUID()}`,
         mapId: reserved?.id,
@@ -152,7 +183,13 @@ export async function runMapGenerationCore(
       const message =
         result.error ??
         "The generated map didn't meet the publish gate (≥9 cells, at least one notable gap or impossible combo, and ≥2 distinct examples per existing cell). Try a more concrete topic.";
-      if (reserved) await markReservedMapFailed(reserved.id, message);
+      if (reserved) {
+        await markReservedMapFailed(reserved.id, message, {
+          slug: reserved.slug,
+          normalizedBrief,
+          document,
+        });
+      }
       await logGenerationRun({
         id: `run_${crypto.randomUUID()}`,
         mapId: reserved?.id,

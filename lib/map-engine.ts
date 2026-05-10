@@ -31,6 +31,7 @@ import {
   mapCellsJsonSchema,
   suggestAxisPairsResponseJsonSchema,
 } from "@/lib/openrouter-schemas";
+import { buildFallbackMapDocument } from "@/lib/map-fallback-document";
 import { enrichMapDocumentReferenceImages, exampleIdentityKey } from "@/lib/map-reference-images";
 import { attachVisualSeries } from "@/lib/visual-series";
 import type { GenerationMetricsCollector } from "@/lib/generation-metrics";
@@ -454,131 +455,7 @@ function statusForIndex(index: number, total: number) {
 }
 
 export function heuristicMapDocument(brief: NormalizedMapBrief): MapDocument {
-  const dimensions = brief.dimensions.slice(0, 2).map((dimension) => ({
-    ...dimension,
-    values: buildValueSet(dimension.label),
-  }));
-
-  const x = dimensions[0];
-  const y = dimensions[1];
-
-  const cells = x.values.flatMap((xValue, xIndex) =>
-    y.values.map((yValue, yIndex) => {
-      const index = xIndex * y.values.length + yIndex;
-      const status = statusForIndex(index, x.values.length * y.values.length);
-      const coordinates: Record<string, string> = {
-        [x.key]: xValue,
-        [y.key]: yValue,
-      };
-
-      const examples: MapExample[] =
-        status === "existing"
-          ? [
-              {
-                name: `${titleCase(brief.topic)} anchor ${index + 1}a`,
-                description: "Synthetic draft anchor.",
-                coordinates,
-                status,
-              },
-              {
-                name: `${titleCase(brief.topic)} anchor ${index + 1}b`,
-                description: "Synthetic corroborating draft.",
-                coordinates,
-                status,
-              },
-            ]
-            : status === "rare"
-              ? [
-                  {
-                    name: `${titleCase(brief.topic)} lone instance ${index + 1}`,
-                    description: "Synthetic niche draft.",
-                    coordinates,
-                    status,
-                  },
-                ]
-              : [];
-
-      return {
-        id: `${x.key}-${xValue}-${y.key}-${yValue}`.toLowerCase().replace(/\s+/g, "-"),
-        coordinates,
-        label: `${xValue} ${yValue} ${brief.domain}`,
-        status,
-        explanation:
-          status === "impossible"
-            ? "This combination fights the core constraints of the domain, so it is better treated as a thought experiment than a real category."
-            : status === "gap"
-              ? "This cell feels plausible but under-developed, which makes it an interesting frontier for exploration."
-              : status === "rare"
-                ? "This is a niche or regional combination that exists but is not a dominant archetype."
-                : "This combination is well represented and helps anchor the map.",
-        confidence: status === "existing" ? 0.91 : status === "rare" ? 0.72 : 0.58,
-        badges: status === "gap" ? ["Opportunity"] : status === "impossible" ? ["Constraint"] : ["Known"],
-        examples,
-      };
-    }),
-  );
-
-  const featuredExamples = dedupeExamples(cells.flatMap((cell) => cell.examples)).slice(0, 8);
-
-  const draft = {
-    title: `${titleCase(brief.topic)} Map`,
-    slug: slugify(`${brief.topic}-map`),
-    summary: `A structured map of ${brief.domain.toLowerCase()} across ${x.label.toLowerCase()} and ${y.label.toLowerCase()}.`,
-    intro: `This map explores ${brief.domain.toLowerCase()} as a constrained combinatorial space. It highlights which combinations are canonical, which are rare, which look promising, and which collapse under the domain's underlying rules.`,
-    domain: brief.domain,
-    topicFamily: brief.topicFamily,
-    dimensions,
-    cellSchema: {
-      primaryX: x.key,
-      primaryY: y.key,
-    },
-    cells,
-    featuredExamples,
-    notableGaps: cells
-      .filter((cell) => cell.status === "gap")
-      .slice(0, 3)
-      .map((cell) => ({
-        label: cell.label,
-        explanation: cell.explanation,
-        coordinates: cell.coordinates,
-      })),
-    impossibleCombos: cells
-      .filter((cell) => cell.status === "impossible")
-      .slice(0, 3)
-      .map((cell) => ({
-        label: cell.label,
-        explanation: cell.explanation,
-        coordinates: cell.coordinates,
-      })),
-    constraints: [
-      {
-        label: "Physical viability",
-        kind: "physical",
-        explanation: "Some combinations break texture, process, or material constraints before they can become stable categories.",
-      },
-      {
-        label: "Cultural lineage",
-        kind: "cultural",
-        explanation: "Many existing cells are preserved by tradition, while some plausible gaps remain underexplored because no lineage reinforced them.",
-      },
-      {
-        label: "Naming pressure",
-        kind: "taxonomy",
-        explanation: "The map groups only combinations that can hold together as recognizable categories instead of one-off novelties.",
-      },
-    ] as MapConstraint[],
-    renderingHints: {
-      accent: "#d97706",
-      gradient: ["#fef3c7", "#fde68a"],
-      icon: "grid",
-    },
-    seo: {
-      title: `${titleCase(brief.topic)} Map | Lattice`,
-      description: `Explore a generated map for ${brief.domain.toLowerCase()}.`,
-    },
-  };
-
-  return mapDocumentSchema.parse(attachVisualSeries(draft));
+  return buildFallbackMapDocument(brief);
 }
 
 export function formatResearchForPrompt(research: ResearchContext, purpose: "skeleton" | "cells") {
@@ -2439,14 +2316,17 @@ export async function buildMapJob(
   }
 
   if (liveId) {
-    // Surface domain/topicFamily early so the route header reflects them.
+    // Surface a real scaffold early so failed or in-flight reserved maps still
+    // resolve to a usable relational document instead of an empty placeholder.
     await applyMapPatch({
       mapId: liveId,
-      mutate: (current) => ({
-        ...current,
-        domain: normalizedBrief.domain || current.domain,
-        topicFamily: normalizedBrief.topicFamily || current.topicFamily,
-      }),
+      mutate: (current) =>
+        buildFallbackMapDocument(normalizedBrief, {
+          slug: current.slug,
+          title: current.title || undefined,
+          seoTitle: current.seo.title || undefined,
+          seoDescription: current.seo.description || undefined,
+        }),
     });
   }
 

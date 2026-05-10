@@ -43,6 +43,13 @@
       "when": 1778275658188,
       "tag": "0005_mute_lyja",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778445801968,
+      "tag": "0006_friendly_madame_masque",
+      "breakpoints": true
     }
   ]
 }

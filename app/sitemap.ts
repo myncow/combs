@@ -1,5 +1,4 @@
 import type { MetadataRoute } from "next";
-import { hasDatabaseUrl } from "@/lib/db/client";
 import { getSiteOrigin } from "@/lib/site-url";
 import { listLeaderboardEntries, listMaps } from "@/lib/store";
 
@@ -19,10 +18,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
     },
   ];
-
-  if (!hasDatabaseUrl()) {
-    return staticEntries;
-  }
 
   const [maps, leaderboard] = await Promise.all([
     listMaps({ pageSize: 100 }),
