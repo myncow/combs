@@ -7,6 +7,19 @@ export const maxDuration = 300;
 
 const POLL_INTERVAL_MS = 600;
 
+/**
+ * After the map row flips to "published" we keep streaming snapshots so the
+ * client sees SerpApi enrichment land (reference images, anchor badges,
+ * "Visual evidence found"). We end the stream once either:
+ *  - the revision stays unchanged for `PUBLISHED_IDLE_POLLS` consecutive
+ *    polls (~5s of quiescence), or
+ *  - we've spent `PUBLISHED_MAX_MS` on the post-publish phase.
+ *
+ * `maxDuration` on the route still caps the absolute wall time at 300s.
+ */
+const PUBLISHED_MAX_MS = 200_000;
+const PUBLISHED_IDLE_POLLS = 8;
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
@@ -34,13 +47,17 @@ export async function GET(
         }
       };
 
+      let publishedSince: number | null = null;
+      let idlePollsSincePublish = 0;
+
       const sendSnapshot = async (force = false) => {
         const meta = await getMapRevisionState(slug);
         if (!meta) {
           send({ type: "failed", message: "Map disappeared." });
           return "stop" as const;
         }
-        if (force || meta.revision !== lastRevision) {
+        const revisionChanged = meta.revision !== lastRevision;
+        if (force || revisionChanged) {
           const map = await getMapBySlug(slug);
           if (map) {
             const liveStatus =
@@ -58,13 +75,23 @@ export async function GET(
             lastRevision = meta.revision;
           }
         }
-        if (meta.status === "published") {
-          send({ type: "complete", slug, title: initial.title });
-          return "stop" as const;
-        }
         if (meta.status === "failed") {
           send({ type: "failed", message: initial.summary || "Generation failed." });
           return "stop" as const;
+        }
+        if (meta.status === "published") {
+          // Stay alive while SerpApi enrichment patches keep landing. Close
+          // once revision is idle for a few polls or we hit the post-publish
+          // budget.
+          if (publishedSince === null) publishedSince = Date.now();
+          if (revisionChanged) idlePollsSincePublish = 0;
+          else idlePollsSincePublish += 1;
+          const idleEnough = idlePollsSincePublish >= PUBLISHED_IDLE_POLLS;
+          const budgetSpent = Date.now() - publishedSince >= PUBLISHED_MAX_MS;
+          if (idleEnough || budgetSpent) {
+            send({ type: "complete", slug, title: initial.title });
+            return "stop" as const;
+          }
         }
         return "continue" as const;
       };
