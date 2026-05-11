@@ -3,9 +3,12 @@ import {
   DegenerateImageError,
   materializeCellImageAsset,
 } from "@/lib/cell-visualization-storage";
-import { mkdtemp, readFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+
+const putMock = vi.fn();
+
+vi.mock("@vercel/blob", () => ({
+  put: (...args: unknown[]) => putMock(...args),
+}));
 
 const PNG_MAGIC = Buffer.from([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
@@ -22,10 +25,13 @@ function pngBuffer(byteCount: number): Buffer {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  putMock.mockReset();
+  delete process.env.BLOB_READ_WRITE_TOKEN;
 });
 
 describe("materializeCellImageAsset validation", () => {
   it("rejects images smaller than 4 KB with reason='too-small'", async () => {
+    process.env.BLOB_READ_WRITE_TOKEN = "vercel_blob_rw_test";
     const tinyPng = `data:image/png;base64,${pngBuffer(1024).toString("base64")}`;
     const promise = materializeCellImageAsset("slug", "cell-1", tinyPng);
     await expect(promise).rejects.toBeInstanceOf(DegenerateImageError);
@@ -33,6 +39,7 @@ describe("materializeCellImageAsset validation", () => {
   });
 
   it("rejects buffers that don't start with a recognized image signature", async () => {
+    process.env.BLOB_READ_WRITE_TOKEN = "vercel_blob_rw_test";
     // 8 KB of plain text masquerading as image bytes.
     const html = `data:image/png;base64,${Buffer.from("<html>".repeat(1500)).toString("base64")}`;
     const promise = materializeCellImageAsset("slug", "cell-1", html);
@@ -41,29 +48,36 @@ describe("materializeCellImageAsset validation", () => {
   });
 
   it("succeeds with a >4KB buffer carrying PNG magic bytes, returning byteHash + url", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "cell-viz-test-"));
-    const cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(dir);
+    process.env.BLOB_READ_WRITE_TOKEN = "vercel_blob_rw_test";
+    putMock.mockResolvedValueOnce({
+      url: "https://assets.public.blob.vercel-storage.com/generated-cell-viz/test-slug/cell-42-deadbeef.png",
+      pathname: "generated-cell-viz/test-slug/cell-42-deadbeefcaf0.png",
+      contentType: "image/png",
+    });
 
     const dataUrl = `data:image/png;base64,${pngBuffer(8192).toString("base64")}`;
     const result = await materializeCellImageAsset("test-slug", "cell-42", dataUrl);
 
     expect(result.byteHash).toMatch(/^[a-f0-9]{64}$/);
-    expect(result.byteLength).toBe(8192);
-    // Cache-buster is the first 8 hex chars of the SHA-256 byte hash so
-    // identical re-renders reuse the same URL while new bytes invalidate it.
-    expect(result.url).toMatch(/^\/generated-cell-viz\/test-slug\/cell-42\.png\?v=[a-f0-9]{8}$/);
-    expect(result.url.endsWith(`?v=${result.byteHash.slice(0, 8)}`)).toBe(true);
-
-    // Sanity: file actually exists on disk and matches.
-    const persisted = await readFile(
-      join(dir, "public", "generated-cell-viz", "test-slug", "cell-42.png"),
+    expect(result.byteSize).toBe(8192);
+    expect(result.provider).toBe("vercel_blob");
+    expect(result.mimeType).toBe("image/png");
+    expect(result.storageKey).toMatch(/^generated-cell-viz\/test-slug\/cell-42-[a-f0-9]{12}\.png$/);
+    expect(result.url).toContain("vercel-storage.com/generated-cell-viz/test-slug/cell-42-deadbeef.png");
+    expect(putMock).toHaveBeenCalledWith(
+      expect.stringMatching(/^generated-cell-viz\/test-slug\/cell-42-[a-f0-9]{12}\.png$/),
+      expect.any(Buffer),
+      expect.objectContaining({
+        access: "public",
+        addRandomSuffix: false,
+        allowOverwrite: true,
+        contentType: "image/png",
+      }),
     );
-    expect(persisted.length).toBe(8192);
-
-    cwdSpy.mockRestore();
   });
 
   it("derives extension from magic bytes for HTTP sources (not from URL)", async () => {
+    process.env.BLOB_READ_WRITE_TOKEN = "vercel_blob_rw_test";
     // A buffer with WEBP magic bytes, returned via fetch. Materialization should pick `.webp`.
     const webp = Buffer.concat([
       Buffer.from([
@@ -78,14 +92,17 @@ describe("materializeCellImageAsset validation", () => {
         headers: { "content-type": "image/webp" },
       }),
     );
-
-    const dir = await mkdtemp(join(tmpdir(), "cell-viz-test-"));
-    const cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(dir);
+    putMock.mockResolvedValueOnce({
+      url: "https://assets.public.blob.vercel-storage.com/generated-cell-viz/slug/cell-webp.webp",
+      pathname: "generated-cell-viz/slug/cell-webp.webp",
+      contentType: "image/webp",
+    });
 
     const result = await materializeCellImageAsset("slug", "cell", "https://img.local/foo");
-    expect(result.url).toMatch(/\.webp\?/);
+    expect(result.url).toMatch(/\.webp$/);
+    expect(result.mimeType).toBe("image/webp");
+    expect(result.storageKey).toMatch(/\.webp$/);
 
     fetchMock.mockRestore();
-    cwdSpy.mockRestore();
   });
 });

@@ -123,7 +123,7 @@ export function ExplorerSidebar({
       )}
       aria-label={isSignedIn ? "Your maps" : "Recent maps"}
     >
-      <div className="flex shrink-0 items-center gap-1.5 border-b border-border px-2 py-2">
+      <div className="flex shrink-0 items-center gap-1.5 border-b border-border bg-card/40 px-2 py-2">
         <Link
           href="/"
           aria-label="New map"
@@ -138,7 +138,7 @@ export function ExplorerSidebar({
         <button
           type="button"
           onClick={() => setCollapsed((c) => !c)}
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center border border-border bg-background text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           aria-label={collapsed ? "Expand library" : "Collapse library"}
           title={collapsed ? "Expand" : "Collapse"}
         >

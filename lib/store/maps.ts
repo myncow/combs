@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { materializeCellImageAsset } from "@/lib/cell-visualization-storage";
 import { appConfig } from "@/lib/config";
 import { getDb } from "@/lib/db/client";
 import {
@@ -134,22 +135,41 @@ function inferAssetProvider(url: string): "public_path" | "external_url" | "verc
   return "external_url";
 }
 
+function isInlineDataUrl(url: string) {
+  return url.startsWith("data:");
+}
+
+type MediaAssetInput = {
+  publicUrl: string;
+  provider?: "public_path" | "external_url" | "vercel_blob";
+  storageKey?: string;
+  mimeType?: string;
+  byteSize?: number;
+  altText?: string;
+  byteHash?: string;
+};
+
+function normalizeMediaAsset(input: MediaAssetInput): Required<Pick<MediaAssetInput, "publicUrl" | "provider">> &
+  Omit<MediaAssetInput, "provider" | "publicUrl"> {
+  return {
+    publicUrl: input.publicUrl,
+    provider: input.provider ?? inferAssetProvider(input.publicUrl),
+    storageKey:
+      input.storageKey ??
+      (input.publicUrl.startsWith("/") ? input.publicUrl : undefined),
+    mimeType: input.mimeType,
+    byteSize: input.byteSize,
+    altText: input.altText,
+    byteHash: input.byteHash,
+  };
+}
+
 function logReadFallback(scope: string, error: unknown) {
   console.error(`[store:${scope}] read fallback`, error);
 }
 
-async function ensureMediaAsset(
-  db: DbLike,
-  {
-    publicUrl,
-    altText,
-    byteHash,
-  }: {
-    publicUrl: string;
-    altText?: string;
-    byteHash?: string;
-  },
-) {
+async function ensureMediaAsset(db: DbLike, input: MediaAssetInput) {
+  const { publicUrl, provider, storageKey, mimeType, byteSize, altText, byteHash } = normalizeMediaAsset(input);
   const existing = await db
     .select()
     .from(mediaAssetsTable)
@@ -157,10 +177,21 @@ async function ensureMediaAsset(
     .limit(1);
   if (existing.length) {
     const row = existing[0]!;
-    if ((altText && row.altText !== altText) || (byteHash && row.byteHash !== byteHash)) {
+    if (
+      (altText && row.altText !== altText) ||
+      (byteHash && row.byteHash !== byteHash) ||
+      (storageKey && row.storageKey !== storageKey) ||
+      (mimeType && row.mimeType !== mimeType) ||
+      (typeof byteSize === "number" && row.byteSize !== byteSize) ||
+      row.provider !== provider
+    ) {
       await db
         .update(mediaAssetsTable)
         .set({
+          provider,
+          storageKey: storageKey ?? row.storageKey,
+          mimeType: mimeType ?? row.mimeType,
+          byteSize: byteSize ?? row.byteSize,
           altText: altText ?? row.altText,
           byteHash: byteHash ?? row.byteHash,
         })
@@ -172,13 +203,36 @@ async function ensureMediaAsset(
   const id = `asset_${crypto.randomUUID()}`;
   await db.insert(mediaAssetsTable).values({
     id,
-    provider: inferAssetProvider(publicUrl),
-    storageKey: publicUrl.startsWith("/") ? publicUrl : null,
+    provider,
+    storageKey: storageKey ?? null,
     publicUrl,
+    mimeType: mimeType ?? null,
+    byteSize: byteSize ?? null,
     altText: altText ?? null,
     byteHash: byteHash ?? null,
   });
   return id;
+}
+
+async function resolveVisualizationMediaAssetInput(
+  mapSlug: string,
+  cellId: string,
+  input: MediaAssetInput,
+): Promise<MediaAssetInput> {
+  if (!isInlineDataUrl(input.publicUrl)) {
+    return input;
+  }
+
+  const materialized = await materializeCellImageAsset(mapSlug, cellId, input.publicUrl);
+  return {
+    publicUrl: materialized.url,
+    provider: materialized.provider,
+    storageKey: materialized.storageKey,
+    mimeType: materialized.mimeType,
+    byteSize: materialized.byteSize,
+    byteHash: materialized.byteHash,
+    altText: input.altText,
+  };
 }
 
 async function clearMapRelations(db: DbLike, mapId: string) {
@@ -261,11 +315,14 @@ async function syncMapRelations(db: DbLike, mapId: string, document: MapDocument
     const cellId = `cell_${crypto.randomUUID()}`;
     cellIdByKey.set(cell.id, cellId);
     const visualizationAssetId = cell.visualization?.imageUrl
-      ? await ensureMediaAsset(db, {
-          publicUrl: cell.visualization.imageUrl,
-          altText: cell.visualization.caption ?? cell.label,
-          byteHash: cell.visualization.byteHash,
-        })
+      ? await ensureMediaAsset(
+          db,
+          await resolveVisualizationMediaAssetInput(document.slug, cell.id, {
+            publicUrl: cell.visualization.imageUrl,
+            altText: cell.visualization.caption ?? cell.label,
+            byteHash: cell.visualization.byteHash,
+          }),
+        )
       : null;
 
     await db.insert(mapCellsTable).values({
@@ -1221,49 +1278,59 @@ export async function patchMapCellVisualization(
     imageModel?: string;
     prompt?: string;
     byteHash?: string;
+    provider?: "public_path" | "external_url" | "vercel_blob";
+    storageKey?: string;
+    mimeType?: string;
+    byteSize?: number;
   },
 ): Promise<boolean> {
   const db = getDb();
-  const map = await getMapBySlug(slug);
-  if (!map) {
+  const mapRows = await db
+    .select({ id: mapsTable.id })
+    .from(mapsTable)
+    .where(eq(mapsTable.slug, slug))
+    .limit(1);
+  const mapRow = mapRows[0];
+  if (!mapRow) {
     return false;
   }
 
-  const assetId = await ensureMediaAsset(db, {
+  const resolvedAsset = await resolveVisualizationMediaAssetInput(slug, cellId, {
     publicUrl: visualization.imageUrl,
+    provider: visualization.provider,
+    storageKey: visualization.storageKey,
+    mimeType: visualization.mimeType,
+    byteSize: visualization.byteSize,
     altText: visualization.caption ?? cellId,
     byteHash: visualization.byteHash,
   });
+  const assetId = await ensureMediaAsset(db, resolvedAsset);
 
   const cellRows = await db
     .select()
     .from(mapCellsTable)
-    .where(and(eq(mapCellsTable.mapId, map.id), eq(mapCellsTable.cellKey, cellId)))
+    .where(and(eq(mapCellsTable.mapId, mapRow.id), eq(mapCellsTable.cellKey, cellId)))
     .limit(1);
-
-  const document: MapDocument = {
-    ...map.document,
-    cells: map.document.cells.map((cell) =>
-      cell.id === cellId ? { ...cell, visualization } : cell,
-    ),
-  };
+  const targetCell = cellRows[0];
+  if (!targetCell) {
+    return false;
+  }
 
   await db.transaction(async (tx) => {
-    if (cellRows.length) {
-      await tx
-        .update(mapCellsTable)
-        .set({
-          visualizationAssetId: assetId,
-          visualizationCaption: visualization.caption ?? null,
-          visualizationImageModel: visualization.imageModel ?? null,
-          visualizationPrompt: visualization.prompt ?? null,
-          visualizationByteHash: visualization.byteHash ?? null,
-        })
-        .where(eq(mapCellsTable.id, cellRows[0]!.id));
-    }
+    await tx
+      .update(mapCellsTable)
+      .set({
+        visualizationAssetId: assetId,
+        visualizationCaption: visualization.caption ?? null,
+        visualizationImageModel: visualization.imageModel ?? null,
+        visualizationPrompt: visualization.prompt ?? null,
+        visualizationByteHash: resolvedAsset.byteHash ?? visualization.byteHash ?? null,
+      })
+      .where(eq(mapCellsTable.id, targetCell.id));
     await tx
       .update(mapsTable)
       .set({
+        revision: sql`${mapsTable.revision} + 1`,
         updatedAt: new Date(),
       })
       .where(eq(mapsTable.slug, slug));

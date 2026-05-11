@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { MenuPanel } from "@/components/raster-shell";
 import { CELL_IMAGE_MODEL } from "@/lib/config";
 import { CURATED_IMAGE_MODELS } from "@/lib/image-model-options";
 import { MOTION_DURATION, MOTION_EASE } from "@/lib/motion";
@@ -103,49 +104,51 @@ export function ImageModelPicker() {
 
         <AnimatePresence>
           {open ? (
-            <motion.ul
-              id={`${listId}-listbox`}
-              role="listbox"
-              aria-label="Image generation models"
-              aria-activedescendant={`${listId}-${value.replace(/[^a-zA-Z0-9_-]+/g, "_")}`}
-              initial={{ opacity: reduceMotion ? 1 : 0, y: reduceMotion ? 0 : -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: reduceMotion ? 1 : 0, y: reduceMotion ? 0 : -6 }}
-              transition={panelTransition}
-              className="absolute right-0 top-full z-30 mt-1 max-h-[min(60vh,20rem)] w-full min-w-[17.5rem] origin-top overflow-auto border border-border bg-card py-1 shadow-md"
-            >
-              {CURATED_IMAGE_MODELS.map((m) => {
-                const selected = m.id === value;
-                const optionDomId = `${listId}-${m.id.replace(/[^a-zA-Z0-9_-]+/g, "_")}`;
-                return (
-                  <li key={m.id} role="presentation">
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={selected}
-                      id={optionDomId}
-                      onClick={() => pick(m.id)}
-                      className={cn(
-                        "flex w-full flex-col items-stretch gap-0.5 px-3 py-2.5 text-left transition-colors duration-150",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-                        selected
-                          ? "bg-primary/15"
-                          : "hover:bg-foreground/10",
-                      )}
-                    >
-                      <span className="font-sans text-[14px] font-semibold leading-tight tracking-[-0.01em] text-foreground">
-                        {m.label}
-                      </span>
-                      <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-foreground/60">
-                        {m.provider}
-                        <span className="mx-1.5 text-foreground/35">·</span>
-                        {m.priceLabel}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </motion.ul>
+            <MenuPanel className="absolute right-0 top-full z-30 mt-1 w-full min-w-[17.5rem] origin-top py-1">
+              <motion.ul
+                id={`${listId}-listbox`}
+                role="listbox"
+                aria-label="Image generation models"
+                aria-activedescendant={`${listId}-${value.replace(/[^a-zA-Z0-9_-]+/g, "_")}`}
+                initial={{ opacity: reduceMotion ? 1 : 0, y: reduceMotion ? 0 : -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: reduceMotion ? 1 : 0, y: reduceMotion ? 0 : -6 }}
+                transition={panelTransition}
+                className="max-h-[min(60vh,20rem)] w-full overflow-auto"
+              >
+                {CURATED_IMAGE_MODELS.map((m) => {
+                  const selected = m.id === value;
+                  const optionDomId = `${listId}-${m.id.replace(/[^a-zA-Z0-9_-]+/g, "_")}`;
+                  return (
+                    <li key={m.id} role="presentation">
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={selected}
+                        id={optionDomId}
+                        onClick={() => pick(m.id)}
+                        className={cn(
+                          "flex w-full flex-col items-stretch gap-0.5 px-3 py-2.5 text-left transition-colors duration-150",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                          selected
+                            ? "bg-primary/15"
+                            : "hover:bg-foreground/10",
+                        )}
+                      >
+                        <span className="font-sans text-[14px] font-semibold leading-tight tracking-[-0.01em] text-foreground">
+                          {m.label}
+                        </span>
+                        <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-foreground/60">
+                          {m.provider}
+                          <span className="mx-1.5 text-foreground/35">·</span>
+                          {m.priceLabel}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </motion.ul>
+            </MenuPanel>
           ) : null}
         </AnimatePresence>
       </div>

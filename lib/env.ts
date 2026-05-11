@@ -56,3 +56,7 @@ export function getNeonAuthBaseUrl(): string | undefined {
 export function getNeonAuthCookieSecret(): string | undefined {
   return readEnv("NEON_AUTH_COOKIE_SECRET");
 }
+
+export function getBlobReadWriteToken(): string | undefined {
+  return readEnv("BLOB_READ_WRITE_TOKEN");
+}

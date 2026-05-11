@@ -1,9 +1,20 @@
+import { ShellPage, SurfacePanel } from "@/components/raster-shell";
+
 export default function GalleryLoading() {
   return (
-    <main className="mx-auto w-full max-w-lg px-5 py-6 md:px-8 md:py-8">
-      <div className="h-8 w-40 animate-pulse rounded-sm bg-muted/60 md:h-9" />
-      <div className="mt-3 h-16 w-full animate-pulse rounded-sm bg-muted/35" />
-      <div className="mt-4 h-4 w-24 animate-pulse rounded-sm bg-muted/40" />
-    </main>
+    <ShellPage size="content">
+      <div className="border-b border-border pb-6">
+        <div className="flex items-baseline gap-3">
+          <div className="h-3 w-8 animate-pulse bg-muted/50" />
+          <div className="h-px flex-1 bg-border" />
+          <div className="h-3 w-24 animate-pulse bg-muted/40" />
+        </div>
+        <div className="mt-4 h-8 w-40 animate-pulse bg-muted/60 md:h-10" />
+        <div className="mt-3 h-4 w-full max-w-md animate-pulse bg-muted/35" />
+      </div>
+      <SurfacePanel className="mt-6 min-h-[12rem] animate-pulse border-border/60 bg-muted/20">
+        <div aria-hidden className="h-full w-full" />
+      </SurfacePanel>
+    </ShellPage>
   );
 }

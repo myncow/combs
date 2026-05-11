@@ -15,6 +15,7 @@
     "@neondatabase/auth": "0.3.0-beta",
     "@openrouter/sdk": "^0.12.18",
     "@radix-ui/react-slot": "^1.2.4",
+    "@vercel/blob": "^2.3.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",

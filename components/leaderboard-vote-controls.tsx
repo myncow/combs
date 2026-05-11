@@ -113,7 +113,7 @@ export function LeaderboardVoteControls({
             compact ? "h-8 w-8" : "h-10 w-10",
             state.viewerVote === "up"
               ? "border-foreground bg-foreground text-background"
-              : "border-border bg-background text-muted-foreground hover:border-foreground/40 hover:text-foreground",
+              : "border-border bg-background text-muted-foreground hover:border-border-strong hover:text-foreground",
           )}
           title="Upvote"
           aria-label="Upvote spotlight"
@@ -121,7 +121,7 @@ export function LeaderboardVoteControls({
           <ArrowBigUp className={compact ? "h-4 w-4" : "h-5 w-5"} aria-hidden />
         </button>
         <div className="min-w-[4.5rem] border border-border bg-card px-3 py-2 text-center">
-          <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+          <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
             Score
           </div>
           <div className={cn("font-sans font-semibold text-foreground", compact ? "text-lg" : "text-2xl")}>
@@ -138,7 +138,7 @@ export function LeaderboardVoteControls({
             compact ? "h-8 w-8" : "h-10 w-10",
             state.viewerVote === "down"
               ? "border-primary bg-primary text-primary-foreground"
-              : "border-border bg-background text-muted-foreground hover:border-foreground/40 hover:text-foreground",
+              : "border-border bg-background text-muted-foreground hover:border-border-strong hover:text-foreground",
           )}
           title="Downvote"
           aria-label="Downvote spotlight"

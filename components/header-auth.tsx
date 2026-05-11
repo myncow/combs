@@ -6,6 +6,7 @@ import { ChevronDown, LogOut, Settings, User as UserIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { authClient } from "@/lib/auth/client";
 import { buildAuthRedirectHref } from "@/lib/auth/redirect";
+import { MenuPanel } from "@/components/raster-shell";
 import { cn } from "@/lib/utils";
 
 const ICON_BUTTON_CLASSES =
@@ -120,9 +121,9 @@ export function HeaderAuth() {
         />
       </button>
       {open ? (
-        <div
+        <MenuPanel
           role="menu"
-          className="absolute right-0 top-full z-30 mt-1 w-56 origin-top-right border border-border bg-card shadow-md"
+          className="absolute right-0 top-full z-30 mt-1 w-56 origin-top-right"
         >
           {user.email ? (
             <div className="border-b border-border px-3 py-2">
@@ -152,7 +153,7 @@ export function HeaderAuth() {
             <LogOut className="h-3.5 w-3.5 text-muted-foreground" aria-hidden strokeWidth={1.75} />
             Sign out
           </button>
-        </div>
+        </MenuPanel>
       ) : null}
     </div>
   );

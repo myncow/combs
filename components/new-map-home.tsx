@@ -1,4 +1,5 @@
 import { CreateMapForm } from "@/components/create-map-form";
+import { PageHeader, ShellPage, SurfacePanel } from "@/components/raster-shell";
 import type { HomePageContent } from "@/lib/types";
 
 export function NewMapHome({ content }: { content?: HomePageContent | null }) {
@@ -8,30 +9,42 @@ export function NewMapHome({ content }: { content?: HomePageContent | null }) {
   const summary = content?.sectionSummary ?? "Topic · Frame · Build";
 
   return (
-    <main className="mx-auto flex min-h-0 w-full max-w-[760px] flex-1 flex-col overflow-y-auto overscroll-contain px-5 py-6 md:px-8 md:py-10">
-      <header className="shrink-0 border-b border-border pb-5">
-        <div className="flex items-baseline gap-3">
-          <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-primary tabular-nums">
-            01
-          </span>
-          <span aria-hidden className="h-px flex-1 bg-border" />
-          <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-            {eyebrow}
-          </span>
-        </div>
-        <h1 className="mt-3.5 font-sans text-[22px] font-semibold leading-tight tracking-[-0.025em] text-foreground md:text-[26px]">
-          {heading}
-        </h1>
-        <p className="mt-1.5 max-w-[36rem] text-[14px] leading-relaxed text-muted-foreground">
-          {body}
-        </p>
-        <p className="mt-2 max-w-[36rem] font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-          {summary}
-        </p>
-      </header>
-      <div className="mt-6 flex shrink-0 flex-col">
-        <CreateMapForm />
+    <ShellPage size="content" className="py-6 md:py-8">
+      <PageHeader
+        title={heading}
+        eyebrow={eyebrow}
+        intro={body}
+        summary={summary}
+        titleClassName="text-[26px] md:text-[34px]"
+        introClassName="max-w-[40rem]"
+      />
+      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_17rem]">
+        <SurfacePanel className="min-w-0">
+          <CreateMapForm />
+        </SurfacePanel>
+        <SurfacePanel tone="background" className="h-fit">
+          <div className="space-y-5">
+            <div>
+              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                First Screen
+              </p>
+              <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
+                Start with a category that has visible variation. Narrower scenes produce sharper axes and better frontier cells.
+              </p>
+            </div>
+            <div className="border-t border-border pt-4">
+              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                Good Briefs
+              </p>
+              <ul className="mt-2 space-y-2 text-[14px] leading-relaxed text-foreground/88">
+                <li>Pick something concrete enough to picture.</li>
+                <li>Lock a suggested frame if one feels right.</li>
+                <li>Use the rail to compare fresh maps quickly.</li>
+              </ul>
+            </div>
+          </div>
+        </SurfacePanel>
       </div>
-    </main>
+    </ShellPage>
   );
 }

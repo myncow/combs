@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 import "./globals.css";
+import { EmptyStatePanel, ShellPage } from "@/components/raster-shell";
+import { Button } from "@/components/ui/button";
 
 export default function GlobalError({
   error,
@@ -17,20 +19,18 @@ export default function GlobalError({
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-dvh bg-background font-sans text-foreground">
-        <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-5 py-16">
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Error</p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight">Something went wrong</h1>
-          <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
-            {error.message || "An unexpected error occurred."}
-          </p>
-          <button
-            type="button"
-            className="mt-8 inline-flex h-10 cursor-pointer items-center justify-center border border-foreground bg-foreground px-4 font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-background transition-colors hover:bg-primary hover:text-primary-foreground"
-            onClick={() => reset()}
-          >
-            Try again
-          </button>
-        </main>
+        <ShellPage size="narrow" className="min-h-dvh justify-center py-16">
+          <EmptyStatePanel
+            kicker="Error"
+            title="Something went wrong"
+            body={error.message || "An unexpected error occurred."}
+            actions={
+              <Button type="button" onClick={() => reset()}>
+                Try again
+              </Button>
+            }
+          />
+        </ShellPage>
       </body>
     </html>
   );

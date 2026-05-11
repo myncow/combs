@@ -1,10 +1,25 @@
 import { isLeaderboardStoreTestDbConfigured } from "./ensure-db-url-for-store-tests";
 import { sql } from "drizzle-orm";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+const materializeCellImageAssetMock = vi.fn();
+
+vi.mock("@/lib/cell-visualization-storage", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/cell-visualization-storage")>(
+    "@/lib/cell-visualization-storage",
+  );
+  return {
+    ...actual,
+    materializeCellImageAsset: (...args: Parameters<typeof actual.materializeCellImageAsset>) =>
+      materializeCellImageAssetMock(...args),
+  };
+});
+
 import { resetDbClientForTests, getDb } from "@/lib/db/client";
 import {
   castLeaderboardVote,
   getLeaderboardEntryBySlug,
+  getMapBySlug,
   listLeaderboardEntries,
   patchMapCellVisualization,
   publishGapSpotlight,
@@ -69,6 +84,7 @@ describe.skipIf(!isLeaderboardStoreTestDbConfigured)("leaderboard store", () => 
   });
 
   beforeEach(async () => {
+    materializeCellImageAssetMock.mockReset();
     await truncateStoreTables();
     await saveMap({
       brief: briefFixture(),
@@ -104,6 +120,59 @@ describe.skipIf(!isLeaderboardStoreTestDbConfigured)("leaderboard store", () => 
     const detail = await getLeaderboardEntryBySlug(entry.slug, "viewer-a");
     expect(detail?.storySummary).toContain("technically plausible");
     expect(detail?.mapTitle).toBe("Bread Map");
+  });
+
+  it("persists a generated visualization so it survives a fresh map read", async () => {
+    await patchMapCellVisualization("bread-map", "rice-sourdough", {
+      imageUrl: "https://assets.public.blob.vercel-storage.com/generated-cell-viz/bread/rice.png",
+      updatedAt: "2026-05-04T00:00:00.000Z",
+      caption: "Rice chemistry frontier",
+      provider: "vercel_blob",
+      storageKey: "generated-cell-viz/bread/rice.png",
+      mimeType: "image/png",
+      byteSize: 8192,
+      byteHash: "a".repeat(64),
+    });
+
+    const map = await getMapBySlug("bread-map");
+    const cell = map?.document.cells.find((entry) => entry.id === "rice-sourdough");
+
+    expect(cell?.visualization?.imageUrl).toBe(
+      "https://assets.public.blob.vercel-storage.com/generated-cell-viz/bread/rice.png",
+    );
+    expect(cell?.visualization?.caption).toBe("Rice chemistry frontier");
+    expect(cell?.visualization?.byteHash).toBe("a".repeat(64));
+  });
+
+  it("materializes inline data-url visualizations before persisting media assets", async () => {
+    materializeCellImageAssetMock.mockResolvedValueOnce({
+      url: "https://assets.public.blob.vercel-storage.com/generated-cell-viz/bread-map/rice-sourdough.png",
+      provider: "vercel_blob",
+      storageKey: "generated-cell-viz/bread-map/rice-sourdough.png",
+      mimeType: "image/png",
+      byteHash: "b".repeat(64),
+      byteSize: 8192,
+    });
+
+    await patchMapCellVisualization("bread-map", "rice-sourdough", {
+      imageUrl: "data:image/png;base64,AAAA",
+      updatedAt: "2026-05-04T00:00:00.000Z",
+      caption: "Rice chemistry frontier",
+    });
+
+    expect(materializeCellImageAssetMock).toHaveBeenCalledWith(
+      "bread-map",
+      "rice-sourdough",
+      "data:image/png;base64,AAAA",
+    );
+
+    const map = await getMapBySlug("bread-map");
+    const cell = map?.document.cells.find((entry) => entry.id === "rice-sourdough");
+
+    expect(cell?.visualization?.imageUrl).toBe(
+      "https://assets.public.blob.vercel-storage.com/generated-cell-viz/bread-map/rice-sourdough.png",
+    );
+    expect(cell?.visualization?.byteHash).toBe("b".repeat(64));
   });
 
   it("publishes multiple visualized frontier cells from the same map", async () => {

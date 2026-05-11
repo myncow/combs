@@ -1,9 +1,20 @@
+import { ShellPage, SurfacePanel } from "@/components/raster-shell";
+
 export default function LeaderboardLoading() {
   return (
-    <main className="mx-auto w-full max-w-[1180px] px-5 py-6 md:px-8 md:py-8">
-      <div className="border border-border bg-card px-5 py-10 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-        Loading top list…
+    <ShellPage size="wide">
+      <div className="border-b border-border pb-6">
+        <div className="flex items-baseline gap-3">
+          <div className="h-3 w-8 animate-pulse bg-muted/50" />
+          <div className="h-px flex-1 bg-border" />
+          <div className="h-3 w-28 animate-pulse bg-muted/40" />
+        </div>
+        <div className="mt-4 h-8 w-52 animate-pulse bg-muted/60 md:h-10" />
+        <div className="mt-3 h-4 w-full max-w-lg animate-pulse bg-muted/35" />
       </div>
-    </main>
+      <SurfacePanel className="mt-6 min-h-[16rem] animate-pulse border-border/60 bg-muted/20">
+        <div aria-hidden className="h-full w-full" />
+      </SurfacePanel>
+    </ShellPage>
   );
 }

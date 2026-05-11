@@ -18,9 +18,12 @@ Copy `.env.example` to `.env.local` and set at least:
 
 - `DATABASE_URL` — Postgres connection string (required for dev and production)
 - `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `OPENROUTER_FALLBACK_MODEL`
+- `BLOB_READ_WRITE_TOKEN` — Vercel Blob read/write token for generated cell visualizations
 - `SERPAPI_API_KEY` (optional; enables SerpApi-backed image examples)
 
 `OPENROUTER_API_KEY` is required for map generation. If it is missing, generation fails closed instead of publishing heuristic fallback maps.
+
+`BLOB_READ_WRITE_TOKEN` is required for generated frontier-cell images. Local development uses the same Vercel Blob persistence path as preview/production — there is no filesystem fallback for generated images.
 
 `SERPAPI_API_KEY` enables visual example matrices by proxying Google Images through SerpApi. If it is missing, maps still render, but visual example tiles are hidden.
 

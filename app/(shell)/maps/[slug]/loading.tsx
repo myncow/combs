@@ -1,12 +1,20 @@
+import { ShellPage, SurfacePanel } from "@/components/raster-shell";
+
 export default function MapPageLoading() {
   return (
-    <main className="mx-auto flex w-full max-w-[1536px] flex-1 flex-col min-h-0 overflow-y-auto overscroll-contain px-5 pb-8 md:overflow-hidden md:pb-0 md:px-6 xl:px-8">
-      <div className="shrink-0 py-3 lg:py-2">
-        <div className="h-9 w-[min(100%,28rem)] animate-pulse rounded-sm bg-muted/60 sm:h-10" />
+    <ShellPage size="full" className="pb-8 md:overflow-hidden md:px-6 xl:px-8">
+      <div className="border-b border-border pb-6">
+        <div className="flex items-baseline gap-3">
+          <div className="h-3 w-8 animate-pulse bg-muted/50" />
+          <div className="h-px flex-1 bg-border" />
+          <div className="h-3 w-20 animate-pulse bg-muted/40" />
+        </div>
+        <div className="mt-4 h-9 w-[min(100%,28rem)] animate-pulse bg-muted/60 sm:h-10" />
+        <div className="mt-3 h-4 w-full max-w-xl animate-pulse bg-muted/35" />
       </div>
-      <div className="flex-1 min-h-0 flex flex-col pb-3 md:pb-2">
-        <div className="min-h-[320px] flex-1 animate-pulse rounded-md border border-border/60 bg-muted/20 md:min-h-[480px]" />
-      </div>
-    </main>
+      <SurfacePanel className="mt-5 min-h-[320px] flex-1 animate-pulse border-border/60 bg-muted/20 md:min-h-[480px]">
+        <div aria-hidden className="h-full w-full" />
+      </SurfacePanel>
+    </ShellPage>
   );
 }

@@ -191,7 +191,7 @@ export function ExampleVisualMatrix({
     return (
       <div
         className={cn(
-          "grid grid-cols-2 gap-2 overflow-hidden rounded-lg border border-border bg-background/55 p-2",
+          "grid grid-cols-2 gap-px border border-border bg-border",
           compact ? "md:grid-cols-2" : "sm:grid-cols-4",
           className,
         )}
@@ -200,7 +200,7 @@ export function ExampleVisualMatrix({
           <div
             key={`${item.query}-${index}`}
             className={cn(
-              "min-h-28 animate-pulse rounded-md border border-border/70 bg-muted/45",
+              "min-h-28 animate-pulse bg-muted/45",
               !compact && index === 0 ? "sm:col-span-2 sm:row-span-2 sm:min-h-56" : "",
             )}
           />
@@ -216,7 +216,7 @@ export function ExampleVisualMatrix({
   return (
     <div
       className={cn(
-        "grid grid-cols-2 gap-2 overflow-hidden rounded-lg border border-border bg-background/55 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
+        "grid grid-cols-2 gap-px border border-border bg-border",
         compact ? "md:grid-cols-2" : "sm:grid-cols-4",
         className,
       )}
@@ -231,7 +231,7 @@ export function ExampleVisualMatrix({
             rel="noopener noreferrer"
             title={hit.title ?? tile.name}
             className={cn(
-              "group relative isolate min-h-32 overflow-hidden rounded-md border border-border bg-muted outline-none ring-offset-background transition duration-300 hover:-translate-y-0.5 hover:border-primary/55 focus-visible:ring-2 focus-visible:ring-ring",
+              "group relative isolate flex min-h-32 flex-col overflow-hidden bg-card outline-none ring-offset-background transition-colors duration-200 hover:bg-background focus-visible:ring-2 focus-visible:ring-ring",
               compact ? "min-h-28" : "",
               !compact && index === 0 ? "sm:col-span-2 sm:row-span-2 sm:min-h-72" : "",
             )}
@@ -241,22 +241,24 @@ export function ExampleVisualMatrix({
               src={hit.thumbnail!}
               alt=""
               referrerPolicy="no-referrer"
-              className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
+              className="h-full w-full flex-1 border-b border-border object-cover"
             />
-            <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,24,23,0)_18%,rgba(8,24,23,0.55)_55%,rgba(8,24,23,0.94)_100%)]" />
-            <span className="absolute left-2 top-2 rounded-sm border border-border-strong bg-background/95 px-2 py-1 text-[11px] font-black uppercase text-foreground shadow-sm backdrop-blur-md">
-              {tile.year ?? tile.brand ?? hit.source ?? "Visual"}
-            </span>
-            <span className="absolute inset-x-0 bottom-0 p-2.5 text-white">
-              <span className="block text-[15px] font-black leading-tight [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]">
-                {tile.name}
-              </span>
-              {tile.brand ? (
-                <span className="mt-0.5 block text-[12px] font-semibold text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.55)]">
-                  {tile.brand}
+            <div className="space-y-2 bg-card px-3 py-3">
+              <div className="flex items-center justify-between gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                <span className="truncate">{tile.year ?? tile.brand ?? hit.source ?? "Visual"}</span>
+                <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
+              </div>
+              <div>
+                <span className="block text-[14px] font-semibold leading-tight tracking-[-0.015em] text-foreground">
+                  {tile.name}
                 </span>
-              ) : null}
-            </span>
+                {tile.brand ? (
+                  <span className="mt-1 block text-[12px] leading-snug text-muted-foreground">
+                    {tile.brand}
+                  </span>
+                ) : null}
+              </div>
+            </div>
           </a>
         );
       })}

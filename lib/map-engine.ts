@@ -32,7 +32,7 @@ import {
   suggestAxisPairsResponseJsonSchema,
 } from "@/lib/openrouter-schemas";
 import { buildFallbackMapDocument } from "@/lib/map-fallback-document";
-import { enrichMapDocumentReferenceImages, exampleIdentityKey } from "@/lib/map-reference-images";
+import { enrichMapDocumentReferenceImages } from "@/lib/map-reference-images";
 import { attachVisualSeries } from "@/lib/visual-series";
 import type { GenerationMetricsCollector } from "@/lib/generation-metrics";
 import { applyMapPatch } from "@/lib/store";
@@ -2007,6 +2007,9 @@ export async function generateMapDocument(
     });
   }
 
+  const pendingLiveBatches: MapCellsBatchInput[] = [];
+  const liveCheckpointEvery = 2;
+
   const cellsBatch = await modelGenerateMapCells(
     skeleton,
     brief,
@@ -2014,21 +2017,31 @@ export async function generateMapDocument(
     sink,
     collector,
     liveId
-      ? async (batch) => {
+      ? async (batch, batchIndex, totalBatches) => {
+          pendingLiveBatches.push(batch);
+          const shouldFlush =
+            batchIndex === totalBatches - 1 ||
+            pendingLiveBatches.length >= liveCheckpointEvery;
+          if (!shouldFlush) {
+            return;
+          }
+
+          const flushed = pendingLiveBatches.splice(0, pendingLiveBatches.length);
+          const merged = mergeCellsBatches(flushed);
           await applyMapPatch({
             mapId: liveId,
             mutate: (current) => {
               const seenIds = new Set(current.cells.map((c) => c.id));
-              const newCells = batch.cells.filter((c) => !seenIds.has(c.id));
+              const newCells = merged.cells.filter((c) => !seenIds.has(c.id));
               return {
                 ...current,
                 cells: [...current.cells, ...newCells],
                 featuredExamples: dedupeExamples([
                   ...current.featuredExamples,
-                  ...batch.featuredExamples,
+                  ...merged.featuredExamples,
                 ]).slice(0, 8),
-                notableGaps: [...current.notableGaps, ...batch.notableGaps],
-                impossibleCombos: [...current.impossibleCombos, ...batch.impossibleCombos],
+                notableGaps: [...current.notableGaps, ...merged.notableGaps],
+                impossibleCombos: [...current.impossibleCombos, ...merged.impossibleCombos],
               };
             },
           });
@@ -2388,31 +2401,7 @@ export async function buildMapJob(
   }
 
   emitStep(sink, "reference_images", "start");
-  const withReferences = await enrichMapDocumentReferenceImages(
-    document,
-    collector,
-    liveId
-      ? async (key, hits) => {
-          await applyMapPatch({
-            mapId: liveId,
-            mutate: (current) => {
-              const attach = (ex: MapExample): MapExample => {
-                if (exampleIdentityKey(ex) !== key) return ex;
-                return { ...ex, referenceImages: hits };
-              };
-              return {
-                ...current,
-                featuredExamples: current.featuredExamples.map(attach),
-                cells: current.cells.map((cell) => ({
-                  ...cell,
-                  examples: cell.examples.map(attach),
-                })),
-              };
-            },
-          });
-        }
-      : undefined,
-  );
+  const withReferences = await enrichMapDocumentReferenceImages(document, collector);
   const parsedDoc = mapDocumentSchema.safeParse(withReferences);
   const finalDocument = parsedDoc.success ? parsedDoc.data : withReferences;
   emitStep(sink, "reference_images", "end");

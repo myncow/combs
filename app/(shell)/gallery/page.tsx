@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { EmptyStatePanel, PageHeader, ShellPage, SurfacePanel } from "@/components/raster-shell";
 import { mapFiltersSchema } from "@/lib/schema";
 import { getPageByKey, listMaps } from "@/lib/store";
 
@@ -37,22 +39,62 @@ export default async function GalleryPage({
   }
 
   return (
-    <main className="mx-auto w-full max-w-lg flex-1 overflow-y-auto overscroll-contain px-5 py-6 md:px-8 md:py-8">
-      <h1 className="font-sans text-xl font-semibold tracking-tight text-foreground md:text-2xl">{pageContent.heading}</h1>
-      <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-        {pageContent.intro}{" "}
-        {filters.topicFamily ? (
-          <>
-            Filter: <span className="text-foreground">{filters.topicFamily}</span>.{" "}
-            <Link href="/gallery" className="underline decoration-border underline-offset-2 hover:text-foreground">
-              Clear
-            </Link>
-          </>
+    <ShellPage size="content">
+      <PageHeader
+        index="02"
+        eyebrow={total === 1 ? "01 map" : `${String(total).padStart(2, "0")} maps`}
+        title={pageContent.heading}
+        intro={pageContent.intro}
+        summary={filters.topicFamily ? `Filtered · ${filters.topicFamily}` : "Library · Rail browsing"}
+        titleClassName="text-[26px] md:text-[34px]"
+      />
+      <div className="mt-6 grid gap-5">
+        <SurfacePanel>
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                Reading Mode
+              </p>
+              <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
+                Titles and thumbnails stay in the left rail so you can keep the active canvas open while jumping between maps.
+              </p>
+              {filters.topicFamily ? (
+                <p className="mt-3 text-[14px] leading-relaxed text-foreground">
+                  Current family: <span className="font-medium">{filters.topicFamily}</span>.{" "}
+                  <Link href="/gallery" className="underline decoration-border underline-offset-4 hover:text-primary">
+                    Clear filter
+                  </Link>
+                </p>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild size="sm">
+                <Link href="/">New map</Link>
+              </Button>
+              <Button asChild variant="secondary" size="sm">
+                <Link href="/leaderboard">Top list</Link>
+              </Button>
+            </div>
+          </div>
+        </SurfacePanel>
+
+        {total === 0 ? (
+          <EmptyStatePanel
+            kicker="No maps yet"
+            body="Start a map from the rail or the new-map screen, then use this view as a stable library index."
+            actions={
+              <>
+                <Button asChild>
+                  <Link href="/">New map</Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href="/leaderboard">Browse spotlights</Link>
+                </Button>
+              </>
+            }
+          />
         ) : null}
-      </p>
-      <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground tabular-nums">
-        {total === 1 ? "1 map" : `${total} maps`}
-      </p>
-    </main>
+      </div>
+    </ShellPage>
   );
 }

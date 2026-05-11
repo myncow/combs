@@ -1,14 +1,20 @@
 import { createHash } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { put } from "@vercel/blob";
+import { getBlobReadWriteToken } from "@/lib/env";
 
 export type MaterializedCellImage = {
-  /** URL to render in the UI (cache-busted relative path or remote/data fallback). */
+  /** Public, durable URL to render in the UI. */
   url: string;
+  /** Persistent provider identifier used by media_assets. */
+  provider: "vercel_blob";
+  /** Blob pathname within the store. */
+  storageKey: string;
+  /** Uploaded MIME type. */
+  mimeType: string;
   /** SHA-256 hex of the validated image bytes — used for cross-cell duplicate detection. */
   byteHash: string;
-  /** Final byte length, useful for telemetry. */
-  byteLength: number;
+  /** Final byte length, useful for telemetry and DB persistence. */
+  byteSize: number;
 };
 
 /**
@@ -42,6 +48,19 @@ function safeSegment(value: string) {
   return value.replace(/[^a-zA-Z0-9_-]+/g, "_").replace(/^_|_$/g, "").slice(0, 96) || "item";
 }
 
+function mimeTypeFor(format: ImageFormat): string {
+  switch (format) {
+    case "png":
+      return "image/png";
+    case "jpg":
+      return "image/jpeg";
+    case "webp":
+      return "image/webp";
+    case "gif":
+      return "image/gif";
+  }
+}
+
 async function readImageBuffer(sourceUrl: string): Promise<Buffer> {
   if (sourceUrl.startsWith("data:")) {
     const match = sourceUrl.match(/^data:([^;]+);base64,(.+)$/);
@@ -67,30 +86,27 @@ export class DegenerateImageError extends Error {
 }
 
 /**
- * Writes image bytes under `public/generated-cell-viz/{slug}/{cellId}.ext` and returns a site path.
- * We intentionally avoid the historical `public/cell-viz` tree here because
- * Vercel traces that directory into server actions and can blow past the
- * 250 MB function size limit on routes that import those actions.
- *
- * The returned URL carries a content-addressed `?v={byteHash[0..8]}` query so
- * re-rendering with new bytes produces a new URL (forcing browser cache miss),
- * while a re-render that produces *identical* bytes reuses the same URL —
- * cleaner than `Date.now()` which would race in the same millisecond and
- * would needlessly invalidate caches on identical re-runs.
+ * Uploads image bytes to Vercel Blob under a content-addressed pathname so
+ * local development and production share the exact same persistence path.
  *
  * Validates the buffer:
  * - Must be at least MIN_IMAGE_BYTES so we never persist 1×1 placeholders.
  * - Must start with PNG/JPEG/WEBP/GIF magic bytes so we don't store HTML/error pages.
  *
- * Throws `DegenerateImageError` when validation fails — the caller can choose
- * whether to surface a retry or report failure. On filesystem write failure
- * (e.g. read-only serverless FS) returns `sourceUrl` unchanged.
+ * Throws `DegenerateImageError` when validation fails. Throws a clear regular
+ * Error when Blob storage is unconfigured.
  */
 export async function materializeCellImageAsset(
   mapSlug: string,
   cellId: string,
   sourceUrl: string,
 ): Promise<MaterializedCellImage> {
+  if (!getBlobReadWriteToken()) {
+    throw new Error(
+      "Generated image persistence is not configured: set BLOB_READ_WRITE_TOKEN in the server environment.",
+    );
+  }
+
   const buffer = await readImageBuffer(sourceUrl);
 
   if (buffer.byteLength < MIN_IMAGE_BYTES) {
@@ -108,24 +124,26 @@ export async function materializeCellImageAsset(
   }
 
   const byteHash = createHash("sha256").update(buffer).digest("hex");
-  const byteLength = buffer.byteLength;
-  const cacheBuster = byteHash.slice(0, 8);
+  const byteSize = buffer.byteLength;
+  const ext = format;
+  const mimeType = mimeTypeFor(format);
+  const dirSeg = safeSegment(mapSlug);
+  const cellSeg = safeSegment(cellId);
+  const pathname = `${GENERATED_CELL_VIZ_DIR}/${dirSeg}/${cellSeg}-${byteHash.slice(0, 12)}.${ext}`;
 
-  try {
-    const ext = format;
-    const dirSeg = safeSegment(mapSlug);
-    const cellSeg = safeSegment(cellId);
-    const dir = join(process.cwd(), "public", GENERATED_CELL_VIZ_DIR, dirSeg);
-    await mkdir(dir, { recursive: true });
-    const filename = `${cellSeg}.${ext}`;
-    await writeFile(join(dir, filename), buffer);
-    return {
-      url: `/${GENERATED_CELL_VIZ_DIR}/${dirSeg}/${filename}?v=${cacheBuster}`,
-      byteHash,
-      byteLength,
-    };
-  } catch (error) {
-    console.warn("cell-viz: could not write file, keeping remote/data URL", error);
-    return { url: sourceUrl, byteHash, byteLength };
-  }
+  const blob = await put(pathname, buffer, {
+    access: "public",
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    contentType: mimeType,
+  });
+
+  return {
+    url: blob.url,
+    provider: "vercel_blob",
+    storageKey: blob.pathname,
+    mimeType: blob.contentType || mimeType,
+    byteHash,
+    byteSize,
+  };
 }

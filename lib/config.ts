@@ -77,8 +77,8 @@ export const appConfig = {
      * Override with `LATTICE_SERP_REFERENCE_MAX_CALLS` to control cost.
      */
     serpReferenceMaxCalls: (() => {
-      const raw = Number(process.env.LATTICE_SERP_REFERENCE_MAX_CALLS ?? 16);
-      const n = Number.isFinite(raw) ? Math.floor(raw) : 16;
+      const raw = Number(process.env.LATTICE_SERP_REFERENCE_MAX_CALLS ?? 8);
+      const n = Number.isFinite(raw) ? Math.floor(raw) : 8;
       return Math.min(64, Math.max(0, n));
     })(),
     visualCandidateCount: (() => {
@@ -92,8 +92,8 @@ export const appConfig = {
      * `serpReferenceMaxCalls` so visual gating cannot starve reference enrichment.
      */
     serpProbeMaxCalls: (() => {
-      const raw = Number(process.env.LATTICE_SERP_PROBE_MAX_CALLS ?? 18);
-      const n = Number.isFinite(raw) ? Math.floor(raw) : 18;
+      const raw = Number(process.env.LATTICE_SERP_PROBE_MAX_CALLS ?? 8);
+      const n = Number.isFinite(raw) ? Math.floor(raw) : 8;
       return Math.min(64, Math.max(0, n));
     })(),
     /**

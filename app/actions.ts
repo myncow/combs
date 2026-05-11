@@ -8,6 +8,7 @@ import {
   type MaterializedCellImage,
 } from "@/lib/cell-visualization-storage";
 import { generateCellVisualizationWithMetrics } from "@/lib/cell-image";
+import { getBlobReadWriteToken } from "@/lib/env";
 import { checkRateLimit, getRequesterId, moderateText } from "@/lib/guards";
 import { runMapGenerationCore } from "@/lib/map-generation-runner";
 import {
@@ -139,6 +140,13 @@ export async function visualizeCellAction(
       status: "error",
       message:
         "Image generation is not configured: set OPENROUTER_API_KEY in the server environment to enable sketches.",
+    };
+  }
+  if (!getBlobReadWriteToken()) {
+    return {
+      status: "error",
+      message:
+        "Generated image persistence is not configured: set BLOB_READ_WRITE_TOKEN in the server environment.",
     };
   }
 
@@ -273,6 +281,10 @@ export async function visualizeCellAction(
       updatedAt,
       imageModel: attempt.usedImageModel,
       prompt: attempt.usedPrompt,
+      provider: attempt.materialized.provider,
+      storageKey: attempt.materialized.storageKey,
+      mimeType: attempt.materialized.mimeType,
+      byteSize: attempt.materialized.byteSize,
       byteHash: attempt.materialized.byteHash,
     });
     revalidatePath(`/maps/${slug}`);

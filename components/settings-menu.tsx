@@ -25,6 +25,7 @@ import {
   THEME_STORAGE_KEY,
   type ThemePreference,
 } from "@/lib/theme-preference";
+import { MenuPanel } from "@/components/raster-shell";
 import { cn } from "@/lib/utils";
 
 const THEME_OPTIONS: ReadonlyArray<{ id: ThemePreference; label: string }> = [
@@ -126,10 +127,10 @@ export function SettingsMenu() {
       </button>
 
       {open ? (
-        <div
+        <MenuPanel
           role="dialog"
           aria-label="Settings"
-          className="absolute right-0 top-full z-30 mt-1 w-[min(320px,90vw)] origin-top-right border border-border bg-card shadow-md"
+          className="absolute right-0 top-full z-30 mt-1 w-[min(320px,90vw)] origin-top-right"
         >
           <div className="flex items-center justify-between border-b border-border px-3 py-2">
             <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
@@ -155,7 +156,7 @@ export function SettingsMenu() {
                       "h-8 border px-2 font-mono text-[11px] uppercase tracking-[0.18em] transition-colors",
                       selected
                         ? "border-foreground bg-foreground text-background"
-                        : "border-border bg-background text-muted-foreground hover:text-foreground",
+                        : "border-border bg-background text-muted-foreground hover:border-border-strong hover:text-foreground",
                     )}
                   >
                     {opt.label}
@@ -201,7 +202,7 @@ export function SettingsMenu() {
               })}
             </ul>
           </fieldset>
-        </div>
+        </MenuPanel>
       ) : null}
     </div>
   );

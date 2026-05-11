@@ -27,12 +27,12 @@ export function AxisPairSuggestionCard({
       onClick={onSelect}
       aria-pressed={selected}
       className={cn(
-        "group flex w-full flex-col justify-between rounded-md border border-border bg-card/45 text-left transition-all duration-150",
-        compact ? "min-h-0 gap-2 px-3 py-2.5" : "h-full min-h-[12.5rem] gap-4 px-4 py-4",
-        "hover:border-foreground/25 hover:bg-card/70",
+        "group flex w-full flex-col justify-between border border-border bg-[color:color-mix(in_srgb,var(--card)_72%,var(--background))] text-left transition-colors duration-150",
+        compact ? "min-h-0 gap-3 px-3 py-3" : "h-full min-h-[11rem] gap-4 px-4 py-4",
+        "hover:border-foreground/25 hover:bg-card/95",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         selected &&
-          "border-primary bg-[color:color-mix(in_srgb,var(--primary)_10%,var(--card))] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--primary)_18%,transparent)]",
+          "border-primary bg-[color:color-mix(in_srgb,var(--primary)_9%,var(--card))]",
       )}
     >
       <div className="flex items-start justify-between gap-2">

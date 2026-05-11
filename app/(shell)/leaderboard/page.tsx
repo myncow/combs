@@ -1,11 +1,28 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { getRequesterId } from "@/lib/guards";
+import { Button } from "@/components/ui/button";
+import { EmptyStatePanel, PageHeader, ShellPage } from "@/components/raster-shell";
 import { leaderboardFiltersSchema } from "@/lib/schema";
 import { getPageByKey, listLeaderboardEntries, listLeaderboardTopicFamilies } from "@/lib/store";
 import { LeaderboardCard } from "@/components/leaderboard-card";
 import { AsciiDivider } from "@/components/ui/ascii-divider";
-import { Badge } from "@/components/ui/badge";
+
+function FilterLink({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Button asChild size="sm" variant={active ? "default" : "secondary"}>
+      <Link href={href}>{children}</Link>
+    </Button>
+  );
+}
 
 export default async function LeaderboardPage({
   searchParams,
@@ -47,66 +64,43 @@ export default async function LeaderboardPage({
   const [featured, ...rest] = entries.items;
 
   return (
-    <main className="mx-auto flex w-full max-w-[1240px] flex-1 flex-col gap-8 overflow-y-auto overscroll-contain px-5 py-8 md:px-8 md:py-10">
-      <header className="border-b border-border pb-6">
-        <div className="flex items-baseline gap-3">
-          <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-primary tabular-nums">
-            01
-          </span>
-          <span aria-hidden className="h-px flex-1 bg-border" />
-          <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground tabular-nums">
-            {String(entries.total).padStart(2, "0")} {entries.total === 1 ? "spotlight" : "spotlights"}
-          </span>
-        </div>
-        <h1 className="mt-4 font-sans text-[26px] font-semibold leading-tight tracking-[-0.025em] text-foreground md:text-[32px]">
-          {pageContent.heading}
-        </h1>
-        <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-muted-foreground">
-          {pageContent.intro}
-        </p>
-        <div className="mt-5 flex flex-wrap items-center gap-2">
-          <span className="mr-1 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-            {pageContent.helperText}
-          </span>
-          <Link
-            href={`/leaderboard?sort=top${filters.topicFamily ? `&topicFamily=${encodeURIComponent(filters.topicFamily)}` : ""}`}
-            className={
-              "border px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.2em] transition-colors " +
-              (filters.sort === "top"
-                ? "border-foreground bg-foreground text-background"
-                : "border-border bg-background text-muted-foreground hover:text-foreground")
-            }
-          >
-            Top
-          </Link>
-          <Link
-            href={`/leaderboard?sort=new${filters.topicFamily ? `&topicFamily=${encodeURIComponent(filters.topicFamily)}` : ""}`}
-            className={
-              "border px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.2em] transition-colors " +
-              (filters.sort === "new"
-                ? "border-foreground bg-foreground text-background"
-                : "border-border bg-background text-muted-foreground hover:text-foreground")
-            }
-          >
-            New
-          </Link>
-          <span aria-hidden className="mx-1 h-4 w-px bg-border" />
-          <Badge variant={!filters.topicFamily ? "default" : "muted"} className="px-3 py-1.5">
-            <Link href={`/leaderboard?sort=${filters.sort}`}>All</Link>
-          </Badge>
-          {topicFamilies.map((family) => (
-            <Badge
-              key={family}
-              variant={filters.topicFamily === family ? "accent" : "muted"}
-              className="px-3 py-1.5"
+    <ShellPage size="wide" className="gap-8">
+      <PageHeader
+        title={pageContent.heading}
+        eyebrow={`${String(entries.total).padStart(2, "0")} ${entries.total === 1 ? "spotlight" : "spotlights"}`}
+        intro={pageContent.intro}
+        summary={pageContent.helperText}
+        titleClassName="text-[26px] md:text-[34px]"
+        actions={
+          <>
+            <FilterLink
+              href={`/leaderboard?sort=top${filters.topicFamily ? `&topicFamily=${encodeURIComponent(filters.topicFamily)}` : ""}`}
+              active={filters.sort === "top"}
             >
-              <Link href={`/leaderboard?sort=${filters.sort}&topicFamily=${encodeURIComponent(family)}`}>
+              Top
+            </FilterLink>
+            <FilterLink
+              href={`/leaderboard?sort=new${filters.topicFamily ? `&topicFamily=${encodeURIComponent(filters.topicFamily)}` : ""}`}
+              active={filters.sort === "new"}
+            >
+              New
+            </FilterLink>
+            <span aria-hidden className="mx-1 hidden h-4 w-px bg-border md:block" />
+            <FilterLink href={`/leaderboard?sort=${filters.sort}`} active={!filters.topicFamily}>
+              All
+            </FilterLink>
+            {topicFamilies.map((family) => (
+              <FilterLink
+                key={family}
+                href={`/leaderboard?sort=${filters.sort}&topicFamily=${encodeURIComponent(family)}`}
+                active={filters.topicFamily === family}
+              >
                 {family}
-              </Link>
-            </Badge>
-          ))}
-        </div>
-      </header>
+              </FilterLink>
+            ))}
+          </>
+        }
+      />
 
       {featured ? <LeaderboardCard entry={featured} rank={1} featured /> : null}
 
@@ -124,15 +118,21 @@ export default async function LeaderboardPage({
           </div>
         </>
       ) : featured ? null : (
-        <div className="border border-border bg-card px-5 py-10 text-center">
-          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-            {pageContent.emptyStateTitle}
-          </p>
-          {pageContent.emptyStateBody ? (
-            <p className="mt-3 text-[14px] text-muted-foreground">{pageContent.emptyStateBody}</p>
-          ) : null}
-        </div>
+        <EmptyStatePanel
+          kicker={pageContent.emptyStateTitle}
+          body={pageContent.emptyStateBody}
+          actions={
+            <>
+              <Button asChild>
+                <Link href="/">New map</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/gallery">Maps</Link>
+              </Button>
+            </>
+          }
+        />
       )}
-    </main>
+    </ShellPage>
   );
 }

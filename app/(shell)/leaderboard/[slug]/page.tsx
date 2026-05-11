@@ -3,7 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { getRequesterId } from "@/lib/guards";
+import { Button } from "@/components/ui/button";
 import { getLeaderboardEntryBySlug } from "@/lib/store";
+import { PageHeader, ShellPage, SurfacePanel } from "@/components/raster-shell";
 import { Badge } from "@/components/ui/badge";
 import { LeaderboardShareActions } from "@/components/leaderboard-share-actions";
 import { LeaderboardVoteControls } from "@/components/leaderboard-vote-controls";
@@ -45,7 +47,7 @@ export default async function LeaderboardEntryPage({
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-[1180px] flex-1 flex-col gap-8 overflow-y-auto overscroll-contain px-5 py-6 md:px-8 md:py-8">
+    <ShellPage size="detail" className="gap-6">
       <Link
         href="/leaderboard"
         className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition-colors hover:text-foreground"
@@ -53,8 +55,17 @@ export default async function LeaderboardEntryPage({
         Back to top list
       </Link>
 
-      <section className="grid gap-0 border border-border bg-card lg:grid-cols-[1.25fr_0.75fr]">
-        <div className="overflow-hidden bg-muted">
+      <PageHeader
+        index="03"
+        eyebrow={entry.topicFamily}
+        title={entry.storyTitle}
+        intro={entry.storySummary}
+        summary={`Source cell · ${entry.cellLabel}`}
+        titleClassName="text-[30px] md:text-[42px]"
+      />
+
+      <SurfacePanel className="grid gap-0 p-0 lg:grid-cols-[1.3fr_0.7fr]">
+        <div className="overflow-hidden border-b border-border bg-muted lg:border-b-0 lg:border-r">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={entry.imageUrl}
@@ -63,30 +74,24 @@ export default async function LeaderboardEntryPage({
             className="aspect-[4/3] h-full w-full object-cover"
           />
         </div>
-        <div className="flex flex-col gap-6 p-6">
-          <div>
+        <div className="flex flex-col gap-6 p-5 md:p-6">
+          <div className="space-y-5">
             <div className="flex flex-wrap gap-2">
               <Badge variant="accent">{entry.topicFamily}</Badge>
               <Badge variant="muted">{entry.mapTitle}</Badge>
             </div>
-            <h1 className="mt-4 font-sans text-[34px] font-semibold leading-[0.98] tracking-[-0.03em] text-foreground">
-              {entry.storyTitle}
-            </h1>
-            <p className="mt-4 text-base leading-7 text-muted-foreground">{entry.storySummary}</p>
-          </div>
-
-          <div className="space-y-3 border-y border-border py-4">
-            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Source cell</p>
-            <p className="text-[15px] font-medium text-foreground">{entry.cellLabel}</p>
-            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              {coordinatesLabel(entry.coordinatesSnapshot)}
-            </p>
-            <Link
-              href={`/maps/${entry.mapSlug}#map-cell-${entry.cellId}`}
-              className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-foreground transition-colors hover:text-primary"
-            >
-              View source map
-            </Link>
+            <div className="border-t border-border pt-5">
+              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Source cell</p>
+              <p className="mt-2 text-[15px] font-medium text-foreground">{entry.cellLabel}</p>
+              <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                {coordinatesLabel(entry.coordinatesSnapshot)}
+              </p>
+              <div className="mt-4">
+                <Button asChild variant="secondary" size="sm">
+                  <Link href={`/maps/${entry.mapSlug}#map-cell-${entry.cellId}`}>View source map</Link>
+                </Button>
+              </div>
+            </div>
           </div>
 
           <LeaderboardVoteControls
@@ -105,7 +110,7 @@ export default async function LeaderboardEntryPage({
             imageUrl={entry.imageUrl}
           />
         </div>
-      </section>
-    </main>
+      </SurfacePanel>
+    </ShellPage>
   );
 }

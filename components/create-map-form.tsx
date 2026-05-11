@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Lock, RefreshCw, Unlock } from "lucide-react";
+import { AxisPairSuggestionCard } from "@/components/axis-pair-suggestion-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
@@ -460,53 +461,71 @@ export function CreateMapForm() {
     <form onSubmit={onSubmit} className="flex min-w-0 flex-col">
       <section className="flex min-w-0 flex-col">
         <div className="flex flex-col gap-6 py-1 md:py-2">
-          <Input
-            id="create-map-topic"
-            name="topic"
-            required
-            autoComplete="off"
-            spellCheck={false}
-            aria-label="Topic"
-            value={topic}
-            onFocus={() => setTopicFocused(true)}
-            onBlur={() => setTopicFocused(false)}
-            onChange={(e) => {
-              const v = e.target.value;
-              const nextTrim = v.trim();
-              const prevTrim = topicTrim;
-              setTopic(v);
-              if (nextTrim !== prevTrim) {
-                lastFetchedSuggestKeyRef.current = null;
-                pendingSuggestKeyRef.current = null;
-                setPairs([]);
-                setLockedPair(null);
-                setRequestedLockedPairKey(null);
+          <div className="space-y-3 border-b border-border pb-6">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                Topic brief
+              </p>
+              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                Start concrete, then widen if needed
+              </p>
+            </div>
+            <Input
+              id="create-map-topic"
+              name="topic"
+              required
+              autoComplete="off"
+              spellCheck={false}
+              aria-label="Topic"
+              value={topic}
+              onFocus={() => setTopicFocused(true)}
+              onBlur={() => setTopicFocused(false)}
+              onChange={(e) => {
+                const v = e.target.value;
+                const nextTrim = v.trim();
+                const prevTrim = topicTrim;
+                setTopic(v);
+                if (nextTrim !== prevTrim) {
+                  lastFetchedSuggestKeyRef.current = null;
+                  pendingSuggestKeyRef.current = null;
+                  setPairs([]);
+                  setLockedPair(null);
+                  setRequestedLockedPairKey(null);
+                }
+                if (nextTrim.length < 2) {
+                  lastFetchedSuggestKeyRef.current = null;
+                  pendingSuggestKeyRef.current = null;
+                  setSuggestErr(null);
+                  setSuggestLoading(false);
+                }
+              }}
+              placeholder={topicPlaceholder}
+              className={
+                "shrink-0 min-h-[3.35rem] border-0 bg-transparent rounded-none px-0 py-1 pb-0 font-semibold leading-[1.2] tracking-[-0.035em] text-foreground focus-visible:ring-0 " +
+                "placeholder-shown:font-medium placeholder-shown:tracking-[-0.022em] " +
+                "placeholder:font-normal placeholder:italic placeholder:tracking-[-0.02em] placeholder:text-muted-foreground/48 " +
+                "text-[clamp(1.3rem,4vw,1.75rem)] md:min-h-[3.75rem] md:text-[clamp(1.45rem,3.4vw,1.95rem)]"
               }
-              if (nextTrim.length < 2) {
-                lastFetchedSuggestKeyRef.current = null;
-                pendingSuggestKeyRef.current = null;
-                setSuggestErr(null);
-                setSuggestLoading(false);
-              }
-            }}
-            placeholder={topicPlaceholder}
-            className={
-              "shrink-0 min-h-[3.35rem] border-0 border-b border-border bg-transparent rounded-none px-0 py-1 pb-2 font-semibold leading-[1.2] tracking-[-0.035em] text-foreground focus-visible:border-foreground focus-visible:ring-0 " +
-              "placeholder-shown:font-medium placeholder-shown:tracking-[-0.022em] " +
-              "placeholder:font-normal placeholder:italic placeholder:tracking-[-0.02em] placeholder:text-muted-foreground/48 " +
-              "text-[clamp(1.3rem,4vw,1.75rem)] md:min-h-[3.75rem] md:text-[clamp(1.45rem,3.4vw,1.95rem)]"
-            }
-          />
+            />
+          </div>
 
           <ResponsiveAxesSlot>
             <div
               aria-live="polite"
               aria-busy={suggestLoading}
-              className="min-h-[12.5rem] space-y-2"
+              className="min-h-[12.5rem] space-y-3 border-b border-border pb-6"
             >
               <p className="sr-only" role="status">
                 {suggestLiveMessage}
               </p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                  Suggested frames
+                </p>
+                <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                  Tap once to lock
+                </p>
+              </div>
 
               {authPending ? (
                 <p className="text-[13px] text-muted-foreground">Checking your account…</p>
@@ -543,31 +562,11 @@ export function CreateMapForm() {
                     const selected = lockedPair !== null && axisPairKey(lockedPair) === axisPairKey(pair);
                     return (
                       <li key={axisPairKey(pair)} className="flex">
-                        <button
-                          type="button"
-                          onClick={() => togglePair(pair)}
-                          aria-pressed={selected}
-                          aria-label={
-                            selected
-                              ? `Selected frame ${pair.primary.label} by ${pair.secondary.label}`
-                              : `Select frame ${pair.primary.label} by ${pair.secondary.label}`
-                          }
-                          className={
-                            "group flex h-full w-full flex-col gap-1.5 border px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring " +
-                            (selected
-                              ? "border-primary/40 bg-[color:color-mix(in_srgb,var(--primary)_7%,transparent)]"
-                              : "border-border/70 hover:border-border hover:bg-foreground/[0.025]")
-                          }
-                        >
-                          <span className="text-[15px] font-medium leading-snug tracking-[-0.02em] text-foreground">
-                            {pair.primary.label}
-                            <span className="mx-1.5 font-normal text-muted-foreground">×</span>
-                            {pair.secondary.label}
-                          </span>
-                          {pair.rationale ? (
-                            <span className="line-clamp-2 text-[12px] leading-snug text-muted-foreground">{pair.rationale}</span>
-                          ) : null}
-                        </button>
+                        <AxisPairSuggestionCard
+                          pair={pair}
+                          selected={selected}
+                          onSelect={() => togglePair(pair)}
+                        />
                       </li>
                     );
                   })}
@@ -599,46 +598,54 @@ export function CreateMapForm() {
             </div>
           ) : null}
 
-          {error ? (
-            <p className="shrink-0 text-[13px] text-destructive" role="alert">
-              {error}
-            </p>
-          ) : null}
-
-          <Button
-            type="submit"
-            disabled={busy || authPending}
-            size="lg"
-            className="h-11 w-full shrink-0 md:w-auto md:min-w-44 md:self-end"
-          >
-            <AnimatePresence mode="wait" initial={false}>
-              {busy ? (
-                <motion.span
-                  key="busy"
-                  className="flex items-center gap-2"
-                  initial={{ opacity: 0, y: 2 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -2 }}
-                  transition={entryTransition()}
-                >
-                  <Spinner size="md" />
-                  Building map…
-                </motion.span>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="min-h-[1.25rem]">
+              {error ? (
+                <p className="shrink-0 text-[13px] text-destructive" role="alert">
+                  {error}
+                </p>
               ) : (
-                <motion.span
-                  key="idle"
-                  className="flex items-center gap-2"
-                  initial={{ opacity: 0, y: 2 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -2 }}
-                  transition={entryTransition()}
-                >
-                  Build map
-                  <ArrowRight className="h-4 w-4" />
-                </motion.span>
+                <p className="text-[13px] text-muted-foreground">
+                  The first pass builds the map structure. Frontier visuals come later inside each cell.
+                </p>
               )}
-            </AnimatePresence>
-          </Button>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={busy || authPending}
+              size="lg"
+              className="h-11 w-full shrink-0 md:w-auto md:min-w-44 md:self-end"
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                {busy ? (
+                  <motion.span
+                    key="busy"
+                    className="flex items-center gap-2"
+                    initial={{ opacity: 0, y: 2 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -2 }}
+                    transition={entryTransition()}
+                  >
+                    <Spinner size="md" />
+                    Building map…
+                  </motion.span>
+                ) : (
+                  <motion.span
+                    key="idle"
+                    className="flex items-center gap-2"
+                    initial={{ opacity: 0, y: 2 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -2 }}
+                    transition={entryTransition()}
+                  >
+                    Build map
+                    <ArrowRight className="h-4 w-4" />
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </Button>
+          </div>
         </div>
       </section>
     </form>
