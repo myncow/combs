@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { LiveMapShell } from "@/components/live-map-shell";
 import { MapRenderer } from "@/components/map-renderer";
 import { ShellPage } from "@/components/raster-shell";
+import { MapVisibilityControl } from "@/components/map-visibility-control";
+import { getSessionUser } from "@/lib/auth/admin";
 import { getMapBySlug } from "@/lib/store";
 import { simplifyMapDisplayTitle } from "@/lib/utils";
 
@@ -40,6 +42,14 @@ export default async function MapPage({
     notFound();
   }
 
+  const user = await getSessionUser();
+  const isOwner = Boolean(user && map.createdByNeonUserId === user.id);
+  const isAdmin = Boolean(user?.isAdmin);
+  const canView = map.isPublic || isOwner || isAdmin;
+  if (!canView) {
+    notFound();
+  }
+
   const isLive = map.status === "generating" || map.status === "failed";
 
   return (
@@ -48,10 +58,18 @@ export default async function MapPage({
         <LiveMapShell initial={map} slug={slug} />
       ) : (
         <>
-          <div className="shrink-0 py-3 lg:py-2">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 py-3 lg:py-2">
             <h1 className="font-sans text-[28px] font-semibold leading-[1.05] tracking-[-0.02em] text-foreground sm:text-[36px] lg:text-[26px]">
               {displayTitle(map.title, map.topicFamily)}
             </h1>
+            {isOwner || isAdmin ? (
+              <MapVisibilityControl
+                slug={map.slug}
+                initialIsPublic={Boolean(map.isPublic)}
+                canMutate={isOwner || isAdmin}
+                viewerLabel={isAdmin && !isOwner ? "Admin override" : undefined}
+              />
+            ) : null}
           </div>
           <div className="flex-1 min-h-0 flex flex-col pb-3 md:pb-2">
             <MapRenderer document={map.document} />

@@ -248,6 +248,10 @@ export interface SavedMap {
   document: MapDocument;
   /** Monotonic counter bumped each time the document is mutated server-side. */
   revision?: number;
+  /** Whether this map is visible to anyone (gallery) vs. owner-only by default. */
+  isPublic?: boolean;
+  /** Neon Auth user id of the map's creator. May be null on legacy rows. */
+  createdByNeonUserId?: string | null;
   /**
    * Pre-computed representative thumbnail URL derived from the document at
    * read time by `serializeSavedMap`. `null` when the document has no

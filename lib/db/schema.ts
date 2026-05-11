@@ -49,6 +49,7 @@ export const mapsTable = pgTable(
     renderingHints: jsonb("rendering_hints"),
     visualSeries: jsonb("visual_series"),
     revision: integer("revision").default(0).notNull(),
+    isPublic: boolean("is_public").default(false).notNull(),
     createdByNeonUserId: varchar("created_by_neon_user_id", { length: 160 }),
     updatedByNeonUserId: varchar("updated_by_neon_user_id", { length: 160 }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -59,6 +60,8 @@ export const mapsTable = pgTable(
     index("maps_published_idx").on(table.publishedAt),
     index("maps_topic_family_idx").on(table.topicFamily),
     index("maps_status_idx").on(table.status),
+    index("maps_created_by_idx").on(table.createdByNeonUserId),
+    index("maps_is_public_idx").on(table.isPublic),
   ],
 );
 

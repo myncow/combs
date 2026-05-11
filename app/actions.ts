@@ -73,7 +73,8 @@ export async function createMapAction(
   }
 
   try {
-    const outcome = await runMapGenerationCore(parsed.data);
+    const ownerId = session.user.id ?? null;
+    const outcome = await runMapGenerationCore(parsed.data, { ownerId });
 
     if (outcome.outcome === "rejected") {
       return {

@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ChevronsLeft, ChevronsRight, Plus, Trophy } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, Plus, Shield, Trophy } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -15,6 +15,7 @@ type MapsPayload = { items?: SavedMap[]; total?: number };
 
 export type ExplorerSidebarProps = {
   isSignedIn: boolean;
+  isAdmin?: boolean;
   initialMaps?: { items: SavedMap[]; total: number };
   /** Set when server-side library load threw — shown until client refresh succeeds. */
   initialHydrationError?: string;
@@ -22,6 +23,7 @@ export type ExplorerSidebarProps = {
 
 export function ExplorerSidebar({
   isSignedIn,
+  isAdmin = false,
   initialMaps,
   initialHydrationError,
 }: ExplorerSidebarProps) {
@@ -122,6 +124,7 @@ export function ExplorerSidebar({
 
   const isLeaderboardActive = pathname.startsWith("/leaderboard");
   const isHomeActive = pathname === "/";
+  const isAdminActive = pathname.startsWith("/admin");
 
   return (
     <aside
@@ -153,6 +156,15 @@ export function ExplorerSidebar({
           active={isLeaderboardActive}
           collapsed={collapsed}
         />
+        {isAdmin ? (
+          <SidebarNavLink
+            href="/admin/maps"
+            icon={<Shield className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden strokeWidth={2.25} />}
+            label="Admin · all maps"
+            active={isAdminActive}
+            collapsed={collapsed}
+          />
+        ) : null}
       </div>
 
       {!collapsed ? (

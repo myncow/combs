@@ -1,20 +1,33 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { ExplorerSidebar } from "@/components/explorer-sidebar";
-import { getAuth } from "@/lib/auth/server";
+import { getSessionUser } from "@/lib/auth/admin";
 import type { NavigationLink, SavedMap, SiteSettings } from "@/lib/types";
 import { getNavigation, getSiteSettings, listMaps } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
 async function ExplorerSidebarLoader() {
-  const { data: session } = await getAuth().getSession();
-  const isSignedIn = Boolean(session?.user);
-  const mapsResult = await listMaps({ pageSize: 48, status: "library", page: 1 });
+  const user = await getSessionUser();
+  const isSignedIn = Boolean(user);
+  const mapsResult = user
+    ? await listMaps({
+        pageSize: 48,
+        status: "library",
+        page: 1,
+        ownerId: user.id,
+      })
+    : await listMaps({
+        pageSize: 48,
+        status: "library",
+        page: 1,
+        publicOnly: true,
+      });
 
   return (
     <ExplorerSidebar
       isSignedIn={isSignedIn}
+      isAdmin={user?.isAdmin ?? false}
       initialMaps={{ items: mapsResult.items, total: mapsResult.total }}
     />
   );

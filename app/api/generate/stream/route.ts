@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { getAuth } from "@/lib/auth/server";
 import { formatSseData, type GenerationTraceEvent } from "@/lib/generation-stream";
 import { checkRateLimit, getRequesterId, moderateText } from "@/lib/guards";
 import { mapBriefSchema } from "@/lib/schema";
@@ -18,7 +19,15 @@ function sseResponse(stream: ReadableStream<Uint8Array>) {
 }
 
 export async function POST(req: NextRequest) {
-  const requesterId = await getRequesterId();
+  const { data: session } = await getAuth().getSession();
+  if (!session?.user) {
+    return new Response(
+      formatSseData({ type: "error", message: "Sign in to build maps." }),
+      { status: 401, headers: { "Content-Type": "text/event-stream" } },
+    );
+  }
+  const ownerId = session.user.id ?? null;
+  const requesterId = session.user.id || (await getRequesterId());
   const rateLimit = checkRateLimit(requesterId);
   if (!rateLimit.allowed) {
     return new Response(
@@ -60,7 +69,7 @@ export async function POST(req: NextRequest) {
       const push = (event: GenerationTraceEvent) => controller.enqueue(enc.encode(formatSseData(event)));
 
       try {
-        const outcome = await runMapGenerationCore(parsed.data, { sink: push });
+        const outcome = await runMapGenerationCore(parsed.data, { sink: push, ownerId });
 
         if (outcome.outcome === "rejected") {
           push({

@@ -20,7 +20,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   const [maps, leaderboard] = await Promise.all([
-    listMaps({ pageSize: 100 }),
+    listMaps({ pageSize: 100, publicOnly: true }),
     listLeaderboardEntries({ pageSize: 100, sort: "new" }),
   ]);
 

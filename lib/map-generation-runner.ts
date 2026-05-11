@@ -106,6 +106,8 @@ export async function runMapGenerationCore(
   options?: {
     sink?: GenerationStreamSink;
     reservedMap?: { id: string; slug: string };
+    /** Neon Auth user id of the owner, written on inserts via saveMap. */
+    ownerId?: string | null;
     /**
      * Fired once the map row is flipped to "published" — before the SerpApi
      * enrichment phase (anchor verification, gap verification, reference
@@ -262,6 +264,7 @@ export async function runMapGenerationCore(
         document,
         status: "published",
         metrics: metricsBase,
+        ownerId: options?.ownerId ?? null,
       });
       savedSlug = saved.slug;
       savedTitle = saved.title;

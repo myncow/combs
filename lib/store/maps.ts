@@ -483,6 +483,8 @@ type MapRow = {
   renderingHints: unknown;
   visualSeries: unknown;
   revision: number;
+  isPublic?: boolean;
+  createdByNeonUserId?: string | null;
   createdAt: Date | string;
   updatedAt: Date | string;
   publishedAt: Date | string | null;
@@ -730,6 +732,8 @@ async function hydrateSavedMap(db: DbLike, row: MapRow): Promise<SavedMap> {
     promptSummary: row.promptSummary,
     document,
     revision: row.revision ?? 0,
+    isPublic: row.isPublic ?? false,
+    createdByNeonUserId: row.createdByNeonUserId ?? null,
   });
 }
 
@@ -1125,11 +1129,17 @@ export async function listMaps({
   status = "published",
   page = 1,
   pageSize = 9,
+  ownerId,
+  publicOnly = false,
 }: {
   topicFamily?: string;
   status?: MapListingVisibility;
   page?: number;
   pageSize?: number;
+  /** Restrict to maps owned by this Neon Auth user id. */
+  ownerId?: string;
+  /** Restrict to maps with `is_public = true` (gallery / signed-out browse). */
+  publicOnly?: boolean;
 }) {
   try {
     const db = getDb();
@@ -1143,6 +1153,12 @@ export async function listMaps({
     const conditions = [statusFilter];
     if (topicFamily && topicFamily !== "All") {
       conditions.push(eq(mapsTable.topicFamily, topicFamily));
+    }
+    if (ownerId) {
+      conditions.push(eq(mapsTable.createdByNeonUserId, ownerId));
+    }
+    if (publicOnly) {
+      conditions.push(eq(mapsTable.isPublic, true));
     }
 
     const rows = await db
@@ -1206,12 +1222,16 @@ export async function saveMap({
   document,
   status,
   metrics,
+  ownerId,
+  isPublic = false,
 }: {
   brief: MapBrief;
   normalizedBrief: NormalizedMapBrief;
   document: MapDocument;
   status: MapVisibility;
   metrics?: GenerationMetrics | null;
+  ownerId?: string | null;
+  isPublic?: boolean;
 }) {
   const id = `map_${crypto.randomUUID()}`;
   const slug = slugify(document.slug || document.title);
@@ -1230,6 +1250,8 @@ export async function saveMap({
       ...document,
       slug,
     },
+    isPublic,
+    createdByNeonUserId: ownerId ?? null,
   };
 
   const db = getDb();
@@ -1248,6 +1270,9 @@ export async function saveMap({
       seoDescription: saved.document.seo.description,
       renderingHints: saved.document.renderingHints,
       visualSeries: saved.document.visualSeries ?? null,
+      isPublic,
+      createdByNeonUserId: ownerId ?? null,
+      updatedByNeonUserId: ownerId ?? null,
       publishedAt: status === "published" ? new Date(saved.publishedAt ?? isoNow()) : null,
     });
     await syncMapRelations(tx as DbLike, id, saved.document);
@@ -1380,7 +1405,13 @@ async function findUniqueSlug(base: string): Promise<string> {
   }
 }
 
-export async function reserveMap({ brief }: { brief: MapBrief }): Promise<{
+export async function reserveMap({
+  brief,
+  ownerId,
+}: {
+  brief: MapBrief;
+  ownerId?: string | null;
+}): Promise<{
   id: string;
   slug: string;
 }> {
@@ -1406,6 +1437,9 @@ export async function reserveMap({ brief }: { brief: MapBrief }): Promise<{
     renderingHints: placeholder.renderingHints,
     visualSeries: null,
     revision: 0,
+    isPublic: false,
+    createdByNeonUserId: ownerId ?? null,
+    updatedByNeonUserId: ownerId ?? null,
     publishedAt: null,
   });
 
@@ -1486,6 +1520,29 @@ export async function getMapRevisionState(slug: string): Promise<{
     revision: rows[0].revision ?? 0,
     status: rows[0].status as MapVisibility,
   };
+}
+
+export async function setMapPublicState(
+  slug: string,
+  isPublic: boolean,
+  updatedByNeonUserId?: string | null,
+): Promise<{ slug: string; isPublic: boolean } | null> {
+  const db = getDb();
+  const existing = await db
+    .select({ id: mapsTable.id })
+    .from(mapsTable)
+    .where(eq(mapsTable.slug, slug))
+    .limit(1);
+  if (!existing.length) return null;
+  await db
+    .update(mapsTable)
+    .set({
+      isPublic,
+      updatedAt: new Date(),
+      updatedByNeonUserId: updatedByNeonUserId ?? null,
+    })
+    .where(eq(mapsTable.id, existing[0].id));
+  return { slug, isPublic };
 }
 
 export async function logGenerationRun(run: GenerationRun) {

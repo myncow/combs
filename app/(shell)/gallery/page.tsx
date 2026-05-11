@@ -32,6 +32,7 @@ export default async function GalleryPage({
     page: filters.page,
     pageSize: filters.pageSize,
     status: filters.status ?? "live",
+    publicOnly: true,
   });
   const pageContent = await getPageByKey("gallery");
   if (pageContent?.key !== "gallery") {

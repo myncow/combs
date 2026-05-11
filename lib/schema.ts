@@ -234,6 +234,13 @@ export const mapFiltersSchema = z.object({
   page: z.coerce.number().min(1).default(1),
   /** Sidebar and index UIs may request more rows per page than card grids. */
   pageSize: z.coerce.number().min(1).max(64).default(9),
+  /**
+   * Visibility scope. `mine` = signed-in user's library (default for the
+   * sidebar); `public` = published-public maps (gallery / signed-out); `admin`
+   * = every map regardless of owner/visibility (requires admin role on the
+   * server route enforcing it).
+   */
+  scope: z.enum(["mine", "public", "admin"]).optional(),
 });
 
 const optionalTrimmed = (max: number) =>

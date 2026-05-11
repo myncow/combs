@@ -43,14 +43,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const reserved = await reserveMap({ brief: parsed.data as MapBrief });
+  const ownerId = session.user.id ?? null;
+  const reserved = await reserveMap({ brief: parsed.data as MapBrief, ownerId });
 
   // Run generation after the response ships. The map row is already in the DB
   // with status="generating"; the live SSE stream picks up the slug and
   // streams progress until status flips to "published" or "failed".
   after(async () => {
     try {
-      await runMapGenerationCore(parsed.data, { reservedMap: reserved });
+      await runMapGenerationCore(parsed.data, { reservedMap: reserved, ownerId });
     } catch (error) {
       console.error(`[generate/start] background run for ${reserved.slug} threw:`, error);
     }
