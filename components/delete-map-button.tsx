@@ -99,15 +99,15 @@ export function DeleteMapButton({
 
   return (
     <div className="relative inline-flex">
-        <button
-          type="button"
-          onClick={handleDelete}
-          disabled={isDeleting}
-          className={cn(
-            "inline-flex h-8 w-8 items-center justify-center border border-border bg-background text-muted-foreground",
-            "transition-colors duration-150 hover:border-[color:var(--destructive)] hover:text-[color:var(--destructive)]",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-            "disabled:cursor-not-allowed disabled:opacity-60",
+      <button
+        type="button"
+        onClick={handleDelete}
+        disabled={isDeleting}
+        className={cn(
+          "inline-flex h-8 w-8 items-center justify-center border border-border bg-background text-muted-foreground",
+          "transition-colors duration-150 hover:border-[color:var(--destructive)] hover:text-[color:var(--destructive)]",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          "disabled:cursor-not-allowed disabled:opacity-60",
           className,
         )}
         title={`Delete ${title}`}

@@ -66,6 +66,7 @@ export default async function LeaderboardPage({
   return (
     <ShellPage size="wide" className="gap-8">
       <PageHeader
+        index="03"
         title={pageContent.heading}
         eyebrow={`${String(entries.total).padStart(2, "0")} ${entries.total === 1 ? "spotlight" : "spotlights"}`}
         intro={pageContent.intro}

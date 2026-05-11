@@ -150,7 +150,7 @@ export function LeaderboardVoteControls({
         {state.upvotes} up · {state.downvotes} down
       </p>
       {error ? (
-        <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary">{error}</p>
+        <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-destructive">{error}</p>
       ) : null}
     </div>
   );
