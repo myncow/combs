@@ -1,12 +1,12 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, Save, Send, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Save, Send, X } from "lucide-react";
 import { publishGapSpotlightAction, type PublishGapSpotlightActionState } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { dispatchLibraryRefresh } from "@/lib/client-events";
 import { cn } from "@/lib/utils";
 
@@ -26,10 +26,8 @@ export function GapSpotlightSheet({
   onClose,
   mapSlug,
   mapTitle,
-  topicFamily,
   cellId,
   cellLabel,
-  coordinatesSnapshot,
   imageUrl,
   defaultTitle,
   defaultSummary,
@@ -45,6 +43,7 @@ export function GapSpotlightSheet({
   defaultTitle: string;
   defaultSummary: string;
 }) {
+  const router = useRouter();
   const storageKey = useMemo(() => localDraftKey(mapSlug, cellId), [cellId, mapSlug]);
   const [storyTitle, setStoryTitle] = useState(() => {
     if (typeof window === "undefined") return defaultTitle;
@@ -79,7 +78,8 @@ export function GapSpotlightSheet({
     window.localStorage.removeItem(storageKey);
     dispatchLibraryRefresh();
     onClose();
-  }, [onClose, state.status, storageKey]);
+    router.push(`/leaderboard?spotlight=${state.slug}`);
+  }, [onClose, router, state, storageKey]);
 
   function saveDraft() {
     if (typeof window === "undefined") return;
@@ -95,116 +95,96 @@ export function GapSpotlightSheet({
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-[color:color-mix(in_srgb,var(--foreground)_58%,transparent)] p-4">
-      <div className="w-full max-w-2xl border border-border bg-background shadow-2xl">
+      <div className="w-full max-w-lg border border-border bg-background shadow-2xl">
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div className="min-w-0">
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-primary">Publish to top list</p>
-            <h3 className="mt-2 font-sans text-2xl font-semibold leading-tight tracking-[-0.02em] text-foreground">
-              Share this frontier spotlight
+            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-primary">Top list</p>
+            <h3 className="mt-1.5 font-sans text-xl font-semibold leading-tight tracking-[-0.02em] text-foreground">
+              Submit your spotlight
             </h3>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="inline-flex h-9 w-9 items-center justify-center border border-border bg-card text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
-            aria-label="Close publish sheet"
+            aria-label="Close"
           >
             <X className="h-4 w-4" aria-hidden />
           </button>
         </div>
 
-        <form action={formAction} className="grid gap-6 p-5 lg:grid-cols-[1.1fr_1fr]">
-          <div className="space-y-4">
-            <div className="overflow-hidden border border-border bg-muted">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={imageUrl}
-                alt={storyTitle || defaultTitle}
-                referrerPolicy="no-referrer"
-                className="aspect-[4/3] w-full object-cover"
-              />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="accent">{topicFamily}</Badge>
-              <Badge variant="muted">{mapTitle}</Badge>
-            </div>
-            <div className="space-y-2 border border-border bg-card p-3">
-              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Source cell</p>
-              <p className="text-[15px] font-medium text-foreground">{cellLabel}</p>
-              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                {Object.entries(coordinatesSnapshot)
-                  .map(([key, value]) => `${key}: ${value}`)
-                  .join(" · ")}
-              </p>
-            </div>
+        <form action={formAction} className="space-y-5 p-5">
+          <input type="hidden" name="mapSlug" value={mapSlug} />
+          <input type="hidden" name="cellId" value={cellId} />
+
+          <div className="overflow-hidden border border-border bg-muted">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imageUrl}
+              alt={storyTitle || defaultTitle}
+              referrerPolicy="no-referrer"
+              className="aspect-[4/3] w-full object-cover"
+            />
           </div>
 
-          <div className="space-y-4">
-            <input type="hidden" name="mapSlug" value={mapSlug} />
-            <input type="hidden" name="cellId" value={cellId} />
-            <div className="space-y-2">
-              <label className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground" htmlFor="storyTitle">
-                Share title
-              </label>
-              <Input
-                id="storyTitle"
-                name="storyTitle"
-                maxLength={120}
-                value={storyTitle}
-                onChange={(event) => setStoryTitle(event.target.value)}
-                placeholder={defaultTitle}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground" htmlFor="storySummary">
-                Why this matters
-              </label>
-              <Textarea
-                id="storySummary"
-                name="storySummary"
-                maxLength={220}
-                value={storySummary}
-                onChange={(event) => setStorySummary(event.target.value)}
-                placeholder={defaultSummary}
-                className="min-h-36"
-              />
-            </div>
-            <p className="text-[15px] leading-6 text-muted-foreground">
-              Keep this tight and legible. The leaderboard card will highlight the image first, then this one-line story.
-            </p>
+          <div className="space-y-2">
+            <label
+              className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground"
+              htmlFor="storyTitle"
+            >
+              Title
+            </label>
+            <Input
+              id="storyTitle"
+              name="storyTitle"
+              maxLength={120}
+              value={storyTitle}
+              onChange={(event) => setStoryTitle(event.target.value)}
+              placeholder={defaultTitle}
+            />
+          </div>
 
-            <div className="flex flex-wrap gap-2 pt-2">
-              <Button type="button" variant="secondary" onClick={saveDraft}>
-                <Save className="h-3.5 w-3.5" aria-hidden />
-                Save draft
-              </Button>
-              <Button type="submit" disabled={isPending}>
-                <Send className={cn("h-3.5 w-3.5", isPending && "animate-pulse")} aria-hidden />
-                {isPending ? "Publishing" : "Publish"}
-              </Button>
-            </div>
+          <div className="space-y-2">
+            <label
+              className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground"
+              htmlFor="storySummary"
+            >
+              Caption
+            </label>
+            <Textarea
+              id="storySummary"
+              name="storySummary"
+              maxLength={220}
+              value={storySummary}
+              onChange={(event) => setStorySummary(event.target.value)}
+              placeholder={defaultSummary}
+              className="min-h-28"
+            />
+          </div>
 
+          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+            From <span className="text-foreground">{mapTitle}</span> · {cellLabel}
+          </p>
+
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <Button type="submit" disabled={isPending}>
+              <Send className={cn("h-3.5 w-3.5", isPending && "animate-pulse")} aria-hidden />
+              {isPending ? "Publishing" : "Publish"}
+            </Button>
+            <Button type="button" variant="secondary" onClick={saveDraft}>
+              <Save className="h-3.5 w-3.5" aria-hidden />
+              Save draft
+            </Button>
             {draftFeedback ? (
-              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary">{draftFeedback}</p>
-            ) : null}
-            {state.status === "error" ? (
-              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary">{state.message}</p>
-            ) : null}
-            {state.status === "success" ? (
-              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary">
-                Published. View at /leaderboard/{state.slug}
+              <p className="ml-auto font-mono text-[11px] uppercase tracking-[0.2em] text-primary">
+                {draftFeedback}
               </p>
             ) : null}
-
-            {state.status === "success" ? (
-              <Button variant="link" asChild>
-                <a href={`/leaderboard/${state.slug}`}>
-                  Open published spotlight
-                  <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
-                </a>
-              </Button>
-            ) : null}
           </div>
+
+          {state.status === "error" ? (
+            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary">{state.message}</p>
+          ) : null}
         </form>
       </div>
     </div>

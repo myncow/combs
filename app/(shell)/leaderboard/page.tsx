@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyStatePanel, PageHeader, ShellPage } from "@/components/raster-shell";
 import { leaderboardFiltersSchema } from "@/lib/schema";
 import { getPageByKey, listLeaderboardEntries, listLeaderboardTopicFamilies } from "@/lib/store";
-import { LeaderboardCard } from "@/components/leaderboard-card";
-import { AsciiDivider } from "@/components/ui/ascii-divider";
+import { LeaderboardGallery } from "@/components/leaderboard-gallery";
 
 function FilterLink({
   href,
@@ -36,7 +35,7 @@ export default async function LeaderboardPage({
     topicFamily: typeof params.topicFamily === "string" ? params.topicFamily : undefined,
     sort: typeof params.sort === "string" ? params.sort : "top",
     page: typeof params.page === "string" ? params.page : "1",
-    pageSize: 12,
+    pageSize: 24,
   });
   const filters = parsed.success
     ? parsed.data
@@ -44,7 +43,7 @@ export default async function LeaderboardPage({
         topicFamily: undefined,
         sort: "top",
         page: "1",
-        pageSize: 12,
+        pageSize: 24,
       });
   const [entries, topicFamilies] = await Promise.all([
     listLeaderboardEntries({
@@ -61,7 +60,7 @@ export default async function LeaderboardPage({
     throw new Error("Leaderboard page content is missing.");
   }
 
-  const [featured, ...rest] = entries.items;
+  const pageStart = (filters.page - 1) * filters.pageSize + 1;
 
   return (
     <ShellPage size="wide" className="gap-8">
@@ -70,7 +69,6 @@ export default async function LeaderboardPage({
         title={pageContent.heading}
         eyebrow={`${String(entries.total).padStart(2, "0")} ${entries.total === 1 ? "spotlight" : "spotlights"}`}
         intro={pageContent.intro}
-        summary={pageContent.helperText}
         titleClassName="text-[26px] md:text-[34px]"
         actions={
           <>
@@ -103,22 +101,9 @@ export default async function LeaderboardPage({
         }
       />
 
-      {featured ? <LeaderboardCard entry={featured} rank={1} featured /> : null}
-
-      {rest.length ? (
-        <>
-          <AsciiDivider />
-          <div className="grid gap-5">
-            {rest.map((entry, index) => (
-              <LeaderboardCard
-                key={entry.id}
-                entry={entry}
-                rank={(filters.page - 1) * filters.pageSize + index + 2}
-              />
-            ))}
-          </div>
-        </>
-      ) : featured ? null : (
+      {entries.items.length ? (
+        <LeaderboardGallery entries={entries.items} pageStart={pageStart} />
+      ) : (
         <EmptyStatePanel
           kicker={pageContent.emptyStateTitle}
           body={pageContent.emptyStateBody}

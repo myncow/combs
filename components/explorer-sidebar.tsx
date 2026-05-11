@@ -1,9 +1,9 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ChevronsLeft, ChevronsRight, Plus } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, Plus, Trophy } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { MapCard } from "@/components/map-card";
 import { LIBRARY_REFRESH_EVENT } from "@/lib/client-events";
@@ -26,6 +26,7 @@ export function ExplorerSidebar({
   initialHydrationError,
 }: ExplorerSidebarProps) {
   const searchParams = useSearchParams();
+  const pathname = usePathname() ?? "/";
   const topicFamily = searchParams.get("topicFamily") ?? undefined;
   const reduceMotion = useReducedMotion() ?? false;
 
@@ -113,6 +114,9 @@ export function ExplorerSidebar({
     };
   }, []);
 
+  const isLeaderboardActive = pathname.startsWith("/leaderboard");
+  const isHomeActive = pathname === "/";
+
   return (
     <aside
       className={cn(
@@ -125,39 +129,54 @@ export function ExplorerSidebar({
     >
       <div
         className={cn(
-          "flex shrink-0 items-center gap-1.5 border-b border-border bg-card/40 px-2 py-2",
-          collapsed && "md:flex-col md:items-stretch md:gap-1.5 md:p-1.5",
+          "flex shrink-0 flex-col border-b border-border bg-card/40",
+          collapsed ? "gap-1 p-1.5" : "gap-1 px-2 py-2",
         )}
       >
-        <Link
+        <SidebarNavLink
           href="/"
-          aria-label="New map"
-          className={cn(
-            "inline-flex h-9 flex-1 items-center justify-center gap-2 border border-border bg-card px-3 font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-foreground transition-[border-color,background-color,color] duration-150 hover:border-primary/35 hover:bg-[color:color-mix(in_srgb,var(--primary)_6%,var(--card))] hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-            collapsed && "md:w-9 md:flex-none md:px-0",
-          )}
-        >
-          <Plus className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden strokeWidth={2.5} />
-          <span className={cn(collapsed && "md:hidden")}>New map</span>
-        </Link>
+          icon={<Plus className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden strokeWidth={2.5} />}
+          label="New map"
+          active={isHomeActive}
+          collapsed={collapsed}
+        />
+        <SidebarNavLink
+          href="/leaderboard"
+          icon={<Trophy className="h-3.5 w-3.5 shrink-0" aria-hidden strokeWidth={2.25} />}
+          label="Top list"
+          active={isLeaderboardActive}
+          collapsed={collapsed}
+        />
+      </div>
+
+      {!collapsed ? (
+        <div className="flex items-center justify-between border-b border-border px-3 py-2">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            Library
+          </p>
+          <button
+            type="button"
+            onClick={() => setCollapsed(true)}
+            className="inline-flex h-7 w-7 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            aria-label="Collapse library"
+            aria-expanded
+            title="Collapse"
+          >
+            <ChevronsLeft className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+      ) : (
         <button
           type="button"
-          onClick={() => setCollapsed((c) => !c)}
-          className={cn(
-            "inline-flex h-9 w-9 shrink-0 items-center justify-center border border-border bg-background text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-            collapsed && "md:w-9",
-          )}
-          aria-label={collapsed ? "Expand library" : "Collapse library"}
-          aria-expanded={!collapsed}
-          title={collapsed ? "Expand" : "Collapse"}
+          onClick={() => setCollapsed(false)}
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center self-center border-b border-border text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          aria-label="Expand library"
+          aria-expanded={false}
+          title="Expand"
         >
-          {collapsed ? (
-            <ChevronsRight className="h-4 w-4" aria-hidden />
-          ) : (
-            <ChevronsLeft className="h-4 w-4" aria-hidden />
-          )}
+          <ChevronsRight className="h-4 w-4" aria-hidden />
         </button>
-      </div>
+      )}
 
       {!collapsed ? (
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
@@ -199,5 +218,37 @@ export function ExplorerSidebar({
         </div>
       ) : null}
     </aside>
+  );
+}
+
+function SidebarNavLink({
+  href,
+  icon,
+  label,
+  active,
+  collapsed,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+  collapsed: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-label={label}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "inline-flex h-9 items-center gap-2 border px-3 font-mono text-[11px] font-semibold uppercase tracking-[0.22em] transition-[border-color,background-color,color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        active
+          ? "border-foreground bg-foreground text-background"
+          : "border-border bg-card text-foreground hover:border-primary/35 hover:bg-[color:color-mix(in_srgb,var(--primary)_6%,var(--card))] hover:text-primary",
+        collapsed && "md:h-9 md:w-9 md:justify-center md:px-0",
+      )}
+    >
+      {icon}
+      <span className={cn(collapsed && "md:hidden")}>{label}</span>
+    </Link>
   );
 }
