@@ -48,6 +48,7 @@ import {
   Copy,
   Download,
   Expand,
+  FileText,
   ImageIcon,
   RefreshCw,
   Sparkles,
@@ -1520,6 +1521,14 @@ function DrawerBody({
   const canPublishSpotlight = canUseGeneration && !!display?.imageUrl;
   const visualizationCopy = visualizationActionCopy(!!display, isPending);
 
+  // Reset the drawer scroll position whenever the cell changes so each open
+  // (or switch via prev/next) starts at the top instead of inheriting the
+  // previous cell's scroll offset. Without this, the drawer can land mid-page.
+  useEffect(() => {
+    const drawer = window.document.getElementById("cell-drawer");
+    if (drawer) drawer.scrollTop = 0;
+  }, [cell.id]);
+
   useEffect(() => {
     if (!copyFeedback) return;
     const timer = window.setTimeout(() => setCopyFeedback(null), 1800);
@@ -1564,6 +1573,14 @@ function DrawerBody({
     referenceGalleryItems.length === 0
       ? 0
       : Math.min(referenceGalleryIndex, referenceGalleryItems.length - 1);
+
+  // For named cells WITHOUT SerpAPI evidence, the AI image is the most
+  // informative anchor — show it directly under the header, above the
+  // explanation. Cells with evidence keep the evidence-first order (gallery
+  // renders outside this column, before the motion.div). Gap/impossible
+  // cells lead with their framing note, so they also keep the current order.
+  const showImageFirst =
+    !isUnnamedCell(cell) && referenceGalleryItems.length === 0 && !!display;
 
   return (
     <>
@@ -1634,20 +1651,22 @@ function DrawerBody({
           </motion.section>
         ) : null}
 
-        <motion.section variants={DRAWER_SECTION_VARIANTS}>
-          <p className="font-sans text-[15px] leading-[1.55] text-foreground">
-            {cell.explanation}
-          </p>
-          {!!cell.badges.length && (
-            <ul className="mt-3 flex flex-wrap gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              {cell.badges.map((badge) => (
-                <li key={badge} className="border border-border bg-background px-2 py-1 text-foreground">
-                  {badge}
-                </li>
-              ))}
-            </ul>
-          )}
-        </motion.section>
+        {showImageFirst ? null : (
+          <motion.section variants={DRAWER_SECTION_VARIANTS}>
+            <p className="font-sans text-[15px] leading-[1.55] text-foreground">
+              {cell.explanation}
+            </p>
+            {!!cell.badges.length && (
+              <ul className="mt-3 flex flex-wrap gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                {cell.badges.map((badge) => (
+                  <li key={badge} className="border border-border bg-background px-2 py-1 text-foreground">
+                    {badge}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </motion.section>
+        )}
 
         {showVisualizationSection ? (
           <motion.section variants={DRAWER_SECTION_VARIANTS}>
@@ -1771,21 +1790,27 @@ function DrawerBody({
                   </Button>
                 ) : null}
                 {display.prompt ? (
-                  <div>
+                  <div className="border border-border bg-background/40">
                     <button
                       type="button"
                       onClick={() => setIsPromptOpen((prev) => !prev)}
                       aria-expanded={isPromptOpen}
-                      className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left transition-colors duration-150 hover:bg-card/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     >
-                      <span>Prompt</span>
-                      <ChevronDown
-                        className={cn("h-3 w-3 transition-transform duration-150", isPromptOpen && "rotate-180")}
-                        aria-hidden
-                      />
+                      <span className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.22em] text-foreground">
+                        <FileText className="h-3.5 w-3.5 text-muted-foreground" aria-hidden strokeWidth={2.25} />
+                        Image generation prompt
+                      </span>
+                      <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                        {isPromptOpen ? "Hide" : "View"}
+                        <ChevronDown
+                          className={cn("h-3 w-3 transition-transform duration-150", isPromptOpen && "rotate-180")}
+                          aria-hidden
+                        />
+                      </span>
                     </button>
                     {isPromptOpen ? (
-                      <div className="mt-2 space-y-2">
+                      <div className="space-y-2 border-t border-border px-3 py-3">
                         <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words border border-border bg-[color:color-mix(in_srgb,var(--foreground)_3%,var(--background))] p-3 font-mono text-[11px] leading-[1.55] text-foreground/85">
                           {display.prompt}
                         </pre>
@@ -1795,7 +1820,7 @@ function DrawerBody({
                           className="inline-flex items-center gap-1.5 border border-border bg-background px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition-colors duration-150 hover:border-border-strong hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                         >
                           <Copy className="h-3 w-3" aria-hidden />
-                          {didCopyPrompt ? "Copied" : "Copy"}
+                          {didCopyPrompt ? "Copied" : "Copy prompt"}
                         </button>
                       </div>
                     ) : null}
@@ -1808,6 +1833,23 @@ function DrawerBody({
                 {state.message}
               </p>
             ) : null}
+          </motion.section>
+        ) : null}
+
+        {showImageFirst ? (
+          <motion.section variants={DRAWER_SECTION_VARIANTS}>
+            <p className="font-sans text-[15px] leading-[1.55] text-foreground">
+              {cell.explanation}
+            </p>
+            {!!cell.badges.length && (
+              <ul className="mt-3 flex flex-wrap gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                {cell.badges.map((badge) => (
+                  <li key={badge} className="border border-border bg-background px-2 py-1 text-foreground">
+                    {badge}
+                  </li>
+                ))}
+              </ul>
+            )}
           </motion.section>
         ) : null}
 
