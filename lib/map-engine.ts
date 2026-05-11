@@ -2358,35 +2358,13 @@ export async function buildMapJob(
   }
   emitStep(sink, "post_process", "start");
   const finishPost = collector?.chronometer("post_process");
-  const postProcessed = postProcessMapDocument(rawDocument, normalizedBrief);
+  // Frontier-evidence refinement adds "Thin evidence" badges and trims the
+  // callouts list — it's pure and cheap, so run it on the publish-time
+  // document. enrichPublishedMap re-runs it after gap_verification adds any
+  // "Visual evidence found" badges; the badge set is idempotent.
+  const document = refineFrontierEvidence(postProcessMapDocument(rawDocument, normalizedBrief));
   finishPost?.();
   emitStep(sink, "post_process", "end");
-
-  emitStep(sink, "anchor_verification", "start");
-  const anchorBudget = createProbeBudget(Math.min(10, Math.max(0, appConfig.generation.serpProbeMaxCalls)));
-  const finishAnchorVerify = collector?.chronometer("anchor_verification");
-  const anchorVerified = await verifyAnchorsViaSerp(postProcessed, anchorBudget, collector);
-  finishAnchorVerify?.();
-  emitStep(sink, "anchor_verification", "end");
-
-  emitStep(sink, "gap_verification", "start");
-  const finishVerify = collector?.chronometer("gap_verification");
-  const gapVerified = await verifyGapCellsViaSerp(anchorVerified, normalizedBrief, probeBudget, collector);
-  finishVerify?.();
-  emitStep(sink, "gap_verification", "end");
-  const document = refineFrontierEvidence(gapVerified);
-
-  if (liveId) {
-    // Replace incrementally-built cells with the post-processed final cells so
-    // the live grid converges to the publish-ready document.
-    await applyMapPatch({
-      mapId: liveId,
-      mutate: (current) => ({
-        ...document,
-        slug: current.slug,
-      }),
-    });
-  }
 
   if (!canAutoPublish(document)) {
     return {
@@ -2400,19 +2378,82 @@ export async function buildMapJob(
     };
   }
 
-  emitStep(sink, "reference_images", "start");
-  const withReferences = await enrichMapDocumentReferenceImages(document, collector);
-  const parsedDoc = mapDocumentSchema.safeParse(withReferences);
-  const finalDocument = parsedDoc.success ? parsedDoc.data : withReferences;
-  emitStep(sink, "reference_images", "end");
-
   return {
     result: {
       status: "success",
     },
     normalizedBrief,
-    document: finalDocument,
+    document,
   };
+}
+
+/**
+ * Run SerpApi-backed verification and reference-image enrichment AFTER a map
+ * has been published. Each stage writes patches to the live map row so the
+ * SSE-driven UI can pick them up progressively.
+ *
+ * Measured cost (May 2026): this is ~143s / 66% of the prior publish path.
+ * Splitting it out is the highest-leverage perf change in the pipeline.
+ * Failures here must NOT unpublish the map — surface as warnings on the
+ * collector and continue.
+ */
+export async function enrichPublishedMap(
+  document: MapDocument,
+  normalizedBrief: NormalizedMapBrief,
+  options?: {
+    mapId?: string;
+    sink?: GenerationStreamSink;
+    collector?: GenerationMetricsCollector;
+  },
+): Promise<MapDocument> {
+  const liveId = options?.mapId;
+  const sink = options?.sink;
+  const collector = options?.collector;
+
+  const probeBudget = createProbeBudget();
+
+  emitStep(sink, "anchor_verification", "start");
+  const anchorBudget = createProbeBudget(Math.min(10, Math.max(0, appConfig.generation.serpProbeMaxCalls)));
+  const finishAnchorVerify = collector?.chronometer("anchor_verification");
+  const anchorVerified = await verifyAnchorsViaSerp(document, anchorBudget, collector);
+  finishAnchorVerify?.();
+  emitStep(sink, "anchor_verification", "end");
+
+  if (liveId) {
+    await applyMapPatch({
+      mapId: liveId,
+      mutate: (current) => ({ ...anchorVerified, slug: current.slug }),
+    });
+  }
+
+  emitStep(sink, "gap_verification", "start");
+  const finishVerify = collector?.chronometer("gap_verification");
+  const gapVerified = await verifyGapCellsViaSerp(anchorVerified, normalizedBrief, probeBudget, collector);
+  finishVerify?.();
+  emitStep(sink, "gap_verification", "end");
+  const verified = refineFrontierEvidence(gapVerified);
+
+  if (liveId) {
+    await applyMapPatch({
+      mapId: liveId,
+      mutate: (current) => ({ ...verified, slug: current.slug }),
+    });
+  }
+
+  emitStep(sink, "reference_images", "start");
+  const withReferences = await enrichMapDocumentReferenceImages(verified, collector);
+  const parsedDoc = mapDocumentSchema.safeParse(withReferences);
+  const finalDocument = parsedDoc.success ? parsedDoc.data : withReferences;
+  emitStep(sink, "reference_images", "end");
+
+  if (liveId) {
+    await applyMapPatch({
+      mapId: liveId,
+      mutate: (current) => ({ ...finalDocument, slug: current.slug }),
+    });
+  }
+
+  return finalDocument;
 }
 
 export function getTopicSuggestions() {

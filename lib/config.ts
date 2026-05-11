@@ -68,8 +68,8 @@ export const appConfig = {
     maxPromptLength: 1500,
     /** Parallel LLM calls for cell matrix slices; SSE is replayed in batch order. */
     cellsBatchConcurrency: (() => {
-      const raw = Number(process.env.LATTICE_CELLS_BATCH_CONCURRENCY ?? 2);
-      const n = Number.isFinite(raw) ? Math.floor(raw) : 2;
+      const raw = Number(process.env.LATTICE_CELLS_BATCH_CONCURRENCY ?? 4);
+      const n = Number.isFinite(raw) ? Math.floor(raw) : 4;
       return Math.min(4, Math.max(1, n));
     })(),
     /**

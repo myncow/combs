@@ -17,11 +17,11 @@ import { resolve } from "node:path";
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 
 loadEnv({ path: resolve(process.cwd(), ".env") });
-loadEnv({ path: resolve(process.cwd(), ".env.local") });
 const vercelEnv = resolve(process.cwd(), ".vercel/.env.production.local");
 if (existsSync(vercelEnv)) {
-  loadEnv({ path: vercelEnv, override: true });
+  loadEnv({ path: vercelEnv });
 }
+loadEnv({ path: resolve(process.cwd(), ".env.local"), override: true });
 
 import { GenerationMetricsCollector } from "@/lib/generation-metrics";
 import { buildMapJob } from "@/lib/map-engine";

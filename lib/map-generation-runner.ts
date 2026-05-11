@@ -9,7 +9,7 @@ import { GenerationMetricsCollector } from "@/lib/generation-metrics";
 import { withMetricsGenerationSink } from "@/lib/generation-sink-metrics";
 import type { GenerationStreamSink } from "@/lib/generation-stream";
 import { buildFallbackMapDocument } from "@/lib/map-fallback-document";
-import { buildMapJob } from "@/lib/map-engine";
+import { buildMapJob, enrichPublishedMap } from "@/lib/map-engine";
 import { applyMapPatch, logGenerationRun, saveMap } from "@/lib/store";
 import type {
   GenerationJobResult,
@@ -106,6 +106,14 @@ export async function runMapGenerationCore(
   options?: {
     sink?: GenerationStreamSink;
     reservedMap?: { id: string; slug: string };
+    /**
+     * Fired once the map row is flipped to "published" — before the SerpApi
+     * enrichment phase (anchor verification, gap verification, reference
+     * images) runs. Lets the SSE caller emit a `complete` event and close the
+     * stream so the user navigates immediately. Enrichment continues in the
+     * same async task and writes incremental patches to the live row.
+     */
+    onPublished?: (info: { slug: string; title: string; mapId: string }) => void;
   },
 ): Promise<MapGenerationRunOutcome> {
   const collector = new GenerationMetricsCollector();
@@ -215,9 +223,12 @@ export async function runMapGenerationCore(
     let savedSlug: string;
     let savedTitle: string;
     let savedId: string;
+    let publishedDocument = document;
 
     if (reserved) {
-      // Map row was reserved up front; flip to published and finalize document.
+      // Map row was reserved up front; flip to published with the LLM-derived
+      // document. SerpApi enrichment runs after this publish moment so the
+      // user sees the grid before reference-image lookups complete.
       const stamped = { ...document, slug: reserved.slug };
       const patched = await applyMapPatch({
         mapId: reserved.id,
@@ -244,18 +255,6 @@ export async function runMapGenerationCore(
       savedSlug = reserved.slug;
       savedTitle = stamped.title;
       savedId = reserved.id;
-
-      await logGenerationRun({
-        id: `run_${crypto.randomUUID()}`,
-        mapId: savedId,
-        status: "success",
-        model: appConfig.openRouter.model,
-        fallbackModel: appConfig.openRouter.fallbackModel,
-        normalizedBrief,
-        inputBrief,
-        metrics: metricsBase,
-        createdAt: new Date().toISOString(),
-      });
     } else {
       const saved = await saveMap({
         brief: inputBrief,
@@ -271,14 +270,53 @@ export async function runMapGenerationCore(
 
     revalidateMapPaths(savedSlug);
 
+    // Caller (e.g. SSE route) can close its stream here so the client
+    // navigates immediately. Enrichment runs in the same async task below.
+    options?.onPublished?.({ slug: savedSlug, title: savedTitle, mapId: savedId });
+
+    try {
+      publishedDocument = await enrichPublishedMap(document, normalizedBrief, {
+        mapId: reserved ? reserved.id : undefined,
+        sink: options?.sink,
+        collector,
+      });
+    } catch (error) {
+      // Enrichment is best-effort — already-published map stays published.
+      console.error(
+        `[runMapGenerationCore] enrichment for ${savedSlug} failed:`,
+        error instanceof Error ? error.message : error,
+      );
+    }
+
+    const metricsFinal = collector.finalize();
+
+    if (reserved) {
+      // Reserved path: runner owns the generation_runs row. Write it AFTER
+      // enrichment so the row reflects total wall time including SerpApi work.
+      // (Legacy non-reserved path: saveMap() writes the row internally with
+      // pre-enrichment metrics; enrichment metrics are dropped on the floor
+      // there to keep saveMap's contract simple.)
+      await logGenerationRun({
+        id: `run_${crypto.randomUUID()}`,
+        mapId: savedId,
+        status: "success",
+        model: appConfig.openRouter.model,
+        fallbackModel: appConfig.openRouter.fallbackModel,
+        normalizedBrief,
+        inputBrief,
+        metrics: metricsFinal,
+        createdAt: new Date().toISOString(),
+      });
+    }
+
     return {
       outcome: "success",
       normalizedBrief,
-      document,
+      document: publishedDocument,
       slug: savedSlug,
       title: savedTitle,
       mapId: savedId,
-      metrics: metricsBase,
+      metrics: metricsFinal,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Generation failed.";

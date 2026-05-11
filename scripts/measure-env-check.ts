@@ -28,9 +28,12 @@ const relevant = [
   "LATTICE_SERP_REFERENCE_MAX_CALLS",
 ];
 
-console.log("Generation-related env keys present:");
+console.log("Generation-related env keys (length, defined?):");
 for (const k of relevant) {
-  console.log(`  ${k.padEnd(40)} ${process.env[k] ? "SET" : "—"}`);
+  const v = process.env[k];
+  const len = typeof v === "string" ? v.length : -1;
+  const defined = v !== undefined;
+  console.log(`  ${k.padEnd(40)} defined=${defined ? "Y" : "N"}  len=${len}`);
 }
 
 console.log("\nAll process.env keys matching /openrouter|openai|serp|gemini|claude/i:");
