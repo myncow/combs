@@ -6,6 +6,20 @@ import { entryTransition } from "@/lib/motion";
 import type { SavedMap } from "@/lib/types";
 import { cn, pickMapThumbnail, simplifyMapDisplayTitle } from "@/lib/utils";
 
+/**
+ * Heuristic window after publish during which we still show the
+ * "Searching examples…" indicator on a card. SerpAPI enrichment writes
+ * patches to the row for up to ~200s (see PUBLISHED_MAX_MS in the SSE
+ * events route) — 120s catches the common case without lingering.
+ */
+export const ENRICHMENT_WINDOW_MS = 120_000;
+
+/** Shared so the sidebar can decide whether to keep polling. */
+export function isMapEnriching(map: SavedMap, now: number = Date.now()): boolean {
+  if (map.status !== "published" || !map.publishedAt) return false;
+  return now - new Date(map.publishedAt).getTime() < ENRICHMENT_WINDOW_MS;
+}
+
 function formatShortDate(iso: string): string {
   try {
     return new Date(iso).toLocaleDateString("en-US", {
@@ -106,6 +120,16 @@ export function MapCard({
 
   const isGenerating = map.status === "generating";
   const hasFailed = map.status === "failed";
+  // Heuristic: while the map row's `status` flips to "published" the moment
+  // the grid is built, SerpAPI enrichment (reference images, anchor
+  // verification, gap probing) keeps running in the background for up to
+  // ~200s. Without a dedicated enrichment-completed column we use a time
+  // window after `publishedAt` to keep showing the "still working" hint.
+  const isEnriching =
+    !!map.publishedAt &&
+    map.status === "published" &&
+    Date.now() - new Date(map.publishedAt).getTime() < ENRICHMENT_WINDOW_MS;
+  const showActivityBar = isGenerating || isEnriching;
 
   if (compact) {
     return (
@@ -142,6 +166,21 @@ export function MapCard({
                     <Spinner size="xs" className="text-primary" />
                     Generating…
                   </motion.p>
+                ) : isEnriching ? (
+                  <motion.p
+                    key="enriching"
+                    className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground"
+                    initial={{ opacity: 0, y: 2 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -2 }}
+                    transition={entryTransition()}
+                  >
+                    <span aria-hidden className="relative inline-flex h-1.5 w-1.5 shrink-0">
+                      <span className="absolute inset-0 animate-ping rounded-full bg-primary/50" />
+                      <span className="absolute inset-0 rounded-full bg-primary/80" />
+                    </span>
+                    Searching examples…
+                  </motion.p>
                 ) : hasFailed ? (
                   <motion.p
                     key="failed"
@@ -164,10 +203,13 @@ export function MapCard({
             </div>
           ) : null}
         </div>
-        {isGenerating ? (
+        {showActivityBar ? (
           <div
             aria-hidden
-            className="viz-loading-track mx-1.5 mb-0.5 h-[1.5px] rounded-none opacity-80"
+            className={cn(
+              "viz-loading-track mx-1.5 mb-0.5 rounded-none",
+              isGenerating ? "h-[1.5px] opacity-80" : "h-[1px] opacity-55",
+            )}
           >
             <div className="viz-loading-bar h-full" />
           </div>

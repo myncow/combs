@@ -5,7 +5,7 @@ import { ChevronsLeft, ChevronsRight, Plus, Trophy } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { MapCard } from "@/components/map-card";
+import { MapCard, isMapEnriching } from "@/components/map-card";
 import { LIBRARY_REFRESH_EVENT } from "@/lib/client-events";
 import { entryTransition } from "@/lib/motion";
 import type { SavedMap } from "@/lib/types";
@@ -67,16 +67,22 @@ export function ExplorerSidebar({
     };
   }, [topicFamily, loadMaps, initialHydrationError]);
 
-  const hasGenerating = maps.some((m) => m.status === "generating");
+  // Keep polling while ANY map is mid-generation OR in the post-publish
+  // enrichment window (SerpAPI is still fetching reference images in the
+  // background). Without the latter, the sidebar's "Searching examples"
+  // indicator would never refresh away after the time window elapses.
+  const hasActiveWork = maps.some(
+    (m) => m.status === "generating" || isMapEnriching(m),
+  );
   useEffect(() => {
-    if (!hasGenerating) return;
+    if (!hasActiveWork) return;
     const handle = window.setInterval(() => {
       void loadMaps().catch(() => {
         /* swallow — next tick retries */
       });
     }, 4000);
     return () => window.clearInterval(handle);
-  }, [hasGenerating, loadMaps]);
+  }, [hasActiveWork, loadMaps]);
 
   useEffect(() => {
     const refreshLibrary = () => {
