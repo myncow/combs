@@ -41,7 +41,6 @@ export default async function GalleryPage({
   return (
     <ShellPage size="content">
       <PageHeader
-        index="02"
         eyebrow={total === 1 ? "01 map" : `${String(total).padStart(2, "0")} maps`}
         title={pageContent.heading}
         intro={pageContent.intro}

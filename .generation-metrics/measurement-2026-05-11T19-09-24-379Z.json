@@ -1,0 +1,157 @@
+{
+  "summary": {
+    "runsAnalyzed": 2,
+    "wall": {
+      "p50": 217016,
+      "p90": 217016,
+      "samples": 2
+    },
+    "stages": [
+      {
+        "stageId": "reference_images_enrichment",
+        "count": 2,
+        "p50": 114513,
+        "p90": 114513,
+        "mean": 62540,
+        "totalMs": 125079,
+        "externalCallsP50": 16
+      },
+      {
+        "stageId": "cells_batches",
+        "count": 2,
+        "p50": 40940,
+        "p90": 40940,
+        "mean": 27313,
+        "totalMs": 54626,
+        "externalCallsP50": 4
+      },
+      {
+        "stageId": "anchor_verification",
+        "count": 4,
+        "p50": 16556,
+        "p90": 16558,
+        "mean": 15210,
+        "totalMs": 60838,
+        "externalCallsP50": 8
+      },
+      {
+        "stageId": "gap_verification",
+        "count": 3,
+        "p50": 11791,
+        "p90": 11791,
+        "mean": 7861,
+        "totalMs": 23582,
+        "externalCallsP50": 0
+      },
+      {
+        "stageId": "research",
+        "count": 2,
+        "p50": 5059,
+        "p90": 5059,
+        "mean": 4908,
+        "totalMs": 9816,
+        "externalCallsP50": 4
+      },
+      {
+        "stageId": "skeleton",
+        "count": 4,
+        "p50": 3182,
+        "p90": 3231,
+        "mean": 1603,
+        "totalMs": 6413,
+        "externalCallsP50": 1
+      },
+      {
+        "stageId": "normalize_brief",
+        "count": 4,
+        "p50": 1719,
+        "p90": 1994,
+        "mean": 928,
+        "totalMs": 3713,
+        "externalCallsP50": 1
+      },
+      {
+        "stageId": "post_process",
+        "count": 2,
+        "p50": 22,
+        "p90": 22,
+        "mean": 22,
+        "totalMs": 43,
+        "externalCallsP50": 0
+      },
+      {
+        "stageId": "cells_batch_1",
+        "count": 2,
+        "p50": 0,
+        "p90": 0,
+        "mean": 0,
+        "totalMs": 0,
+        "externalCallsP50": 0
+      },
+      {
+        "stageId": "cells_batch_2",
+        "count": 2,
+        "p50": 0,
+        "p90": 0,
+        "mean": 0,
+        "totalMs": 0,
+        "externalCallsP50": 0
+      },
+      {
+        "stageId": "cells_batch_3",
+        "count": 1,
+        "p50": 0,
+        "p90": 0,
+        "mean": 0,
+        "totalMs": 0,
+        "externalCallsP50": 0
+      },
+      {
+        "stageId": "cells_batch_4",
+        "count": 1,
+        "p50": 0,
+        "p90": 0,
+        "mean": 0,
+        "totalMs": 0,
+        "externalCallsP50": 0
+      }
+    ],
+    "projections": {
+      "offCriticalPath_AnchorGapRefs": {
+        "p50SavingMs": 142860,
+        "rationale": "Sum of p50(anchor_verification)+p50(gap_verification)+p50(reference_images_enrichment) — they currently block publish but don't change the LLM-decided cell map."
+      },
+      "cellsConcurrency2to4": {
+        "p50SavingMs": 20470,
+        "rationale": "Assuming median 4 batches at concurrency 2 take 40940ms wall, raising concurrency to 4 cuts slots from 2 → 1."
+      },
+      "skipSkeletonVisualProbeRetry": {
+        "p50SavingMs": 0,
+        "rationale": "Skeleton visual-probe retry fires in ~0% of runs; saving = retry_p50 × fire_rate."
+      }
+    },
+    "qualitySignals": {
+      "fallbackRate": 0,
+      "skeletonRetryRate": 0,
+      "avgCellParseRetries": 0
+    }
+  },
+  "runs": [
+    {
+      "id": "run_325e2de5-a3ee-4057-8e26-88bea6bd4e7f",
+      "createdAt": "2026-05-11T18:37:57.014Z",
+      "wallMs": 67094,
+      "fallbackUsed": false,
+      "skeletonRetried": false,
+      "cellParseRetries": 0
+    },
+    {
+      "id": "run_83102c44-4820-4eda-a35f-52f5adae57cd",
+      "createdAt": "2026-05-11T15:09:13.908Z",
+      "wallMs": 217016,
+      "fallbackUsed": false,
+      "skeletonRetried": false,
+      "cellParseRetries": 0
+    }
+  ]
+}

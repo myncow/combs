@@ -49,7 +49,6 @@ export default async function MapPage({
       ) : (
         <>
           <PageHeader
-            index="03"
             eyebrow={map.topicFamily}
             title={displayTitle(map.title, map.topicFamily)}
             intro={map.summary}

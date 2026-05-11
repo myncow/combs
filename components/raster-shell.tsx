@@ -37,7 +37,6 @@ export function PageHeader({
   eyebrow,
   intro,
   summary,
-  index = "01",
   actions,
   className,
   titleClassName,
@@ -47,7 +46,6 @@ export function PageHeader({
   eyebrow?: React.ReactNode;
   intro?: React.ReactNode;
   summary?: React.ReactNode;
-  index?: React.ReactNode;
   actions?: React.ReactNode;
   className?: string;
   titleClassName?: string;
@@ -55,17 +53,14 @@ export function PageHeader({
 }) {
   return (
     <header className={cn("border-b border-border pb-5 md:pb-6", className)}>
-      <div className="flex items-baseline gap-3">
-        <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-primary tabular-nums">
-          {index}
-        </span>
-        <span aria-hidden className="h-px flex-1 bg-border" />
-        {eyebrow ? (
+      {eyebrow ? (
+        <div className="flex items-baseline gap-3">
           <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
             {eyebrow}
           </span>
-        ) : null}
-      </div>
+          <span aria-hidden className="h-px flex-1 bg-border" />
+        </div>
+      ) : null}
       <h1
         className={cn(
           "mt-4 font-sans text-[28px] font-semibold leading-[1.02] tracking-[-0.03em] text-foreground md:text-[36px]",

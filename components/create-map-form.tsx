@@ -16,27 +16,28 @@ import { authClient } from "@/lib/auth/client";
 import { buildAuthRedirectHref } from "@/lib/auth/redirect";
 import type { SuggestAxisPairInput } from "@/lib/schema";
 
-/** Short examples for rotating placeholder (empty field, not focused). Visual, axis-friendly hints. */
+/** Short, single-noun categories. Picturable taxonomies where visual traits matter. */
 const ROTATING_PLACEHOLDERS = [
-  "Running shoes — midsole stack × upper weave window…",
-  "Street trees — winter silhouette × bark plate texture…",
-  "Espresso bars — counter stance × chrome highlight mood…",
-  "Sliced loaves — crumb openness × crust leopard band…",
-  "Studio chairs — frame material × leg topology under seat…",
-  "Halved fruit — chamber layout × juice vs dry rim…",
-  "Ceramic mugs — clay body tone × glaze pool topography…",
-  "Vintage lenses — mount flange cue × front element dome…",
-  "Ramen bowls — broth clarity × noodle cross-profile…",
-  "Wristwear — case finish grain × handset geometry…",
-  "Knife profiles — spine belly curve × bolster transition…",
-  "Sunglass fronts — rim thickness × tint cast on white…",
-  "Swatches under raking light — weave float × fiber sheen…",
-  "Night cocktails — glass silhouette × foam or garnish plane…",
+  "Apples",
+  "Aliens",
+  "Dogs",
+  "Mushrooms",
+  "Beetles",
+  "Cacti",
+  "Frogs",
+  "Spiders",
+  "Lizards",
+  "Coral",
+  "Tomatoes",
+  "Citrus",
+  "Squashes",
+  "Octopuses",
+  "Bird beaks",
+  "Moths",
 ];
 
-/** Shown while the topic field is empty and focused (avoids fixing on one rotating sample). */
-const TOPIC_FOCUS_PLACEHOLDER =
-  "Name a category or scene—axis ideas load after a couple of characters.";
+/** Shown while the topic field is empty and focused. */
+const TOPIC_FOCUS_PLACEHOLDER = "Type a category. Anything you can picture.";
 
 const SUGGEST_DEBOUNCE_MS = 420;
 
@@ -73,6 +74,34 @@ function isAbortError(error: unknown) {
 
 const URL_PARAM_TOPIC = "topic";
 const URL_PARAM_PAIR = "pair";
+
+function slugifyAxisKey(label: string): string {
+  return (
+    label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 32) || "axis"
+  );
+}
+
+function buildManualAxisPair(primary: string, secondary: string): SuggestAxisPairInput {
+  const a = primary.trim();
+  const b = secondary.trim();
+  return {
+    primary: {
+      key: `m_${slugifyAxisKey(a)}`,
+      label: a,
+      values: ["Low", "Middle", "High"],
+    },
+    secondary: {
+      key: `m_${slugifyAxisKey(b)}`,
+      label: b,
+      values: ["Low", "Middle", "High"],
+    },
+    rationale: "User-defined axes.",
+  };
+}
 
 type DraftFromUrl = {
   topic: string;
@@ -120,6 +149,10 @@ export function CreateMapForm() {
   const [pairs, setPairs] = useState<SuggestAxisPairInput[]>([]);
   const [lockedPair, setLockedPair] = useState<SuggestAxisPairInput | null>(null);
   const [requestedLockedPairKey, setRequestedLockedPairKey] = useState<string | null>(null);
+  const [lockedIsManual, setLockedIsManual] = useState(false);
+  const [manualPrimary, setManualPrimary] = useState("");
+  const [manualSecondary, setManualSecondary] = useState("");
+  const [manualOpen, setManualOpen] = useState(false);
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [suggestErr, setSuggestErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -131,6 +164,7 @@ export function CreateMapForm() {
   const hasMounted = useRef(false);
   const topicTrimRef = useRef("");
   const requestedLockedPairKeyRef = useRef<string | null>(null);
+  const lockedIsManualRef = useRef(false);
   const lastFetchedSuggestKeyRef = useRef<string | null>(null);
   const pendingSuggestKeyRef = useRef<string | null>(null);
   const suggestAbortRef = useRef<AbortController | null>(null);
@@ -149,6 +183,7 @@ export function CreateMapForm() {
       setTopic(draft.topic);
       setPairs([]);
       setLockedPair(null);
+      setLockedIsManual(false);
       setRequestedLockedPairKey(draft.lockedPairKey);
       setSuggestErr(null);
       setSuggestLoading(false);
@@ -191,7 +226,8 @@ export function CreateMapForm() {
   useEffect(() => {
     topicTrimRef.current = topicTrim;
     requestedLockedPairKeyRef.current = requestedLockedPairKey;
-  }, [requestedLockedPairKey, topicTrim]);
+    lockedIsManualRef.current = lockedIsManual;
+  }, [lockedIsManual, requestedLockedPairKey, topicTrim]);
 
   useEffect(() => {
     return () => {
@@ -305,6 +341,9 @@ export function CreateMapForm() {
       lastFetchedSuggestKeyRef.current = key;
       const next = Array.isArray(data.pairs) ? data.pairs : [];
       setPairs(next);
+      if (lockedIsManualRef.current) {
+        return;
+      }
       const reqLock = requestedLockedPairKeyRef.current;
       if (reqLock) {
         const matchedPair = next.find((pair) => axisPairKey(pair) === reqLock) ?? null;
@@ -324,7 +363,9 @@ export function CreateMapForm() {
       }
       setSuggestErr("Suggestions failed.");
       setPairs([]);
-      setLockedPair(null);
+      if (!lockedIsManualRef.current) {
+        setLockedPair(null);
+      }
     } finally {
       if (suggestAbortRef.current === controller) {
         suggestAbortRef.current = null;
@@ -356,6 +397,22 @@ export function CreateMapForm() {
       return next;
     });
     setRequestedLockedPairKey((cur) => (cur === key ? null : key));
+    setLockedIsManual(false);
+  }
+
+  function lockManualFrame() {
+    const a = manualPrimary.trim();
+    const b = manualSecondary.trim();
+    if (a.length < 2 || b.length < 2) return;
+    setLockedPair(buildManualAxisPair(a, b));
+    setLockedIsManual(true);
+    setRequestedLockedPairKey(null);
+  }
+
+  function clearLock() {
+    setLockedPair(null);
+    setLockedIsManual(false);
+    setRequestedLockedPairKey(null);
   }
 
   function buildGenerationPayload(topicStr: string) {
@@ -446,16 +503,16 @@ export function CreateMapForm() {
     authPending
       ? "Checking account status."
       : !isSignedIn
-        ? "Suggestions unlock once you sign in."
+        ? "Sign in to see axis suggestions."
         : !canSuggest
-      ? "Enter a topic to see suggested axis pairings."
+      ? "Enter a category to see axis suggestions."
       : suggestLoading
-        ? "Sketching axis frames."
+        ? "Sketching axes."
         : suggestErr
           ? "Suggestions could not load."
           : pairs.length === 0
-            ? "No frames yet."
-            : `${pairs.length} frames suggested.`;
+            ? "No axes yet."
+            : `${pairs.length} axis pairs suggested.`;
 
   return (
     <form onSubmit={onSubmit} className="flex min-w-0 flex-col">
@@ -464,10 +521,10 @@ export function CreateMapForm() {
           <div className="space-y-3 border-b border-border pb-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-                Topic brief
+                What are you mapping?
               </p>
               <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                Start concrete, then widen if needed
+                A visual category
               </p>
             </div>
             <Input
@@ -520,10 +577,10 @@ export function CreateMapForm() {
               </p>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-                  Suggested frames
+                  Pick two axes
                 </p>
                 <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                  Tap once to lock
+                  Tap a card to lock
                 </p>
               </div>
 
@@ -535,12 +592,12 @@ export function CreateMapForm() {
                 </p>
               ) : !canSuggest ? (
                 <p className="text-[13px] text-muted-foreground">
-                  Type a topic — suggested axis pairs appear here.
+                  Type a category to see two-axis suggestions.
                 </p>
               ) : suggestLoading ? (
                 <p className="flex items-center gap-2 text-[13px] text-muted-foreground">
                   <Spinner size="sm" className="opacity-70" />
-                  Sketching frames…
+                  Sketching axes…
                 </p>
               ) : suggestErr ? (
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -575,9 +632,87 @@ export function CreateMapForm() {
             </div>
           </ResponsiveAxesSlot>
 
+          <div className="border border-border/70 bg-background/30">
+            <button
+              type="button"
+              onClick={() => setManualOpen((open) => !open)}
+              aria-expanded={manualOpen}
+              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left transition-colors hover:bg-card/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                Define axes manually
+              </span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                {manualOpen ? "Close" : "Skip suggestions"}
+              </span>
+            </button>
+            {manualOpen ? (
+              <div className="space-y-3 border-t border-border px-3 py-3">
+                <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-end">
+                  <div>
+                    <label
+                      htmlFor="manual-primary"
+                      className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground"
+                    >
+                      Primary axis
+                    </label>
+                    <Input
+                      id="manual-primary"
+                      value={manualPrimary}
+                      onChange={(e) => setManualPrimary(e.target.value)}
+                      placeholder="e.g. skin texture"
+                      maxLength={80}
+                      autoComplete="off"
+                      spellCheck={false}
+                      className="mt-1 h-9 text-[14px]"
+                    />
+                  </div>
+                  <span className="hidden self-end pb-2 font-mono text-[13px] text-muted-foreground md:block">
+                    ×
+                  </span>
+                  <div>
+                    <label
+                      htmlFor="manual-secondary"
+                      className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground"
+                    >
+                      Secondary axis
+                    </label>
+                    <Input
+                      id="manual-secondary"
+                      value={manualSecondary}
+                      onChange={(e) => setManualSecondary(e.target.value)}
+                      placeholder="e.g. color saturation"
+                      maxLength={80}
+                      autoComplete="off"
+                      spellCheck={false}
+                      className="mt-1 h-9 text-[14px]"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={lockManualFrame}
+                    disabled={manualPrimary.trim().length < 2 || manualSecondary.trim().length < 2}
+                  >
+                    <Lock className="h-3 w-3" aria-hidden />
+                    {lockedIsManual ? "Update frame" : "Lock these axes"}
+                  </Button>
+                  <p className="text-[12px] text-muted-foreground">
+                    Use exactly these two axes. Skips suggestions.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
           {lockedPair && !lockedPairShownInSuggestions ? (
             <div className="flex shrink-0 items-center gap-2 border border-border/70 bg-background/55 px-3 py-2">
               <Lock className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">
+                {lockedIsManual ? "Custom" : "Locked"}
+              </span>
               <p className="min-w-0 flex-1 truncate text-[14px] text-foreground/90">
                 {lockedPair.primary.label}
                 <span className="mx-1.5 text-muted-foreground">×</span>
@@ -585,10 +720,7 @@ export function CreateMapForm() {
               </p>
               <button
                 type="button"
-                onClick={() => {
-                  setLockedPair(null);
-                  setRequestedLockedPairKey(null);
-                }}
+                onClick={clearLock}
                 className="inline-flex shrink-0 items-center gap-1 text-[12px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 aria-label="Clear locked frame"
               >
@@ -606,7 +738,7 @@ export function CreateMapForm() {
                 </p>
               ) : (
                 <p className="text-[13px] text-muted-foreground">
-                  The first pass builds the map structure. Frontier visuals come later inside each cell.
+                  We sketch the grid first. Fill in cells with images after.
                 </p>
               )}
             </div>

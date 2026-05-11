@@ -4,19 +4,16 @@ import type { HomePageContent } from "@/lib/types";
 
 export function NewMapHome({ content }: { content?: HomePageContent | null }) {
   const heading = content?.heroTitle ?? "New map";
-  const body = content?.heroBody ?? "Turn a topic into a structured map of examples, gaps, and constraints.";
-  const eyebrow = content?.sectionEyebrow ?? "Topic";
-  const summary = content?.sectionSummary ?? "Topic · Frame · Build";
 
   return (
     <ShellPage size="content" className="py-6 md:py-8">
       <PageHeader
         title={heading}
-        eyebrow={eyebrow}
-        intro={body}
-        summary={summary}
+        eyebrow="Map"
+        intro="Pick a category. Two axes slice it into a grid. The empty cells are gaps you can fill with new images."
+        summary="Category · Axes · Build"
         titleClassName="text-[26px] md:text-[34px]"
-        introClassName="max-w-[40rem]"
+        introClassName="max-w-[42rem]"
       />
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_17rem]">
         <SurfacePanel className="min-w-0">
@@ -26,21 +23,27 @@ export function NewMapHome({ content }: { content?: HomePageContent | null }) {
           <div className="space-y-5">
             <div>
               <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-                First Screen
+                How it works
               </p>
-              <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
-                Start with a category that has visible variation. Narrower scenes produce sharper axes and better frontier cells.
-              </p>
+              <ol className="mt-2 space-y-1.5 text-[14px] leading-relaxed text-foreground/88 [counter-reset:steps]">
+                <li className="grid grid-cols-[auto_1fr] gap-x-2 [counter-increment:steps] before:font-mono before:text-[11px] before:text-muted-foreground before:content-['0'counter(steps)]">
+                  <span>Type a category you can picture.</span>
+                </li>
+                <li className="grid grid-cols-[auto_1fr] gap-x-2 [counter-increment:steps] before:font-mono before:text-[11px] before:text-muted-foreground before:content-['0'counter(steps)]">
+                  <span>Pick two visual axes — or define your own.</span>
+                </li>
+                <li className="grid grid-cols-[auto_1fr] gap-x-2 [counter-increment:steps] before:font-mono before:text-[11px] before:text-muted-foreground before:content-['0'counter(steps)]">
+                  <span>Explore the grid. Empty cells are the gaps.</span>
+                </li>
+              </ol>
             </div>
             <div className="border-t border-border pt-4">
               <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-                Good Briefs
+                Good axes
               </p>
-              <ul className="mt-2 space-y-2 text-[14px] leading-relaxed text-foreground/88">
-                <li>Pick something concrete enough to picture.</li>
-                <li>Lock a suggested frame if one feels right.</li>
-                <li>Use the rail to compare fresh maps quickly.</li>
-              </ul>
+              <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
+                Anything visually distinguishable: skin texture, color, morphology, habitat, locomotion, size.
+              </p>
             </div>
           </div>
         </SurfacePanel>
