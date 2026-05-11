@@ -1,11 +1,10 @@
 "use client";
 
-import { Settings as SettingsIcon } from "lucide-react";
+import { Check, Settings as SettingsIcon } from "lucide-react";
 import {
   useCallback,
   useEffect,
   useId,
-  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -31,7 +30,7 @@ import { cn } from "@/lib/utils";
 const THEME_OPTIONS: ReadonlyArray<{ id: ThemePreference; label: string }> = [
   { id: "light", label: "Light" },
   { id: "dark", label: "Dark" },
-  { id: "system", label: "System" },
+  { id: "system", label: "Auto" },
 ];
 
 function subscribeToImageModel(onChange: () => void) {
@@ -74,11 +73,6 @@ export function SettingsMenu() {
     subscribeToTheme,
     readStoredThemePreference,
     () => "system" as ThemePreference,
-  );
-
-  const activeModel = useMemo(
-    () => CURATED_IMAGE_MODELS.find((m) => m.id === imageModel) ?? CURATED_IMAGE_MODELS[0],
-    [imageModel],
   );
 
   useEffect(() => {
@@ -130,19 +124,19 @@ export function SettingsMenu() {
         <MenuPanel
           role="dialog"
           aria-label="Settings"
-          className="absolute right-0 top-full z-30 mt-1 w-[min(320px,90vw)] origin-top-right"
+          className="absolute right-0 top-full z-30 mt-1.5 w-[min(340px,92vw)] origin-top-right"
         >
-          <div className="flex items-center justify-between border-b border-border px-3 py-2">
+          <div className="border-b border-border px-4 py-2.5">
             <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
               Settings
             </span>
           </div>
 
-          <fieldset className="border-b border-border px-3 py-3">
+          <fieldset className="border-b border-border px-4 py-3.5">
             <legend className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
               Theme
             </legend>
-            <div role="radiogroup" aria-label="Theme" className="mt-2 grid grid-cols-3 gap-1">
+            <div role="radiogroup" aria-label="Theme" className="mt-2.5 grid grid-cols-3 gap-px border border-border bg-border">
               {THEME_OPTIONS.map((opt) => {
                 const selected = theme === opt.id;
                 return (
@@ -153,10 +147,10 @@ export function SettingsMenu() {
                     aria-checked={selected}
                     onClick={() => setTheme(opt.id)}
                     className={cn(
-                      "h-8 border px-2 font-mono text-[11px] uppercase tracking-[0.18em] transition-colors",
+                      "h-9 font-mono text-[11px] uppercase tracking-[0.18em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                       selected
-                        ? "border-foreground bg-foreground text-background"
-                        : "border-border bg-background text-muted-foreground hover:border-border-strong hover:text-foreground",
+                        ? "bg-foreground text-background"
+                        : "bg-background text-muted-foreground hover:bg-card hover:text-foreground",
                     )}
                   >
                     {opt.label}
@@ -166,14 +160,15 @@ export function SettingsMenu() {
             </div>
           </fieldset>
 
-          <fieldset className="px-3 py-3">
+          <fieldset className="px-4 py-3.5">
             <legend className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
               Image model
             </legend>
-            <p className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.16em] text-foreground/70">
-              Active: {activeModel.label}
-            </p>
-            <ul role="radiogroup" aria-label="Image model" className="mt-2 max-h-[14rem] space-y-px overflow-y-auto">
+            <ul
+              role="radiogroup"
+              aria-label="Image model"
+              className="mt-2.5 max-h-[16rem] divide-y divide-border overflow-y-auto border border-border"
+            >
               {CURATED_IMAGE_MODELS.map((m) => {
                 const selected = m.id === imageModel;
                 return (
@@ -184,18 +179,34 @@ export function SettingsMenu() {
                       aria-checked={selected}
                       onClick={() => writeStoredImageModel(m.id)}
                       className={cn(
-                        "flex w-full flex-col items-start gap-0.5 border border-transparent px-2 py-2 text-left transition-colors",
+                        "relative flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                         selected
-                          ? "border-primary/45 bg-[color:color-mix(in_srgb,var(--primary)_10%,transparent)]"
-                          : "hover:bg-foreground/[0.04]",
+                          ? "bg-[color:color-mix(in_srgb,var(--primary)_8%,var(--card))]"
+                          : "bg-background hover:bg-card",
                       )}
                     >
-                      <span className="text-[13px] font-medium leading-tight tracking-[-0.01em] text-foreground">
-                        {m.label}
+                      {selected ? (
+                        <span
+                          aria-hidden
+                          className="absolute inset-y-0 left-0 w-[3px] bg-primary"
+                        />
+                      ) : null}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13px] font-medium leading-tight tracking-[-0.01em] text-foreground">
+                          {m.label}
+                        </span>
+                        <span className="mt-1 block truncate font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                          {m.provider} · {m.priceLabel}
+                        </span>
                       </span>
-                      <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                        {m.provider} · {m.priceLabel}
-                      </span>
+                      <Check
+                        className={cn(
+                          "mt-0.5 h-3.5 w-3.5 shrink-0 transition-opacity",
+                          selected ? "text-primary opacity-100" : "opacity-0",
+                        )}
+                        strokeWidth={2.5}
+                        aria-hidden
+                      />
                     </button>
                   </li>
                 );
