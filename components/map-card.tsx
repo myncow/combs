@@ -109,49 +109,67 @@ export function MapCard({
 
   if (compact) {
     return (
-      <article className="group relative flex items-center gap-2 px-1 py-1">
-        <Link
-          href={`/maps/${map.slug}`}
-          aria-label={`Open map ${map.title}`}
-          className="flex min-w-0 flex-1 items-center gap-3 px-1.5 py-1.5 outline-none transition-colors duration-150 hover:bg-foreground/[0.04] focus-visible:bg-foreground/[0.06] focus-visible:outline-none"
-        >
-          <MapThumbnail url={thumbnailUrl} className="h-12 w-12" />
-          <div className="min-w-0 text-left">
-            <h3 className="truncate text-[13.5px] font-semibold leading-[1.25] tracking-[-0.005em] text-foreground transition-colors duration-150 group-hover:text-primary">
-              {displayTitle}
-            </h3>
-            <AnimatePresence mode="wait" initial={false}>
-              {isGenerating ? (
-                <motion.p
-                  key="generating"
-                  className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground"
-                  initial={{ opacity: 0, y: 2 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -2 }}
-                  transition={entryTransition()}
-                >
-                  <Spinner size="xs" className="text-muted-foreground" />
-                  Generating
-                </motion.p>
-              ) : hasFailed ? (
-                <motion.p
-                  key="failed"
-                  className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--destructive)]"
-                  initial={{ opacity: 0, y: 2 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -2 }}
-                  transition={entryTransition()}
-                >
-                  <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full bg-[color:var(--destructive)]" />
-                  Failed
-                </motion.p>
-              ) : null}
-            </AnimatePresence>
-          </div>
-        </Link>
-        {allowDelete ? (
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
-            <DeleteMapButton slug={map.slug} title={map.title} onDeleted={onDeleted} />
+      <article
+        className={cn(
+          "group relative flex flex-col px-1 py-1",
+          isGenerating && "bg-[color:color-mix(in_srgb,var(--primary)_5%,transparent)]",
+        )}
+      >
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/maps/${map.slug}`}
+            aria-label={`Open map ${map.title}`}
+            className={cn(
+              "flex min-w-0 flex-1 items-center gap-3 px-1.5 py-1.5 outline-none transition-colors duration-150 hover:bg-foreground/[0.04] focus-visible:bg-foreground/[0.06] focus-visible:outline-none",
+              isGenerating && "border-l-2 border-primary/60 pl-2",
+            )}
+          >
+            <MapThumbnail url={thumbnailUrl} className="h-12 w-12" />
+            <div className="min-w-0 text-left">
+              <h3 className="truncate text-[13.5px] font-semibold leading-[1.25] tracking-[-0.005em] text-foreground transition-colors duration-150 group-hover:text-primary">
+                {displayTitle}
+              </h3>
+              <AnimatePresence mode="wait" initial={false}>
+                {isGenerating ? (
+                  <motion.p
+                    key="generating"
+                    className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-primary"
+                    initial={{ opacity: 0, y: 2 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -2 }}
+                    transition={entryTransition()}
+                  >
+                    <Spinner size="xs" className="text-primary" />
+                    Generating…
+                  </motion.p>
+                ) : hasFailed ? (
+                  <motion.p
+                    key="failed"
+                    className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--destructive)]"
+                    initial={{ opacity: 0, y: 2 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -2 }}
+                    transition={entryTransition()}
+                  >
+                    <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full bg-[color:var(--destructive)]" />
+                    Failed
+                  </motion.p>
+                ) : null}
+              </AnimatePresence>
+            </div>
+          </Link>
+          {allowDelete ? (
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
+              <DeleteMapButton slug={map.slug} title={map.title} onDeleted={onDeleted} />
+            </div>
+          ) : null}
+        </div>
+        {isGenerating ? (
+          <div
+            aria-hidden
+            className="viz-loading-track mx-1.5 mb-0.5 h-[1.5px] rounded-none opacity-80"
+          >
+            <div className="viz-loading-bar h-full" />
           </div>
         ) : null}
       </article>

@@ -32,9 +32,9 @@ export default async function ShellLayout({ children }: { children: React.ReactN
   return (
     <>
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        <div className="order-2 md:order-1">
+        <div className="order-2 flex md:order-1 md:min-h-0">
           <Suspense
-            fallback={<aside className="hidden w-[min(320px,30vw)] shrink-0 border-r border-border md:block" />}
+            fallback={<aside className="hidden w-[min(320px,30vw)] shrink-0 border-r border-border md:block md:h-full" />}
           >
             <ExplorerSidebarLoader />
           </Suspense>

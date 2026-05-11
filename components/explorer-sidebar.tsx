@@ -120,7 +120,7 @@ export function ExplorerSidebar({
   return (
     <aside
       className={cn(
-        "flex min-h-0 min-w-0 shrink-0 flex-col border-t border-border bg-background transition-[max-width,width] duration-200 md:border-r md:border-t-0",
+        "flex min-h-0 min-w-0 shrink-0 flex-col border-t border-border bg-background transition-[max-width,width] duration-200 md:h-full md:border-r md:border-t-0",
         collapsed
           ? "w-full md:max-h-none md:w-12 md:max-w-12"
           : "max-h-[44vh] w-full md:max-h-none md:w-[min(320px,30vw)] md:max-w-[min(320px,30vw)]",

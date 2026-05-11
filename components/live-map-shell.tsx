@@ -115,21 +115,28 @@ export function LiveMapShell({ initial, slug }: { initial: SavedMap; slug: strin
         {showIndicator ? (
           <motion.div
             key="live-indicator"
-            className="sticky top-0 z-20 shrink-0 overflow-hidden"
+            className="sticky top-0 z-20 shrink-0 overflow-hidden border-b border-border/60 bg-background/85 backdrop-blur"
             role="status"
             aria-live="polite"
-            aria-label={isEnriching ? "Ranking references" : "Sketching the grid"}
-            initial={reduceMotion ? { opacity: 1 } : { opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={reduceMotion ? { opacity: 0 } : { opacity: 0 }}
+            aria-label={isEnriching ? "Searching examples on Google Images" : "Sketching the grid"}
+            initial={reduceMotion ? { opacity: 1 } : { opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }}
             transition={revealTransition(reduceMotion)}
           >
-            <div
-              className={cn(
-                "viz-loading-track rounded-none transition-[height,opacity] duration-500 ease-out",
-                isEnriching ? "h-[1px] opacity-60" : "h-[2px] opacity-100",
-              )}
-            >
+            <div className="flex items-center gap-2.5 px-1 py-1.5">
+              <span aria-hidden className="relative inline-flex h-1.5 w-1.5 shrink-0">
+                <span className="absolute inset-0 animate-ping rounded-full bg-primary/60" />
+                <span className="absolute inset-0 rounded-full bg-primary" />
+              </span>
+              <p className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-foreground/80">
+                {isEnriching ? "Searching examples" : "Sketching the grid"}
+                <span className="ml-2 text-muted-foreground">
+                  {isEnriching ? "· Google Images via SerpAPI" : "· building cells"}
+                </span>
+              </p>
+            </div>
+            <div className="viz-loading-track h-[2px] rounded-none opacity-95">
               <div className="viz-loading-bar h-full" />
             </div>
           </motion.div>

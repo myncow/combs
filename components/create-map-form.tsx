@@ -566,6 +566,7 @@ export function CreateMapForm() {
             />
           </div>
 
+          {manualOpen ? null : (
           <ResponsiveAxesSlot>
             <div
               aria-live="polite"
@@ -631,6 +632,7 @@ export function CreateMapForm() {
               )}
             </div>
           </ResponsiveAxesSlot>
+          )}
 
           <div className="border border-border/70 bg-background/30">
             <button
