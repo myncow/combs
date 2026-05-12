@@ -2455,12 +2455,3 @@ export async function enrichPublishedMap(
 
   return finalDocument;
 }
-
-export function getTopicSuggestions() {
-  return [
-    "Topics with articulated rules—inference, regimes, morphology, inventories—produce crisp cells.",
-    "Aim for exactly two truly independent axes that render as a clean 2D grid.",
-    "Maps work when constraints can create rare edges, unexplored middles, and rule-blocked crossings.",
-    "Avoid prompts that rehearse moods, popularity scores, aesthetic-only palettes, or unbounded novelty.",
-  ];
-}

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, Grid3X3, Sparkles } from "lucide-react";
-import { AsciiDivider } from "@/components/ui/ascii-divider";
 import type { ListedLeaderboardEntry, SavedMap } from "@/lib/types";
 import { pickMapThumbnail, simplifyMapDisplayTitle } from "@/lib/utils";
 
@@ -86,7 +85,6 @@ export function SignedOutHome({
 
       {maps.length > 0 ? (
         <section aria-label="Public maps">
-          <AsciiDivider className="mb-5" />
           <div className="flex items-end justify-between gap-3 pb-3">
             <h2 className="tagline text-[14px] text-muted-foreground">
               Public maps
@@ -139,7 +137,6 @@ export function SignedOutHome({
       ) : null}
 
       <section aria-label="Example axis pairs">
-        <AsciiDivider className="mb-5" />
         <div className="flex items-center gap-2 pb-3">
           <Grid3X3 className="h-4 w-4 text-primary" aria-hidden />
           <h2 className="tagline text-[14px] text-muted-foreground">
@@ -164,7 +161,6 @@ export function SignedOutHome({
 
       {cards.length > 0 ? (
         <section aria-label="Top spotlights">
-          <AsciiDivider className="mb-5" />
           <div className="flex items-end justify-between gap-3 pb-3">
             <h2 className="tagline text-[14px] text-muted-foreground">
               Top spotlights

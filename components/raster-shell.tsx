@@ -54,12 +54,9 @@ export function PageHeader({
   return (
     <header className={cn("border-b border-border pb-5 md:pb-6", className)}>
       {eyebrow ? (
-        <div className="flex items-baseline gap-3">
-          <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-            {eyebrow}
-          </span>
-          <span aria-hidden className="h-px flex-1 bg-border" />
-        </div>
+        <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+          {eyebrow}
+        </span>
       ) : null}
       <h1
         className={cn(

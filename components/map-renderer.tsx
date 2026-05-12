@@ -2237,5 +2237,3 @@ function ViewerModal({
   );
 }
 
-// Preserve export for legacy import sites that may want the persisted strip.
-export { PersistedReferenceThumbnails };
