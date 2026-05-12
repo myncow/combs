@@ -226,7 +226,7 @@ export const leaderboardVoteResultSchema = z.object({
 
 export const mapFiltersSchema = z.object({
   topicFamily: z.string().optional(),
-  status: z.enum(["published", "internal", "failed", "live", "library"]).optional(),
+  status: z.enum(["all", "published", "internal", "failed", "live", "library"]).optional(),
   sort: z
     .enum(["recent", "quality"])
     .default("recent")
@@ -241,6 +241,9 @@ export const mapFiltersSchema = z.object({
    * server route enforcing it).
    */
   scope: z.enum(["mine", "public", "admin"]).optional(),
+  q: z.string().trim().max(160).optional(),
+  visibility: z.enum(["public", "private"]).optional(),
+  owner: z.string().trim().max(160).optional(),
 });
 
 const optionalTrimmed = (max: number) =>

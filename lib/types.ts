@@ -243,6 +243,7 @@ export interface SavedMap {
   status: MapVisibility;
   publishedAt: string | null;
   createdAt: string;
+  updatedAt: string;
   summary: string;
   promptSummary: string;
   document: MapDocument;

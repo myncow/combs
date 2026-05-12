@@ -12,6 +12,9 @@ export async function GET(request: Request) {
     page: searchParams.get("page") ?? "1",
     pageSize: searchParams.get("pageSize") ?? "9",
     scope: searchParams.get("scope") ?? undefined,
+    q: searchParams.get("q") ?? undefined,
+    visibility: searchParams.get("visibility") ?? undefined,
+    owner: searchParams.get("owner") ?? undefined,
   });
 
   const user = await getSessionUser();
@@ -27,6 +30,9 @@ export async function GET(request: Request) {
       status: filters.status,
       page: filters.page,
       pageSize: filters.pageSize,
+      ownerId: filters.owner,
+      query: filters.q,
+      visibility: filters.visibility,
     });
     return NextResponse.json(maps);
   }

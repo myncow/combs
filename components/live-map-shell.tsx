@@ -12,7 +12,15 @@ import { cn, simplifyMapDisplayTitle } from "@/lib/utils";
 
 type LiveStatus = "generating" | "published" | "failed";
 
-export function LiveMapShell({ initial, slug }: { initial: SavedMap; slug: string }) {
+export function LiveMapShell({
+  initial,
+  slug,
+  canMutateMap = false,
+}: {
+  initial: SavedMap;
+  slug: string;
+  canMutateMap?: boolean;
+}) {
   const router = useRouter();
   const reduceMotion = useReducedMotion() ?? false;
   const [doc, setDoc] = useState<MapDocument>(initial.document);
@@ -167,7 +175,7 @@ export function LiveMapShell({ initial, slug }: { initial: SavedMap; slug: strin
         ) : null}
       </AnimatePresence>
       <div className="flex-1 min-h-0 flex flex-col pb-3 md:pb-2">
-        <MapRenderer document={doc} live={isLive} />
+        <MapRenderer document={doc} live={isLive} canMutateMap={canMutateMap} />
       </div>
     </div>
   );

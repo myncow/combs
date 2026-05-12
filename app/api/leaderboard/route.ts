@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { isAdminEmail } from "@/lib/auth/admin";
+import { viewerCanMutateMap } from "@/lib/auth/permissions";
+import { getAuth } from "@/lib/auth/server";
 import { getRequesterId, moderateText } from "@/lib/guards";
 import { leaderboardFiltersSchema, publishGapSpotlightSchema } from "@/lib/schema";
-import { listLeaderboardEntries, publishGapSpotlight } from "@/lib/store";
+import { getMapBySlug, listLeaderboardEntries, publishGapSpotlight } from "@/lib/store";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -24,6 +27,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const { data: session } = await getAuth().getSession();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Sign in to publish to the top list." }, { status: 401 });
+  }
+
   const body = await request.json().catch(() => null);
   const parsed = publishGapSpotlightSchema.safeParse(body);
   if (!parsed.success) {
@@ -42,6 +50,17 @@ export async function POST(request: Request) {
   }
 
   try {
+    const sessionUser = session.user as { id?: string | null; email?: string | null };
+    const map = await getMapBySlug(parsed.data.mapSlug);
+    const viewer = sessionUser.id
+      ? { id: sessionUser.id, isAdmin: isAdminEmail(sessionUser.email) }
+      : null;
+    if (!map || !viewerCanMutateMap(map, viewer)) {
+      return NextResponse.json(
+        { error: "Only the map owner or an admin can publish this spotlight." },
+        { status: 403 },
+      );
+    }
     const entry = await publishGapSpotlight(parsed.data);
     revalidatePath("/leaderboard");
     revalidatePath(`/leaderboard/${entry.slug}`);

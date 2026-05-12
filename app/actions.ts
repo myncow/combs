@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { isAdminEmail } from "@/lib/auth/admin";
+import { viewerCanMutateMap } from "@/lib/auth/permissions";
 import { getAuth } from "@/lib/auth/server";
 import {
   DegenerateImageError,
@@ -17,8 +19,7 @@ import {
   publishGapSpotlightSchema,
   type CellVisualizationResult,
 } from "@/lib/schema";
-import type { MapDocument, MapCell } from "@/lib/types";
-import { patchMapCellVisualization, publishGapSpotlight } from "@/lib/store";
+import { getMapBySlug, patchMapCellVisualization, publishGapSpotlight } from "@/lib/store";
 import {
   buildDiversificationSuffix,
   findHashCollisionAgainstOthers,
@@ -42,7 +43,8 @@ export async function createMapAction(
     };
   }
 
-  const requesterId = session.user.id || (await getRequesterId());
+  const sessionUser = session.user as { id?: string | null; email?: string | null };
+  const requesterId = sessionUser.id || (await getRequesterId());
   const rateLimit = checkRateLimit(requesterId);
   if (!rateLimit.allowed) {
     return {
@@ -127,7 +129,8 @@ export async function visualizeCellAction(
     };
   }
 
-  const requesterId = session.user.id || (await getRequesterId());
+  const sessionUser = session.user as { id?: string | null; email?: string | null };
+  const requesterId = sessionUser.id || (await getRequesterId());
   const rateLimit = checkRateLimit(requesterId);
   if (!rateLimit.allowed) {
     return {
@@ -151,17 +154,35 @@ export async function visualizeCellAction(
     };
   }
 
-  const documentJson = formData.get("document");
-  const cellJson = formData.get("cell");
+  const mapSlug = String(formData.get("mapSlug") ?? "").trim();
+  const cellId = String(formData.get("cellId") ?? "").trim();
 
-  if (!documentJson || !cellJson) {
-    return { status: "error", message: "Missing document or cell data." };
+  if (!mapSlug || !cellId) {
+    return { status: "error", message: "Missing map or cell id." };
   }
 
   try {
-    const document = JSON.parse(String(documentJson)) as MapDocument;
-    const cell = JSON.parse(String(cellJson)) as MapCell;
-    if (!["gap", "tension", "impossible"].includes(cell.status)) {
+    const documentMap = await getMapBySlug(mapSlug);
+    if (!documentMap) {
+      return { status: "error", message: "Map not found." };
+    }
+    const viewer = sessionUser.id
+      ? { id: sessionUser.id, isAdmin: isAdminEmail(sessionUser.email) }
+      : null;
+    if (!viewerCanMutateMap(documentMap, viewer)) {
+      return {
+        status: "error",
+        message: "Only the map owner or an admin can generate images for this map.",
+      };
+    }
+
+    const document = documentMap.document;
+    const cell = document.cells.find((candidate) => candidate.id === cellId);
+    if (!cell) {
+      return { status: "error", message: "Cell not found." };
+    }
+    const targetCell = cell;
+    if (!["gap", "tension", "impossible"].includes(targetCell.status)) {
       return {
         status: "error",
         message: "This cell uses reference-led browsing rather than generated frontier visuals.",
@@ -171,7 +192,7 @@ export async function visualizeCellAction(
     // or surfaced in the UI. The cell's label/explanation are LLM-generated
     // (the brief was moderated, but cells weren't), and example names flow
     // verbatim into both the prompt's grounding cues and the drawer caption.
-    const exampleStrings = (cell.examples ?? []).flatMap((example) => [
+    const exampleStrings = (targetCell.examples ?? []).flatMap((example) => [
       example.name,
       example.brand,
       example.year,
@@ -181,8 +202,8 @@ export async function visualizeCellAction(
     const moderationSource = [
       document.title,
       document.domain,
-      cell.label,
-      cell.explanation,
+      targetCell.label,
+      targetCell.explanation,
       ...exampleStrings,
     ]
       .filter((value): value is string => typeof value === "string" && value.length > 0)
@@ -199,7 +220,7 @@ export async function visualizeCellAction(
     const imageModel =
       typeof rawImageModel === "string" && rawImageModel.trim() !== "" ? rawImageModel.trim() : undefined;
 
-    const slug = document.slug;
+    const slug = documentMap.slug;
 
     async function generateAndMaterialize(
       extraPromptSuffix: string,
@@ -210,7 +231,7 @@ export async function visualizeCellAction(
       usedPrompt?: string;
     } | { error: VisualizeCellActionState }> {
       const { result: raw, imageModel: usedImageModel, prompt: usedPrompt } =
-        await generateCellVisualizationWithMetrics(document, cell, {
+        await generateCellVisualizationWithMetrics(document, targetCell, {
           imageModel,
           extraPromptSuffix,
         });
@@ -230,7 +251,7 @@ export async function visualizeCellAction(
       }
 
       try {
-        const materialized = await materializeCellImageAsset(slug, cell.id, parsed.data.imageUrl);
+        const materialized = await materializeCellImageAsset(slug, targetCell.id, parsed.data.imageUrl);
         return {
           materialized,
           caption: parsed.data.caption,
@@ -261,11 +282,11 @@ export async function visualizeCellAction(
     // coordinates onto one rendering. Retry once with a diversification
     // suffix; accept whatever comes back from the second pass even if it
     // still collides (better than blocking the user).
-    const collidingCell = findHashCollisionAgainstOthers(document, cell.id, attempt.materialized.byteHash);
+    const collidingCell = findHashCollisionAgainstOthers(document, targetCell.id, attempt.materialized.byteHash);
     if (collidingCell) {
       console.warn("[visualize_cell] hash_collision", {
         slug,
-        cellId: cell.id,
+        cellId: targetCell.id,
         collidedWith: collidingCell.id,
         byteHash: attempt.materialized.byteHash,
       });
@@ -276,7 +297,7 @@ export async function visualizeCellAction(
     }
 
     const updatedAt = new Date().toISOString();
-    await patchMapCellVisualization(slug, cell.id, {
+    await patchMapCellVisualization(slug, targetCell.id, {
       imageUrl: attempt.materialized.url,
       caption: attempt.caption,
       updatedAt,
@@ -325,6 +346,7 @@ export async function publishGapSpotlightAction(
       message: "Sign in to publish to the top list.",
     };
   }
+  const sessionUser = session.user as { id?: string | null; email?: string | null };
 
   const parsed = publishGapSpotlightSchema.safeParse({
     mapSlug: String(formData.get("mapSlug") ?? ""),
@@ -349,6 +371,16 @@ export async function publishGapSpotlightAction(
   }
 
   try {
+    const map = await getMapBySlug(parsed.data.mapSlug);
+    const viewer = sessionUser.id
+      ? { id: sessionUser.id, isAdmin: isAdminEmail(sessionUser.email) }
+      : null;
+    if (!map || !viewerCanMutateMap(map, viewer)) {
+      return {
+        status: "error",
+        message: "Only the map owner or an admin can publish this spotlight.",
+      };
+    }
     const entry = await publishGapSpotlight(parsed.data);
     revalidatePath("/leaderboard");
     revalidatePath(`/leaderboard/${entry.slug}`);

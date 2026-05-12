@@ -5,6 +5,7 @@ import { MapRenderer } from "@/components/map-renderer";
 import { ShellPage } from "@/components/raster-shell";
 import { MapVisibilityControl } from "@/components/map-visibility-control";
 import { getSessionUser } from "@/lib/auth/admin";
+import { viewerCanMutateMap, viewerCanReadMap } from "@/lib/auth/permissions";
 import { getMapBySlug } from "@/lib/store";
 import { simplifyMapDisplayTitle } from "@/lib/utils";
 
@@ -43,10 +44,9 @@ export default async function MapPage({
   }
 
   const user = await getSessionUser();
-  const isOwner = Boolean(user && map.createdByNeonUserId === user.id);
   const isAdmin = Boolean(user?.isAdmin);
-  const canView = map.isPublic || isOwner || isAdmin;
-  if (!canView) {
+  const canMutate = viewerCanMutateMap(map, user);
+  if (!viewerCanReadMap(map, user)) {
     notFound();
   }
 
@@ -55,24 +55,24 @@ export default async function MapPage({
   return (
     <ShellPage size="full" className="pb-8 md:overflow-hidden md:pb-0 md:px-6 xl:px-8">
       {isLive ? (
-        <LiveMapShell initial={map} slug={slug} />
+        <LiveMapShell initial={map} slug={slug} canMutateMap={canMutate} />
       ) : (
         <>
           <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 py-3 lg:py-2">
             <h1 className="font-sans text-[28px] font-semibold leading-[1.05] tracking-[-0.02em] text-foreground sm:text-[36px] lg:text-[26px]">
               {displayTitle(map.title, map.topicFamily)}
             </h1>
-            {isOwner || isAdmin ? (
+            {canMutate ? (
               <MapVisibilityControl
                 slug={map.slug}
                 initialIsPublic={Boolean(map.isPublic)}
-                canMutate={isOwner || isAdmin}
-                viewerLabel={isAdmin && !isOwner ? "Admin override" : undefined}
+                canMutate={canMutate}
+                viewerLabel={isAdmin && map.createdByNeonUserId !== user?.id ? "Admin override" : undefined}
               />
             ) : null}
           </div>
           <div className="flex-1 min-h-0 flex flex-col pb-3 md:pb-2">
-            <MapRenderer document={map.document} />
+            <MapRenderer document={map.document} canMutateMap={canMutate} />
           </div>
         </>
       )}

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, ne, or, sql } from "drizzle-orm";
 import { materializeCellImageAsset } from "@/lib/cell-visualization-storage";
 import { appConfig } from "@/lib/config";
 import { getDb } from "@/lib/db/client";
@@ -728,6 +728,7 @@ async function hydrateSavedMap(db: DbLike, row: MapRow): Promise<SavedMap> {
     status: row.status,
     publishedAt: row.publishedAt ? coerceIsoString(row.publishedAt) : null,
     createdAt: coerceIsoString(row.createdAt),
+    updatedAt: coerceIsoString(row.updatedAt),
     summary: row.summary,
     promptSummary: row.promptSummary,
     document,
@@ -1131,26 +1132,34 @@ export async function listMaps({
   pageSize = 9,
   ownerId,
   publicOnly = false,
+  query,
+  visibility,
 }: {
   topicFamily?: string;
-  status?: MapListingVisibility;
+  status?: MapListingVisibility | "all";
   page?: number;
   pageSize?: number;
   /** Restrict to maps owned by this Neon Auth user id. */
   ownerId?: string;
   /** Restrict to maps with `is_public = true` (gallery / signed-out browse). */
   publicOnly?: boolean;
+  /** Case-insensitive admin/library search across common identifying fields. */
+  query?: string;
+  /** Restrict by public/private map visibility. */
+  visibility?: "public" | "private";
 }) {
   try {
     const db = getDb();
     const statusFilter =
-      status === "live"
+      status === "all"
+        ? undefined
+        : status === "live"
         ? ne(mapsTable.status, "failed")
         : status === "library"
           ? inArray(mapsTable.status, ["published", "generating", "failed"])
           : eq(mapsTable.status, status);
 
-    const conditions = [statusFilter];
+    const conditions = statusFilter ? [statusFilter] : [];
     if (topicFamily && topicFamily !== "All") {
       conditions.push(eq(mapsTable.topicFamily, topicFamily));
     }
@@ -1160,11 +1169,31 @@ export async function listMaps({
     if (publicOnly) {
       conditions.push(eq(mapsTable.isPublic, true));
     }
+    if (visibility === "public") {
+      conditions.push(eq(mapsTable.isPublic, true));
+    } else if (visibility === "private") {
+      conditions.push(eq(mapsTable.isPublic, false));
+    }
+    const search = query?.trim();
+    if (search) {
+      const pattern = `%${search}%`;
+      conditions.push(
+        or(
+          ilike(mapsTable.title, pattern),
+          ilike(mapsTable.topicFamily, pattern),
+          ilike(mapsTable.domain, pattern),
+          ilike(mapsTable.slug, pattern),
+          ilike(mapsTable.createdByNeonUserId, pattern),
+        )!,
+      );
+    }
+
+    const whereClause = conditions.length ? and(...conditions) : undefined;
 
     const rows = await db
       .select()
       .from(mapsTable)
-      .where(and(...conditions))
+      .where(whereClause)
       .orderBy(desc(mapsTable.publishedAt))
       .limit(pageSize)
       .offset((page - 1) * pageSize);
@@ -1172,7 +1201,7 @@ export async function listMaps({
     const [{ count }] = await db
       .select({ count: sql<number>`count(*)` })
       .from(mapsTable)
-      .where(and(...conditions));
+      .where(whereClause);
 
     const items: SavedMap[] = [];
     for (const row of rows) {
@@ -1244,6 +1273,7 @@ export async function saveMap({
     status,
     publishedAt: status === "published" ? isoNow() : null,
     createdAt: isoNow(),
+    updatedAt: isoNow(),
     summary: document.summary,
     promptSummary: brief.extraContext || brief.combines,
     document: {

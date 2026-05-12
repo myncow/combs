@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Settings as SettingsIcon } from "lucide-react";
+import { Settings as SettingsIcon } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -9,14 +9,6 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { CELL_IMAGE_MODEL } from "@/lib/config";
-import { CURATED_IMAGE_MODELS } from "@/lib/image-model-options";
-import {
-  IMAGE_MODEL_CHANGE_EVENT,
-  IMAGE_MODEL_STORAGE_KEY,
-  readStoredImageModel,
-  writeStoredImageModel,
-} from "@/lib/model-preference";
 import {
   applyThemePreference,
   persistThemeCookie,
@@ -32,18 +24,6 @@ const THEME_OPTIONS: ReadonlyArray<{ id: ThemePreference; label: string }> = [
   { id: "dark", label: "Dark" },
   { id: "system", label: "Auto" },
 ];
-
-function subscribeToImageModel(onChange: () => void) {
-  window.addEventListener(IMAGE_MODEL_CHANGE_EVENT, onChange);
-  const onStorage = (e: StorageEvent) => {
-    if (e.key === IMAGE_MODEL_STORAGE_KEY) onChange();
-  };
-  window.addEventListener("storage", onStorage);
-  return () => {
-    window.removeEventListener(IMAGE_MODEL_CHANGE_EVENT, onChange);
-    window.removeEventListener("storage", onStorage);
-  };
-}
 
 function subscribeToTheme(onChange: () => void) {
   const onStorage = (e: StorageEvent) => {
@@ -62,12 +42,6 @@ export function SettingsMenu() {
   const triggerId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-
-  const imageModel = useSyncExternalStore(
-    subscribeToImageModel,
-    readStoredImageModel,
-    () => CELL_IMAGE_MODEL,
-  );
 
   const theme = useSyncExternalStore(
     subscribeToTheme,
@@ -132,7 +106,7 @@ export function SettingsMenu() {
             </span>
           </div>
 
-          <fieldset className="border-b border-border px-4 py-3.5">
+          <fieldset className="px-4 py-3.5">
             <legend className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
               Theme
             </legend>
@@ -158,60 +132,6 @@ export function SettingsMenu() {
                 );
               })}
             </div>
-          </fieldset>
-
-          <fieldset className="px-4 py-3.5">
-            <legend className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              Image model
-            </legend>
-            <ul
-              role="radiogroup"
-              aria-label="Image model"
-              className="mt-2.5 max-h-[16rem] divide-y divide-border overflow-y-auto border border-border"
-            >
-              {CURATED_IMAGE_MODELS.map((m) => {
-                const selected = m.id === imageModel;
-                return (
-                  <li key={m.id}>
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={selected}
-                      onClick={() => writeStoredImageModel(m.id)}
-                      className={cn(
-                        "relative flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-                        selected
-                          ? "bg-[color:color-mix(in_srgb,var(--primary)_8%,var(--card))]"
-                          : "bg-background hover:bg-card",
-                      )}
-                    >
-                      {selected ? (
-                        <span
-                          aria-hidden
-                          className="absolute inset-y-0 left-0 w-[3px] bg-primary"
-                        />
-                      ) : null}
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] font-medium leading-tight tracking-[-0.01em] text-foreground">
-                          {m.label}
-                        </span>
-                        <span className="mt-1 block truncate font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                          {m.provider} · {m.priceLabel}
-                        </span>
-                      </span>
-                      <Check
-                        className={cn(
-                          "mt-0.5 h-3.5 w-3.5 shrink-0 transition-opacity",
-                          selected ? "text-primary opacity-100" : "opacity-0",
-                        )}
-                        strokeWidth={2.5}
-                        aria-hidden
-                      />
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
           </fieldset>
         </MenuPanel>
       ) : null}

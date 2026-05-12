@@ -13,6 +13,7 @@
 
 import { PersistedReferenceThumbnails, type ExampleImageHit } from "@/components/example-image-thumbnails";
 import { GapSpotlightSheet } from "@/components/gap-spotlight-sheet";
+import { ImageModelPicker } from "@/components/image-model-picker";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { finalizeVisualizationCaption } from "@/lib/visualization-caption";
@@ -139,10 +140,12 @@ function useVisualizeCell(cellId: string): VisualizeEntry | undefined {
 function VisualizeRegistryProvider({
   cells,
   document,
+  canMutateMap,
   children,
 }: {
   cells: MapCell[];
   document: MapDocument;
+  canMutateMap: boolean;
   children: React.ReactNode;
 }) {
   const [registry, setRegistry] = useState<Record<string, VisualizeEntry>>({});
@@ -163,9 +166,11 @@ function VisualizeRegistryProvider({
 
   return (
     <VisualizeRegistryContext.Provider value={registry}>
-      {cells.map((cell) => (
-        <CellVisualizeOwner key={cell.id} cell={cell} document={document} setEntry={setEntry} />
-      ))}
+      {canMutateMap
+        ? cells.map((cell) => (
+            <CellVisualizeOwner key={cell.id} cell={cell} document={document} setEntry={setEntry} />
+          ))
+        : null}
       {children}
     </VisualizeRegistryContext.Provider>
   );
@@ -233,8 +238,8 @@ function CellVisualizeOwner({
       aria-hidden
       noValidate
     >
-      <input type="hidden" name="document" value={JSON.stringify(document)} />
-      <input type="hidden" name="cell" value={JSON.stringify(cell)} />
+      <input type="hidden" name="mapSlug" value={document.slug} />
+      <input type="hidden" name="cellId" value={cell.id} />
       <input type="hidden" name="imageModel" value={imageModel} />
     </form>
   );
@@ -590,9 +595,11 @@ async function copyVisualizationAsset(imageUrl: string) {
 export function MapRenderer({
   document,
   live = false,
+  canMutateMap = false,
 }: {
   document: MapDocument;
   live?: boolean;
+  canMutateMap?: boolean;
 }) {
   const xDimension =
     document.dimensions.find((dimension) => dimension.key === document.cellSchema.primaryX) ?? document.dimensions[0];
@@ -603,7 +610,15 @@ export function MapRenderer({
     return <LiveSkeletonGrid live={live} />;
   }
 
-  return <MapRendererInner document={document} xDimension={xDimension} yDimension={yDimension} live={live} />;
+  return (
+    <MapRendererInner
+      document={document}
+      xDimension={xDimension}
+      yDimension={yDimension}
+      live={live}
+      canMutateMap={canMutateMap}
+    />
+  );
 }
 
 function MapRendererInner({
@@ -611,11 +626,13 @@ function MapRendererInner({
   xDimension,
   yDimension,
   live,
+  canMutateMap,
 }: {
   document: MapDocument;
   xDimension: MapDocument["dimensions"][number];
   yDimension: MapDocument["dimensions"][number];
   live: boolean;
+  canMutateMap: boolean;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -703,7 +720,7 @@ function MapRendererInner({
   } as React.CSSProperties;
 
   return (
-    <VisualizeRegistryProvider cells={generatableCells} document={document}>
+    <VisualizeRegistryProvider cells={generatableCells} document={document} canMutateMap={canMutateMap}>
     <div className="flex flex-col gap-2 md:flex-1 md:min-h-0">
       {/* Mobile: axis names as distinct headings above the tile grid. */}
       <div className="md:hidden">
@@ -754,6 +771,7 @@ function MapRendererInner({
                 active={activeCellId === cell.id}
                 specimen={pickSpecimen(cell)}
                 isSignedIn={isSignedIn}
+                canMutateMap={canMutateMap}
                 authPending={authPending}
                 signInHref={signInHref}
               />
@@ -962,6 +980,7 @@ function MapRendererInner({
                         active={activeCellId === cell.id}
                         specimen={pickSpecimen(cell)}
                         isSignedIn={isSignedIn}
+                        canMutateMap={canMutateMap}
                         authPending={authPending}
                         signInHref={signInHref}
                       />
@@ -978,6 +997,7 @@ function MapRendererInner({
                   active={activeCellId === cell.id}
                   specimen={pickSpecimen(cell)}
                   isSignedIn={isSignedIn}
+                  canMutateMap={canMutateMap}
                   authPending={authPending}
                   signInHref={signInHref}
                   style={position}
@@ -1011,6 +1031,7 @@ function MapRendererInner({
             : ""
         }
         isSignedIn={isSignedIn}
+        canMutateMap={canMutateMap}
         authPending={authPending}
         signInHref={signInHref}
       />
@@ -1027,6 +1048,7 @@ function CellTile({
   active,
   specimen,
   isSignedIn,
+  canMutateMap,
   authPending,
   signInHref,
   style,
@@ -1038,6 +1060,7 @@ function CellTile({
   active: boolean;
   specimen: MapExample | null;
   isSignedIn: boolean;
+  canMutateMap: boolean;
   authPending: boolean;
   signInHref: string;
   style?: React.CSSProperties;
@@ -1063,8 +1086,8 @@ function CellTile({
   const sketchFormId = visualizeFormId(cell.id);
   const isPendingViz = entry?.isPending ?? false;
   const sketchCopy = visualizationActionCopy(hasGeneratedViz, isPendingViz);
-  const canUseGeneration = canGenerate && isSignedIn && !authPending;
-  const showSignInForGeneration = canGenerate && !isSignedIn && !authPending;
+  const canUseGeneration = canGenerate && canMutateMap && isSignedIn && !authPending;
+  const showSignInForGeneration = canGenerate && canMutateMap && !isSignedIn && !authPending;
 
   const display = statusDisplay[cell.status];
   const code = `${rowCode(rowIdx)}·${columnCode(colIdx)}`;
@@ -1334,6 +1357,7 @@ function CellDrawer({
   colCode,
   rowCode: rowCodeValue,
   isSignedIn,
+  canMutateMap,
   authPending,
   signInHref,
 }: {
@@ -1347,6 +1371,7 @@ function CellDrawer({
   colCode: string;
   rowCode: string;
   isSignedIn: boolean;
+  canMutateMap: boolean;
   authPending: boolean;
   signInHref: string;
 }) {
@@ -1443,6 +1468,7 @@ function CellDrawer({
                   colCode={colCode}
                   rowCodeValue={rowCodeValue}
                   isSignedIn={isSignedIn}
+                  canMutateMap={canMutateMap}
                   authPending={authPending}
                   signInHref={signInHref}
                 />
@@ -1467,6 +1493,7 @@ function DrawerBody({
   colCode,
   rowCodeValue,
   isSignedIn,
+  canMutateMap,
   authPending,
   signInHref,
 }: {
@@ -1480,6 +1507,7 @@ function DrawerBody({
   colCode: string;
   rowCodeValue: string;
   isSignedIn: boolean;
+  canMutateMap: boolean;
   authPending: boolean;
   signInHref: string;
 }) {
@@ -1516,8 +1544,8 @@ function DrawerBody({
   const displayCaption = display ? finalizeVisualizationCaption(display.caption, cell) : undefined;
   const canGenerate = canGenerateVisualization(cell.status);
   const showVisualizationSection = canGenerate || !!display;
-  const canUseGeneration = canGenerate && isSignedIn && !authPending;
-  const showSignInForGeneration = canGenerate && !isSignedIn && !authPending;
+  const canUseGeneration = canGenerate && canMutateMap && isSignedIn && !authPending;
+  const showSignInForGeneration = canGenerate && canMutateMap && !isSignedIn && !authPending;
   const canPublishSpotlight = canUseGeneration && !!display?.imageUrl;
   const visualizationCopy = visualizationActionCopy(!!display, isPending);
 
@@ -1686,16 +1714,19 @@ function DrawerBody({
                 isPending ? (
                   <IndeterminateLoadingBar label={visualizationCopy.pendingLabel} />
                 ) : (
-                  <Button
-                    type="submit"
-                    form={vizFormId}
-                    disabled={!isFormReady}
-                    aria-label={`${visualizationCopy.buttonLabel} ${cell.label}`}
-                    size="lg"
-                  >
-                    <ImageIcon className="h-4 w-4" aria-hidden />
-                    {visualizationCopy.buttonLabel}
-                  </Button>
+                  <div className="space-y-3">
+                    <ImageModelPicker />
+                    <Button
+                      type="submit"
+                      form={vizFormId}
+                      disabled={!isFormReady}
+                      aria-label={`${visualizationCopy.buttonLabel} ${cell.label}`}
+                      size="lg"
+                    >
+                      <ImageIcon className="h-4 w-4" aria-hidden />
+                      {visualizationCopy.buttonLabel}
+                    </Button>
+                  </div>
                 )
               ) : null
             ) : (
@@ -1758,28 +1789,31 @@ function DrawerBody({
                   </p>
                 ) : null}
                 {canUseGeneration ? (
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="submit"
-                      form={vizFormId}
-                      disabled={isPending || !isFormReady}
-                      aria-label={`${visualizationCopy.buttonLabel} for ${cell.label}`}
-                      variant="secondary"
-                      size="sm"
-                    >
-                      <RefreshCw className="h-3.5 w-3.5" aria-hidden />
-                      {visualizationCopy.buttonLabel}
-                    </Button>
-                    {canPublishSpotlight ? (
+                  <div className="space-y-3">
+                    <ImageModelPicker />
+                    <div className="flex flex-wrap gap-2">
                       <Button
-                        type="button"
-                        onClick={() => setIsPublishSheetOpen(true)}
+                        type="submit"
+                        form={vizFormId}
+                        disabled={isPending || !isFormReady}
+                        aria-label={`${visualizationCopy.buttonLabel} for ${cell.label}`}
+                        variant="secondary"
                         size="sm"
                       >
-                        <Sparkles className="h-3.5 w-3.5" aria-hidden />
-                        Publish
+                        <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+                        {visualizationCopy.buttonLabel}
                       </Button>
-                    ) : null}
+                      {canPublishSpotlight ? (
+                        <Button
+                          type="button"
+                          onClick={() => setIsPublishSheetOpen(true)}
+                          size="sm"
+                        >
+                          <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                          Publish
+                        </Button>
+                      ) : null}
+                    </div>
                   </div>
                 ) : showSignInForGeneration ? (
                   <Button asChild size="sm">

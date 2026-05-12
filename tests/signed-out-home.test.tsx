@@ -23,7 +23,7 @@ afterEach(() => {
 });
 
 describe("SignedOutHome", () => {
-  it("shows the hero, Get-started CTA, and the spotlight grid", () => {
+  it("shows the browse hero, start CTA, and the spotlight grid", () => {
     const preview = [
       makeListedLeaderboardEntry({ id: "1", slug: "first", storyTitle: "Featured story" }),
       makeListedLeaderboardEntry({ id: "2", slug: "second", storyTitle: "Second" }),
@@ -40,10 +40,14 @@ describe("SignedOutHome", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/two-axis maps/i);
-    expect(screen.getByRole("link", { name: /get started/i })).toHaveAttribute(
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/browse maps/i);
+    expect(screen.getByRole("link", { name: /start a map/i })).toHaveAttribute(
       "href",
       "/auth/sign-up?x=1",
+    );
+    expect(screen.getByRole("link", { name: /^browse maps/i })).toHaveAttribute(
+      "href",
+      "/gallery",
     );
     expect(screen.getByRole("link", { name: /view all/i })).toHaveAttribute("href", "/leaderboard");
 

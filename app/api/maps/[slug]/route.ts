@@ -1,26 +1,8 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getSessionUser } from "@/lib/auth/admin";
+import { viewerCanMutateMap, viewerCanReadMap } from "@/lib/auth/permissions";
 import { deleteMapBySlug, getMapBySlug, setMapPublicState } from "@/lib/store";
-
-function viewerCanRead(
-  map: { isPublic?: boolean; createdByNeonUserId?: string | null },
-  user: { id: string; isAdmin: boolean } | null,
-) {
-  if (map.isPublic) return true;
-  if (!user) return false;
-  if (user.isAdmin) return true;
-  return map.createdByNeonUserId === user.id;
-}
-
-function viewerCanMutate(
-  map: { createdByNeonUserId?: string | null },
-  user: { id: string; isAdmin: boolean } | null,
-) {
-  if (!user) return false;
-  if (user.isAdmin) return true;
-  return map.createdByNeonUserId === user.id;
-}
 
 export async function GET(
   _request: Request,
@@ -34,7 +16,7 @@ export async function GET(
   }
 
   const user = await getSessionUser();
-  if (!viewerCanRead(map, user)) {
+  if (!viewerCanReadMap(map, user)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -51,7 +33,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
   const user = await getSessionUser();
-  if (!viewerCanMutate(map, user)) {
+  if (!viewerCanMutateMap(map, user)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -85,7 +67,7 @@ export async function DELETE(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
   const user = await getSessionUser();
-  if (!viewerCanMutate(map, user)) {
+  if (!viewerCanMutateMap(map, user)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
