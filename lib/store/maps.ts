@@ -100,25 +100,6 @@ function attachViewerVote(
   }));
 }
 
-function recalculateEntryScore(
-  entry: LeaderboardEntry,
-  votes: LeaderboardVote[],
-): LeaderboardEntry {
-  let upvotes = 0;
-  let downvotes = 0;
-  for (const vote of votes) {
-    if (vote.entryId !== entry.id) continue;
-    if (vote.direction === "up") upvotes += 1;
-    if (vote.direction === "down") downvotes += 1;
-  }
-  return {
-    ...entry,
-    upvotes,
-    downvotes,
-    score: upvotes - downvotes,
-  };
-}
-
 function toLeaderboardVote(row: any): LeaderboardVote {
   return {
     entryId: row.entryId ?? row.spotlightId,
@@ -1029,8 +1010,8 @@ export async function castLeaderboardVote({
   const spotlight = rows[0]!;
 
   const updatedEntry = await db.transaction(async (tx) => {
-    const existingVotes = ((await tx
-      .select()
+    const existingRows = (await tx
+      .select({ direction: spotlightVotesTable.direction })
       .from(spotlightVotesTable)
       .where(
         and(
@@ -1038,30 +1019,35 @@ export async function castLeaderboardVote({
           eq(spotlightVotesTable.requesterId, requesterId),
         ),
       )
-      .limit(1)) as any[]).map(toLeaderboardVote);
+      .limit(1)) as Array<{ direction: LeaderboardVoteDirection }>;
+    const previousDirection = existingRows[0]?.direction ?? null;
 
     if (direction === null) {
-      await tx
-        .delete(spotlightVotesTable)
-        .where(
-          and(
-            eq(spotlightVotesTable.spotlightId, spotlight.id),
-            eq(spotlightVotesTable.requesterId, requesterId),
-          ),
-        );
-    } else if (existingVotes.length) {
-      await tx
-        .update(spotlightVotesTable)
-        .set({
-          direction,
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(spotlightVotesTable.spotlightId, spotlight.id),
-            eq(spotlightVotesTable.requesterId, requesterId),
-          ),
-        );
+      if (previousDirection !== null) {
+        await tx
+          .delete(spotlightVotesTable)
+          .where(
+            and(
+              eq(spotlightVotesTable.spotlightId, spotlight.id),
+              eq(spotlightVotesTable.requesterId, requesterId),
+            ),
+          );
+      }
+    } else if (previousDirection !== null) {
+      if (previousDirection !== direction) {
+        await tx
+          .update(spotlightVotesTable)
+          .set({
+            direction,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(spotlightVotesTable.spotlightId, spotlight.id),
+              eq(spotlightVotesTable.requesterId, requesterId),
+            ),
+          );
+      }
     } else {
       await tx.insert(spotlightVotesTable).values({
         spotlightId: spotlight.id,
@@ -1072,44 +1058,35 @@ export async function castLeaderboardVote({
       });
     }
 
-    const votes = ((await tx
-      .select()
-      .from(spotlightVotesTable)
-      .where(eq(spotlightVotesTable.spotlightId, spotlight.id))) as any[]).map(toLeaderboardVote);
+    const upvoteDelta =
+      (direction === "up" ? 1 : 0) - (previousDirection === "up" ? 1 : 0);
+    const downvoteDelta =
+      (direction === "down" ? 1 : 0) - (previousDirection === "down" ? 1 : 0);
+    const scoreDelta = upvoteDelta - downvoteDelta;
 
-    const nextEntry = recalculateEntryScore(
-      {
-        id: spotlight.id,
-        slug: spotlight.slug,
-        mapId: spotlight.mapId,
-        mapSlug: spotlight.mapSlugSnapshot,
-        mapTitle: spotlight.mapTitleSnapshot,
-        topicFamily: spotlight.topicFamilySnapshot,
-        cellId: spotlight.cellId,
-        cellLabel: spotlight.cellLabelSnapshot,
-        coordinatesSnapshot: spotlight.coordinatesSnapshot as Record<string, string>,
-        imageUrl: "",
-        storyTitle: spotlight.storyTitle,
-        storySummary: spotlight.storySummary,
-        publishedAt: coerceIsoString(spotlight.publishedAt),
-        createdAt: coerceIsoString(spotlight.createdAt),
+    if (upvoteDelta === 0 && downvoteDelta === 0) {
+      return {
         score: spotlight.score,
         upvotes: spotlight.upvotes,
         downvotes: spotlight.downvotes,
-      },
-      votes,
-    );
+      };
+    }
 
-    await tx
+    const [updated] = (await tx
       .update(spotlightsTable)
       .set({
-        score: nextEntry.score,
-        upvotes: nextEntry.upvotes,
-        downvotes: nextEntry.downvotes,
+        upvotes: sql`${spotlightsTable.upvotes} + ${upvoteDelta}`,
+        downvotes: sql`${spotlightsTable.downvotes} + ${downvoteDelta}`,
+        score: sql`${spotlightsTable.score} + ${scoreDelta}`,
       })
-      .where(eq(spotlightsTable.id, spotlight.id));
+      .where(eq(spotlightsTable.id, spotlight.id))
+      .returning({
+        score: spotlightsTable.score,
+        upvotes: spotlightsTable.upvotes,
+        downvotes: spotlightsTable.downvotes,
+      })) as Array<{ score: number; upvotes: number; downvotes: number }>;
 
-    return nextEntry;
+    return updated;
   });
 
   const detail = await getLeaderboardEntryBySlug(slug, requesterId);

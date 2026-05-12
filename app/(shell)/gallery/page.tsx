@@ -42,10 +42,10 @@ export default async function GalleryPage({
   return (
     <ShellPage size="content">
       <PageHeader
-        eyebrow={total === 1 ? "01 map" : `${String(total).padStart(2, "0")} maps`}
+        eyebrow={`${total} ${total === 1 ? "map" : "maps"}`}
         title={pageContent.heading}
         intro={pageContent.intro}
-        summary={filters.topicFamily ? `Filtered · ${filters.topicFamily}` : "Library · Rail browsing"}
+        summary={filters.topicFamily ? `Filtered · ${filters.topicFamily}` : undefined}
         titleClassName="text-[26px] md:text-[34px]"
       />
       <div className="mt-6 grid gap-5">

@@ -67,7 +67,7 @@ export default async function LeaderboardPage({
     <ShellPage size="wide" className="gap-8">
       <PageHeader
         title={pageContent.heading}
-        eyebrow={`${String(entries.total).padStart(2, "0")} ${entries.total === 1 ? "spotlight" : "spotlights"}`}
+        eyebrow={`${entries.total} ${entries.total === 1 ? "spotlight" : "spotlights"}`}
         intro={pageContent.intro}
         titleClassName="text-[26px] md:text-[34px]"
         actions={<SortToggle current={sort} />}

@@ -9,9 +9,7 @@ export function NewMapHome({ content }: { content?: HomePageContent | null }) {
     <ShellPage size="content" className="py-6 md:py-8">
       <PageHeader
         title={heading}
-        eyebrow="Map"
         intro="Pick a category. Two axes slice it into a grid. The empty cells are gaps you can fill with new images."
-        summary="Category · Axes · Build"
         titleClassName="text-[26px] md:text-[34px]"
         introClassName="max-w-[42rem]"
       />
@@ -26,13 +24,13 @@ export function NewMapHome({ content }: { content?: HomePageContent | null }) {
                 How it works
               </p>
               <ol className="mt-2 space-y-1.5 text-[14px] leading-relaxed text-foreground/88 [counter-reset:steps]">
-                <li className="grid grid-cols-[auto_1fr] gap-x-2 [counter-increment:steps] before:font-mono before:text-[11px] before:text-muted-foreground before:content-['0'counter(steps)]">
+                <li className="grid grid-cols-[auto_1fr] gap-x-2 [counter-increment:steps] before:font-mono before:text-[11px] before:text-muted-foreground before:content-[counter(steps)]">
                   <span>Type a category you can picture.</span>
                 </li>
-                <li className="grid grid-cols-[auto_1fr] gap-x-2 [counter-increment:steps] before:font-mono before:text-[11px] before:text-muted-foreground before:content-['0'counter(steps)]">
+                <li className="grid grid-cols-[auto_1fr] gap-x-2 [counter-increment:steps] before:font-mono before:text-[11px] before:text-muted-foreground before:content-[counter(steps)]">
                   <span>Pick two visual axes — or define your own.</span>
                 </li>
-                <li className="grid grid-cols-[auto_1fr] gap-x-2 [counter-increment:steps] before:font-mono before:text-[11px] before:text-muted-foreground before:content-['0'counter(steps)]">
+                <li className="grid grid-cols-[auto_1fr] gap-x-2 [counter-increment:steps] before:font-mono before:text-[11px] before:text-muted-foreground before:content-[counter(steps)]">
                   <span>Explore the grid. Empty cells are the gaps.</span>
                 </li>
               </ol>

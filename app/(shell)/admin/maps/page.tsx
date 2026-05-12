@@ -92,7 +92,7 @@ export default async function AdminMapsPage({
   return (
     <ShellPage size="content">
       <PageHeader
-        eyebrow={`Admin · ${total === 1 ? "01 map" : `${String(total).padStart(2, "0")} maps`}`}
+        eyebrow={`Admin · ${total} ${total === 1 ? "map" : "maps"}`}
         title="All generated maps"
         intro="Every map across every user. Use this view to audit generations, deletions, and public visibility."
         summary={`Page ${page} of ${pageCount}`}
