@@ -134,7 +134,7 @@ export function ExplorerSidebar({
           ? "w-full md:max-h-none md:w-12 md:max-w-12"
           : "max-h-[44vh] w-full md:max-h-none md:w-[min(320px,30vw)] md:max-w-[min(320px,30vw)]",
       )}
-      aria-label={isSignedIn ? "Your maps" : "Recent maps"}
+      aria-label={isSignedIn ? "My maps" : "Maps"}
     >
       <div
         className={cn(
@@ -170,13 +170,13 @@ export function ExplorerSidebar({
       {!collapsed ? (
         <div className="flex items-center justify-between border-b border-border px-3 py-2">
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-            Library
+            {isSignedIn ? "My maps" : "Maps"}
           </p>
           <button
             type="button"
             onClick={() => setCollapsed(true)}
             className="inline-flex h-7 w-7 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            aria-label="Collapse library"
+            aria-label={isSignedIn ? "Collapse my maps" : "Collapse maps"}
             aria-expanded
             title="Collapse"
           >
@@ -188,7 +188,7 @@ export function ExplorerSidebar({
           type="button"
           onClick={() => setCollapsed(false)}
           className="inline-flex h-9 w-9 shrink-0 items-center justify-center self-center border-b border-border text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          aria-label="Expand library"
+          aria-label={isSignedIn ? "Expand my maps" : "Expand maps"}
           aria-expanded={false}
           title="Expand"
         >

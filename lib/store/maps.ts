@@ -702,7 +702,11 @@ async function hydrateMapDocument(db: DbLike, row: MapRow): Promise<MapDocument>
   };
 }
 
-async function hydrateSavedMap(db: DbLike, row: MapRow): Promise<SavedMap> {
+async function hydrateSavedMap(
+  db: DbLike,
+  row: MapRow,
+  creatorName: string | null = null,
+): Promise<SavedMap> {
   const document = await hydrateMapDocument(db, row);
   return serializeSavedMap({
     id: row.id,
@@ -720,7 +724,43 @@ async function hydrateSavedMap(db: DbLike, row: MapRow): Promise<SavedMap> {
     revision: row.revision ?? 0,
     isPublic: row.isPublic ?? false,
     createdByNeonUserId: row.createdByNeonUserId ?? null,
+    createdByDisplayName: creatorName,
   });
+}
+
+/**
+ * Resolve a set of Neon Auth user ids → "best display string" (name, falling
+ * back to local-part of email). Looks up `neon_auth.user` once per call —
+ * callers should batch ids before invoking this. Failures (table missing in
+ * tests, transient connection error) are swallowed and return an empty map so
+ * map listings keep working without creator labels.
+ */
+async function resolveCreatorNames(
+  db: DbLike,
+  ids: Array<string | null | undefined>,
+): Promise<Map<string, string>> {
+  const unique = Array.from(
+    new Set(ids.filter((id): id is string => typeof id === "string" && id.length > 0)),
+  );
+  const result = new Map<string, string>();
+  if (!unique.length) return result;
+  try {
+    const rows = (await db.execute(
+      sql`SELECT id::text AS id, name, email FROM neon_auth."user" WHERE id::text IN ${sql.raw(
+        `(${unique.map((id) => `'${id.replace(/'/g, "''")}'`).join(",")})`,
+      )}`,
+    )) as unknown as Array<{ id: string; name: string | null; email: string | null }>;
+    for (const row of rows) {
+      const display =
+        (row.name && row.name.trim()) ||
+        (row.email && row.email.split("@")[0]?.trim()) ||
+        null;
+      if (display) result.set(row.id, display);
+    }
+  } catch (error) {
+    logReadFallback("resolveCreatorNames", error);
+  }
+  return result;
 }
 
 async function hydrateSpotlightRows(
@@ -1201,10 +1241,19 @@ export async function listMaps({
       .from(mapsTable)
       .where(whereClause);
 
+    const creatorNames = await resolveCreatorNames(
+      db,
+      rows.map((row: any) => row.createdByNeonUserId),
+    );
+
     const items: SavedMap[] = [];
     for (const row of rows) {
       try {
-        items.push(await hydrateSavedMap(db, row as unknown as MapRow));
+        const typedRow = row as unknown as MapRow;
+        const creator = typedRow.createdByNeonUserId
+          ? creatorNames.get(typedRow.createdByNeonUserId) ?? null
+          : null;
+        items.push(await hydrateSavedMap(db, typedRow, creator));
       } catch (err) {
         console.error("[listMaps] skipping unreadable map row:", (row as { slug?: string })?.slug, err);
       }
@@ -1228,7 +1277,12 @@ export async function getMapBySlug(slug: string) {
     const db = getDb();
     const rows = await db.select().from(mapsTable).where(eq(mapsTable.slug, slug)).limit(1);
     if (!rows.length) return null;
-    return hydrateSavedMap(db, rows[0] as unknown as MapRow);
+    const row = rows[0] as unknown as MapRow;
+    const creatorNames = await resolveCreatorNames(db, [row.createdByNeonUserId]);
+    const creator = row.createdByNeonUserId
+      ? creatorNames.get(row.createdByNeonUserId) ?? null
+      : null;
+    return hydrateSavedMap(db, row, creator);
   } catch (error) {
     logReadFallback("getMapBySlug", error);
     return null;

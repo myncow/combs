@@ -249,6 +249,12 @@ export interface SavedMap {
   /** Neon Auth user id of the map's creator. May be null on legacy rows. */
   createdByNeonUserId?: string | null;
   /**
+   * Resolved display name (or email fallback) for the creator. Populated by
+   * `listMaps` / `getMapBySlug` via a batched lookup against `neon_auth.user`.
+   * `null` for unowned legacy/seed rows.
+   */
+  createdByDisplayName?: string | null;
+  /**
    * Pre-computed representative thumbnail URL derived from the document at
    * read time by `serializeSavedMap`. `null` when the document has no
    * persisted imagery yet (callers render a synthetic placeholder).

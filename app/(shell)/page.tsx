@@ -13,7 +13,7 @@ export default async function HomePage() {
   if (!user) {
     const [maps, spotlights] = await Promise.all([
       listMaps({
-        pageSize: 5,
+        pageSize: 12,
         page: 1,
         status: "live",
         publicOnly: true,
@@ -21,7 +21,7 @@ export default async function HomePage() {
       listLeaderboardEntries({
         sort: "top",
         page: 1,
-        pageSize: 4,
+        pageSize: 6,
       }),
     ]);
     return (

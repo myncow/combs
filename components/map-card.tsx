@@ -153,6 +153,11 @@ export function MapCard({
               <h3 className="truncate text-[13.5px] font-semibold leading-[1.25] tracking-[-0.005em] text-foreground transition-colors duration-150 group-hover:text-primary">
                 {displayTitle}
               </h3>
+              {map.createdByDisplayName ? (
+                <p className="mt-0.5 truncate font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  by {map.createdByDisplayName}
+                </p>
+              ) : null}
               <AnimatePresence mode="wait" initial={false}>
                 {isGenerating ? (
                   <motion.p
@@ -236,6 +241,7 @@ export function MapCard({
           </h3>
           <p className="mt-0.5 truncate font-mono text-[12px] uppercase tracking-[0.18em] text-muted-foreground">
             {map.topicFamily}
+            {map.createdByDisplayName ? <> · by {map.createdByDisplayName}</> : null}
           </p>
         </Link>
       </div>
