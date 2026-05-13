@@ -4,6 +4,14 @@ import { materializeCellImageAsset } from "@/lib/cell-visualization-storage";
 import { appConfig } from "@/lib/config";
 import { getDb } from "@/lib/db/client";
 import {
+  MAP_TOPIC,
+  MAPS_GLOBAL_TOPIC,
+  MAPS_USER_TOPIC,
+  publish as publishBusEvent,
+  type MapEvent,
+  type MapsListEvent,
+} from "@/lib/server-event-bus";
+import {
   mapAxesTable,
   mapAxisValuesTable,
   mapCalloutsTable,
@@ -38,6 +46,22 @@ import type {
 import { pickMapThumbnail, slugify } from "@/lib/utils";
 
 type DbLike = any;
+
+/**
+ * Fan an event out to per-map listeners and the list-level streams (global +
+ * owner). Wrapped so individual mutation sites stay readable; the bus itself
+ * isolates handler errors so a faulty subscriber cannot block the writer.
+ */
+function notifyMap(event: MapEvent): void {
+  publishBusEvent<MapEvent>(MAP_TOPIC(event.slug), event);
+}
+
+function notifyList(ownerId: string | null, event: MapsListEvent): void {
+  publishBusEvent<MapsListEvent>(MAPS_GLOBAL_TOPIC, event);
+  if (ownerId) {
+    publishBusEvent<MapsListEvent>(MAPS_USER_TOPIC(ownerId), event);
+  }
+}
 
 function isoNow() {
   return new Date().toISOString();
@@ -1348,6 +1372,12 @@ export async function deleteMapBySlug(slug: string) {
     }
   }
 
+  notifyList(existingMap.createdByNeonUserId ?? null, {
+    kind: "map_deleted",
+    slug,
+    ownerId: existingMap.createdByNeonUserId ?? null,
+  });
+
   return existingMap;
 }
 
@@ -1426,6 +1456,16 @@ export async function saveMap({
     createdAt: isoNow(),
   });
 
+  notifyMap({ kind: "status_change", slug, status, revision: 0 });
+  notifyList(ownerId ?? null, {
+    kind: "map_status",
+    slug,
+    status,
+    updatedAt: saved.updatedAt,
+    ownerId: ownerId ?? null,
+    isPublic,
+  });
+
   return serializeSavedMap(saved);
 }
 
@@ -1447,7 +1487,12 @@ export async function patchMapCellVisualization(
 ): Promise<boolean> {
   const db = getDb();
   const mapRows = await db
-    .select({ id: mapsTable.id })
+    .select({
+      id: mapsTable.id,
+      status: mapsTable.status,
+      isPublic: mapsTable.isPublic,
+      createdByNeonUserId: mapsTable.createdByNeonUserId,
+    })
     .from(mapsTable)
     .where(eq(mapsTable.slug, slug))
     .limit(1);
@@ -1495,6 +1540,37 @@ export async function patchMapCellVisualization(
         updatedAt: new Date(),
       })
       .where(eq(mapsTable.slug, slug));
+  });
+
+  const updatedRows = await db
+    .select({ revision: mapsTable.revision, updatedAt: mapsTable.updatedAt })
+    .from(mapsTable)
+    .where(eq(mapsTable.slug, slug))
+    .limit(1);
+  const revision = updatedRows[0]?.revision ?? 0;
+  const updatedAt = updatedRows[0]?.updatedAt ?? new Date();
+
+  notifyMap({
+    kind: "cell_visualization",
+    slug,
+    cellId,
+    revision,
+    visualization: {
+      imageUrl: visualization.imageUrl,
+      caption: visualization.caption,
+      updatedAt: visualization.updatedAt,
+      imageModel: visualization.imageModel,
+      prompt: visualization.prompt,
+      byteHash: resolvedAsset.byteHash ?? visualization.byteHash,
+    },
+  });
+  notifyList(mapRow.createdByNeonUserId ?? null, {
+    kind: "map_status",
+    slug,
+    status: mapRow.status as MapVisibility,
+    updatedAt: updatedAt instanceof Date ? updatedAt.toISOString() : String(updatedAt),
+    ownerId: mapRow.createdByNeonUserId ?? null,
+    isPublic: Boolean(mapRow.isPublic),
   });
   return true;
 }
@@ -1578,6 +1654,15 @@ export async function reserveMap({
     publishedAt: null,
   });
 
+  notifyList(ownerId ?? null, {
+    kind: "map_status",
+    slug,
+    status: "generating",
+    updatedAt: new Date().toISOString(),
+    ownerId: ownerId ?? null,
+    isPublic: false,
+  });
+
   return { id, slug };
 }
 
@@ -1627,11 +1712,43 @@ export async function applyMapPatch({
   });
 
   const updated = await db
-    .select({ revision: mapsTable.revision })
+    .select({
+      slug: mapsTable.slug,
+      revision: mapsTable.revision,
+      status: mapsTable.status,
+      isPublic: mapsTable.isPublic,
+      createdByNeonUserId: mapsTable.createdByNeonUserId,
+      updatedAt: mapsTable.updatedAt,
+    })
     .from(mapsTable)
     .where(eq(mapsTable.id, mapId))
     .limit(1);
-  return { revision: updated[0]?.revision ?? (row.revision ?? 0) + 1 };
+  const after = updated[0];
+  const revision = after?.revision ?? (row.revision ?? 0) + 1;
+
+  if (after?.slug) {
+    if (status !== undefined) {
+      notifyMap({
+        kind: "status_change",
+        slug: after.slug,
+        status,
+        revision,
+      });
+    } else {
+      notifyMap({ kind: "snapshot_revision", slug: after.slug, revision });
+    }
+    const updatedAt = after.updatedAt;
+    notifyList(after.createdByNeonUserId ?? null, {
+      kind: "map_status",
+      slug: after.slug,
+      status: (status ?? after.status) as MapVisibility,
+      updatedAt: updatedAt instanceof Date ? updatedAt.toISOString() : String(updatedAt ?? new Date().toISOString()),
+      ownerId: after.createdByNeonUserId ?? null,
+      isPublic: Boolean(after.isPublic),
+    });
+  }
+
+  return { revision };
 }
 
 export async function getMapRevisionState(slug: string): Promise<{
@@ -1664,19 +1781,34 @@ export async function setMapPublicState(
 ): Promise<{ slug: string; isPublic: boolean } | null> {
   const db = getDb();
   const existing = await db
-    .select({ id: mapsTable.id })
+    .select({
+      id: mapsTable.id,
+      status: mapsTable.status,
+      createdByNeonUserId: mapsTable.createdByNeonUserId,
+    })
     .from(mapsTable)
     .where(eq(mapsTable.slug, slug))
     .limit(1);
   if (!existing.length) return null;
+  const updatedAt = new Date();
   await db
     .update(mapsTable)
     .set({
       isPublic,
-      updatedAt: new Date(),
+      updatedAt,
       updatedByNeonUserId: updatedByNeonUserId ?? null,
     })
     .where(eq(mapsTable.id, existing[0].id));
+
+  notifyList(existing[0].createdByNeonUserId ?? null, {
+    kind: "map_status",
+    slug,
+    status: existing[0].status as MapVisibility,
+    updatedAt: updatedAt.toISOString(),
+    ownerId: existing[0].createdByNeonUserId ?? null,
+    isPublic,
+  });
+
   return { slug, isPublic };
 }
 

@@ -4,14 +4,25 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ChevronsLeft, ChevronsRight, Plus, Shield, Trophy } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-import { MapCard, isMapEnriching } from "@/components/map-card";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { MapCard } from "@/components/map-card";
 import { LIBRARY_REFRESH_EVENT } from "@/lib/client-events";
 import { entryTransition } from "@/lib/motion";
-import type { SavedMap } from "@/lib/types";
+import type { MapVisibility, SavedMap } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type MapsPayload = { items?: SavedMap[]; total?: number };
+
+type MapsListFrame =
+  | {
+      type: "map_status";
+      slug: string;
+      status: MapVisibility;
+      updatedAt: string;
+      isPublic: boolean;
+      ownerId: string | null;
+    }
+  | { type: "map_deleted"; slug: string };
 
 export type ExplorerSidebarProps = {
   isSignedIn: boolean;
@@ -69,22 +80,86 @@ export function ExplorerSidebar({
     };
   }, [topicFamily, loadMaps, initialHydrationError]);
 
-  // Keep polling while ANY map is mid-generation OR in the post-publish
-  // enrichment window (SerpAPI is still fetching reference images in the
-  // background). Without the latter, the sidebar's "Searching examples"
-  // indicator would never refresh away after the time window elapses.
-  const hasActiveWork = maps.some(
-    (m) => m.status === "generating" || isMapEnriching(m),
-  );
+  // Live updates via SSE — the global maps stream pushes status flips and
+  // deletions, replacing the previous 4s polling loop. The hydration
+  // effect above still runs on mount and on filter change for cold loads.
+  const loadMapsRef = useRef(loadMaps);
+  loadMapsRef.current = loadMaps;
   useEffect(() => {
-    if (!hasActiveWork) return;
-    const handle = window.setInterval(() => {
-      void loadMaps().catch(() => {
-        /* swallow — next tick retries */
+    let closed = false;
+    let source: EventSource | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let reconnectDelay = 1_000;
+
+    const refresh = () => {
+      void loadMapsRef.current().catch(() => {
+        /* hydration / next event will retry */
       });
-    }, 4000);
-    return () => window.clearInterval(handle);
-  }, [hasActiveWork, loadMaps]);
+    };
+
+    const handleMessage = (event: MessageEvent<string>) => {
+      let parsed: MapsListFrame | null = null;
+      try {
+        parsed = JSON.parse(event.data);
+      } catch {
+        return;
+      }
+      if (!parsed) return;
+      if (parsed.type === "map_status") {
+        const slug = parsed.slug;
+        let known = false;
+        setMaps((current) => {
+          const next = current.map((m) => {
+            if (m.slug !== slug) return m;
+            known = true;
+            return {
+              ...m,
+              status: parsed.status,
+              isPublic: parsed.isPublic,
+              updatedAt: parsed.updatedAt,
+            };
+          });
+          return next;
+        });
+        if (!known) refresh();
+      } else if (parsed.type === "map_deleted") {
+        setMaps((current) => current.filter((m) => m.slug !== parsed.slug));
+      }
+    };
+
+    const connect = () => {
+      if (closed) return;
+      if (typeof EventSource === "undefined") return;
+      source = new EventSource("/api/maps/events");
+      source.addEventListener("message", handleMessage as EventListener);
+      source.addEventListener("open", () => {
+        reconnectDelay = 1_000;
+      });
+      source.addEventListener("error", () => {
+        if (closed) return;
+        if (source && source.readyState === EventSource.CLOSED) {
+          source.close();
+          source = null;
+          reconnectTimer = setTimeout(connect, reconnectDelay);
+          reconnectDelay = Math.min(reconnectDelay * 2, 15_000);
+        }
+      });
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+
+    connect();
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      closed = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (source) source.close();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
 
   useEffect(() => {
     const refreshLibrary = () => {

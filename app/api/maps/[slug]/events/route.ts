@@ -1,24 +1,33 @@
 import { NextRequest } from "next/server";
 import { formatSseData, type GenerationTraceEvent } from "@/lib/generation-stream";
+import {
+  MAP_TOPIC,
+  subscribe as subscribeToBus,
+  type MapEvent,
+} from "@/lib/server-event-bus";
 import { getMapBySlug, getMapRevisionState } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-const POLL_INTERVAL_MS = 600;
-
 /**
- * After the map row flips to "published" we keep streaming snapshots so the
- * client sees SerpApi enrichment land (reference images, anchor badges,
- * "Visual evidence found"). We end the stream once either:
- *  - the revision stays unchanged for `PUBLISHED_IDLE_POLLS` consecutive
- *    polls (~5s of quiescence), or
- *  - we've spent `PUBLISHED_MAX_MS` on the post-publish phase.
+ * Per-map SSE stream.
  *
- * `maxDuration` on the route still caps the absolute wall time at 300s.
+ * Push-first: subscribes to the in-process event bus and forwards typed
+ * incremental events (`cell_visualization`, `status_change`,
+ * `snapshot_revision`) the moment a writer publishes them.
+ *
+ * Safety net: a slow Postgres poll (every 5s) reconciles dropped bus
+ * messages — primarily for cross-instance deployments where the writer
+ * runs in a different Node process than this stream.
+ *
+ * Liveness: a `: keepalive` comment frame every 20s keeps the connection
+ * open through proxy idle timeouts. The route stays open until the client
+ * disconnects; `complete` is informational, not terminal.
  */
-const PUBLISHED_MAX_MS = 200_000;
-const PUBLISHED_IDLE_POLLS = 8;
+
+const SAFETY_POLL_MS = 5_000;
+const KEEPALIVE_MS = 20_000;
 
 export async function GET(
   request: NextRequest,
@@ -35,100 +44,131 @@ export async function GET(
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      let lastRevision = -1;
       let closed = false;
+      let lastRevision = -1;
+      let lastStatus: "generating" | "published" | "failed" | null = null;
 
-      const send = (event: GenerationTraceEvent) => {
+      const enqueue = (frame: string) => {
         if (closed) return;
         try {
-          controller.enqueue(enc.encode(formatSseData(event)));
+          controller.enqueue(enc.encode(frame));
         } catch {
           closed = true;
         }
       };
 
-      let publishedSince: number | null = null;
-      let idlePollsSincePublish = 0;
-
-      const sendSnapshot = async (force = false) => {
-        const meta = await getMapRevisionState(slug);
-        if (!meta) {
-          send({ type: "failed", message: "Map disappeared." });
-          return "stop" as const;
-        }
-        const revisionChanged = meta.revision !== lastRevision;
-        if (force || revisionChanged) {
-          const map = await getMapBySlug(slug);
-          if (map) {
-            const liveStatus =
-              meta.status === "generating"
-                ? "generating"
-                : meta.status === "failed"
-                  ? "failed"
-                  : "published";
-            send({
-              type: "snapshot",
-              revision: meta.revision,
-              status: liveStatus,
-              document: map.document,
-            });
-            lastRevision = meta.revision;
-          }
-        }
-        if (meta.status === "failed") {
-          send({ type: "failed", message: initial.summary || "Generation failed." });
-          return "stop" as const;
-        }
-        if (meta.status === "published") {
-          // Stay alive while SerpApi enrichment patches keep landing. Close
-          // once revision is idle for a few polls or we hit the post-publish
-          // budget.
-          if (publishedSince === null) publishedSince = Date.now();
-          if (revisionChanged) idlePollsSincePublish = 0;
-          else idlePollsSincePublish += 1;
-          const idleEnough = idlePollsSincePublish >= PUBLISHED_IDLE_POLLS;
-          const budgetSpent = Date.now() - publishedSince >= PUBLISHED_MAX_MS;
-          if (idleEnough || budgetSpent) {
-            send({ type: "complete", slug, title: initial.title });
-            return "stop" as const;
-          }
-        }
-        return "continue" as const;
+      const send = (event: GenerationTraceEvent) => {
+        enqueue(formatSseData(event));
       };
 
-      // Send an initial snapshot immediately so the client hydrates.
-      const firstResult = await sendSnapshot(true);
-      if (firstResult === "stop") {
+      const sendKeepalive = () => {
+        enqueue(": keepalive\n\n");
+      };
+
+      const liveStatusFrom = (raw: string): "generating" | "published" | "failed" =>
+        raw === "generating" ? "generating" : raw === "failed" ? "failed" : "published";
+
+      // Initial hydrate so the client has a full document to merge into.
+      send({
+        type: "snapshot",
+        revision: initial.revision ?? 0,
+        status: liveStatusFrom(initial.status),
+        document: initial.document,
+      });
+      lastRevision = initial.revision ?? 0;
+      lastStatus = liveStatusFrom(initial.status);
+
+      // Push path: forward typed bus events as incremental SSE frames.
+      const unsubscribe = subscribeToBus<MapEvent>(MAP_TOPIC(slug), (event) => {
+        if (closed) return;
+        switch (event.kind) {
+          case "cell_visualization":
+            send({
+              type: "cell_visualization",
+              revision: event.revision,
+              cellId: event.cellId,
+              visualization: event.visualization,
+            });
+            lastRevision = Math.max(lastRevision, event.revision);
+            return;
+          case "status_change":
+            send({
+              type: "status_change",
+              revision: event.revision,
+              status: event.status === "generating" ? "generating" : event.status === "failed" ? "failed" : "published",
+            });
+            lastRevision = Math.max(lastRevision, event.revision);
+            lastStatus = event.status === "generating" ? "generating" : event.status === "failed" ? "failed" : "published";
+            return;
+          case "snapshot_revision":
+            // Structural change without a cheap diff: re-fetch and re-emit.
+            void emitFreshSnapshot();
+            return;
+          case "complete":
+            send({ type: "complete", slug: event.slug, title: initial.title });
+            return;
+          case "failed":
+            send({ type: "failed", message: event.message });
+            return;
+        }
+      });
+
+      const emitFreshSnapshot = async () => {
+        if (closed) return;
+        const fresh = await getMapBySlug(slug).catch((err) => {
+          console.error(`[events/${slug}] snapshot fetch failed:`, err);
+          return null;
+        });
+        if (!fresh || closed) return;
+        const status = liveStatusFrom(fresh.status);
+        send({
+          type: "snapshot",
+          revision: fresh.revision ?? 0,
+          status,
+          document: fresh.document,
+        });
+        lastRevision = Math.max(lastRevision, fresh.revision ?? 0);
+        lastStatus = status;
+      };
+
+      // Safety-net poll: catches events from other Node instances.
+      const safetyTimer = setInterval(async () => {
+        if (closed) return;
+        try {
+          const meta = await getMapRevisionState(slug);
+          if (!meta) {
+            send({ type: "failed", message: "Map disappeared." });
+            cleanup();
+            return;
+          }
+          const status = liveStatusFrom(meta.status);
+          if (meta.revision !== lastRevision) {
+            await emitFreshSnapshot();
+          } else if (status !== lastStatus) {
+            send({ type: "status_change", revision: meta.revision, status });
+            lastStatus = status;
+          }
+        } catch (err) {
+          console.error(`[events/${slug}] safety poll failed:`, err);
+        }
+      }, SAFETY_POLL_MS);
+
+      const keepaliveTimer = setInterval(sendKeepalive, KEEPALIVE_MS);
+
+      const cleanup = () => {
+        if (closed) return;
         closed = true;
+        clearInterval(safetyTimer);
+        clearInterval(keepaliveTimer);
+        unsubscribe();
         try {
           controller.close();
         } catch {
           /* already closed */
         }
-        return;
-      }
-
-      const onAbort = () => {
-        closed = true;
       };
-      request.signal.addEventListener("abort", onAbort, { once: true });
 
-      while (!closed && !request.signal.aborted) {
-        await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-        if (closed || request.signal.aborted) break;
-        const result = await sendSnapshot(false).catch((err) => {
-          console.error(`[events/${slug}] poll failed:`, err);
-          return "continue" as const;
-        });
-        if (result === "stop") break;
-      }
-
-      closed = true;
-      try {
-        controller.close();
-      } catch {
-        /* already closed */
-      }
+      request.signal.addEventListener("abort", cleanup, { once: true });
     },
   });
 

@@ -1,29 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { MapRenderer } from "@/components/map-renderer";
 import { MapVisibilityControl } from "@/components/map-visibility-control";
-import { dispatchLibraryRefresh } from "@/lib/client-events";
 import type { GenerationTraceEvent } from "@/lib/generation-stream";
-import { ENRICHMENT_WINDOW_MS } from "@/components/map-card";
 import { revealTransition } from "@/lib/motion";
 import type { MapDocument, SavedMap } from "@/lib/types";
 import { cn, simplifyMapDisplayTitle } from "@/lib/utils";
 
 type LiveStatus = "generating" | "published" | "failed";
 
-/**
- * Was this map published recently enough that the server-side SerpAPI
- * enrichment is probably still landing patches?
- */
-function isWithinEnrichmentWindow(publishedAt?: string | null): boolean {
-  if (!publishedAt) return false;
-  const ts = new Date(publishedAt).getTime();
-  if (Number.isNaN(ts)) return false;
-  return Date.now() - ts < ENRICHMENT_WINDOW_MS;
-}
+const RECONNECT_BASE_MS = 1_000;
+const RECONNECT_MAX_MS = 15_000;
 
 export function LiveMapShell({
   initial,
@@ -36,7 +25,6 @@ export function LiveMapShell({
   canMutateMap?: boolean;
   viewerLabel?: string;
 }) {
-  const router = useRouter();
   const reduceMotion = useReducedMotion() ?? false;
   const [doc, setDoc] = useState<MapDocument>(initial.document);
   const initialLive: LiveStatus =
@@ -46,85 +34,107 @@ export function LiveMapShell({
         ? "failed"
         : "generating";
   const [status, setStatus] = useState<LiveStatus>(initialLive);
-  // While the server keeps streaming snapshots after publish (SerpApi
-  // enrichment), `enriching` stays true. It flips off on the explicit
-  // `complete` event from the SSE endpoint. Initialize to true also when
-  // the map landed on a static "published" page within the enrichment
-  // window — otherwise SSE never opens and the UI silently stops updating.
-  const [enriching, setEnriching] = useState<boolean>(
-    initialLive === "generating" ||
-      (initialLive === "published" && isWithinEnrichmentWindow(initial.publishedAt)),
-  );
   const [errorMessage, setErrorMessage] = useState<string | null>(
     initial.status === "failed" ? initial.summary || "Generation failed." : null,
   );
   const lastRevisionRef = useRef<number>(initial.revision ?? 0);
 
   useEffect(() => {
-    if (status === "failed") return;
-    if (!enriching && status === "published") return;
-    const source = new EventSource(`/api/maps/${slug}/events`);
+    if (initialLive === "failed") return;
 
-    source.addEventListener("message", (event) => {
+    let closed = false;
+    let source: EventSource | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let reconnectDelay = RECONNECT_BASE_MS;
+
+    const handle = (event: MessageEvent<string>) => {
       let parsed: GenerationTraceEvent | null = null;
       try {
-        parsed = JSON.parse((event as MessageEvent<string>).data);
+        parsed = JSON.parse(event.data);
       } catch {
         return;
       }
       if (!parsed) return;
-      if (parsed.type === "snapshot") {
-        if (parsed.revision >= lastRevisionRef.current) {
-          lastRevisionRef.current = parsed.revision;
-          setDoc(parsed.document);
-          if (parsed.status === "failed") {
-            setStatus("failed");
-          } else if (parsed.status === "published" && status !== "published") {
-            // Publish moment — flip UI to "published" but keep SSE open
-            // until the server emits `complete` (so SerpApi enrichment
-            // patches keep streaming in).
-            setStatus("published");
-          }
-        }
-      } else if (parsed.type === "complete") {
-        setStatus("published");
-        setEnriching(false);
-      } else if (parsed.type === "failed") {
-        setStatus("failed");
-        setEnriching(false);
-        setErrorMessage(parsed.message || "Generation failed.");
-      } else if (parsed.type === "error") {
-        setStatus("failed");
-        setEnriching(false);
-        setErrorMessage(parsed.message || "Generation failed.");
-      }
-    });
 
-    source.addEventListener("error", () => {
-      // EventSource auto-retries; only flip to failed if the server explicitly says so.
-    });
+      switch (parsed.type) {
+        case "snapshot": {
+          if (parsed.revision >= lastRevisionRef.current) {
+            lastRevisionRef.current = parsed.revision;
+            setDoc(parsed.document);
+            if (parsed.status === "failed") setStatus("failed");
+            else if (parsed.status === "published") setStatus("published");
+            else setStatus("generating");
+          }
+          return;
+        }
+        case "cell_visualization": {
+          if (parsed.revision >= lastRevisionRef.current) {
+            lastRevisionRef.current = parsed.revision;
+          }
+          setDoc((prev) => mergeCellVisualization(prev, parsed.cellId, parsed.visualization));
+          return;
+        }
+        case "status_change": {
+          if (parsed.revision >= lastRevisionRef.current) {
+            lastRevisionRef.current = parsed.revision;
+          }
+          if (parsed.status === "failed") setStatus("failed");
+          else if (parsed.status === "published") setStatus("published");
+          else setStatus("generating");
+          return;
+        }
+        case "complete": {
+          // Informational only; the connection stays open and we keep
+          // listening for late patches (cell visualizations, axis tweaks).
+          setStatus("published");
+          return;
+        }
+        case "failed": {
+          setStatus("failed");
+          setErrorMessage(parsed.message || "Generation failed.");
+          return;
+        }
+        case "error": {
+          setErrorMessage(parsed.message || "Generation failed.");
+          return;
+        }
+      }
+    };
+
+    const connect = () => {
+      if (closed) return;
+      if (typeof EventSource === "undefined") return;
+      source = new EventSource(`/api/maps/${slug}/events`);
+      source.addEventListener("message", handle as EventListener);
+      source.addEventListener("open", () => {
+        reconnectDelay = RECONNECT_BASE_MS;
+      });
+      source.addEventListener("error", () => {
+        if (closed) return;
+        // EventSource auto-retries on network errors, but in some
+        // environments (e.g. dev server restarts) the connection can land
+        // in a permanent CLOSED state. Tear it down and reconnect with
+        // capped exponential backoff.
+        if (source && source.readyState === EventSource.CLOSED) {
+          source.close();
+          source = null;
+          reconnectTimer = setTimeout(connect, reconnectDelay);
+          reconnectDelay = Math.min(reconnectDelay * 2, RECONNECT_MAX_MS);
+        }
+      });
+    };
+
+    connect();
 
     return () => {
-      source.close();
+      closed = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (source) source.close();
     };
-  }, [slug, status, enriching]);
-
-  // When status flips to published *during this session* (i.e. we caught the
-  // transition over SSE), ask the server component to re-render so the next
-  // navigation sees the static map. Skip on initial mount when we already
-  // started in the published+enriching state — otherwise we'd kick off a
-  // server round-trip every time someone opens an existing published map.
-  const initialStatusRef = useRef<LiveStatus>(initialLive);
-  useEffect(() => {
-    if (status === "published" && initialStatusRef.current !== "published") {
-      dispatchLibraryRefresh();
-      router.refresh();
-    }
-  }, [status, router]);
+  }, [slug, initialLive]);
 
   const isLive = status === "generating";
-  const isEnriching = status === "published" && enriching;
-  const showIndicator = isLive || isEnriching;
+  const showIndicator = isLive;
   const displayedTitle = simplifyMapDisplayTitle(
     doc.title || initial.title,
     doc.topicFamily || initial.topicFamily,
@@ -158,7 +168,7 @@ export function LiveMapShell({
             className="sticky top-0 z-20 shrink-0 overflow-hidden border-b border-border/60 bg-background/85 backdrop-blur"
             role="status"
             aria-live="polite"
-            aria-label={isEnriching ? "Searching examples on Google Images" : "Sketching the grid"}
+            aria-label="Sketching the grid"
             initial={reduceMotion ? { opacity: 1 } : { opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={reduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }}
@@ -170,10 +180,8 @@ export function LiveMapShell({
                 <span className="absolute inset-0 rounded-full bg-primary" />
               </span>
               <p className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-foreground/80">
-                {isEnriching ? "Searching examples" : "Sketching the grid"}
-                <span className="ml-2 text-muted-foreground">
-                  {isEnriching ? "· Google Images via SerpAPI" : "· building cells"}
-                </span>
+                Sketching the grid
+                <span className="ml-2 text-muted-foreground">· building cells</span>
               </p>
             </div>
             <div className="viz-loading-track h-[2px] rounded-none opacity-95">
@@ -216,4 +224,19 @@ export function LiveMapShell({
       </div>
     </div>
   );
+}
+
+function mergeCellVisualization(
+  document: MapDocument,
+  cellId: string,
+  visualization: MapDocument["cells"][number]["visualization"],
+): MapDocument {
+  let changed = false;
+  const cells = document.cells.map((cell) => {
+    if (cell.id !== cellId) return cell;
+    changed = true;
+    return { ...cell, visualization };
+  });
+  if (!changed) return document;
+  return { ...document, cells };
 }

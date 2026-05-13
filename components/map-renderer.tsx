@@ -30,7 +30,6 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Fragment,
   createContext,
-  startTransition,
   useActionState,
   useCallback,
   useContext,
@@ -40,7 +39,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   ArrowUpRight,
   ChevronDown,
@@ -59,7 +58,6 @@ import { visualizeCellAction, type VisualizeCellActionState } from "@/app/action
 import { authClient } from "@/lib/auth/client";
 import { buildAuthRedirectHref } from "@/lib/auth/redirect";
 import { useFocusTrap } from "@/lib/use-focus-trap";
-import { dispatchLibraryRefresh } from "@/lib/client-events";
 import { CELL_IMAGE_MODEL } from "@/lib/config";
 import { IMAGE_MODEL_CHANGE_EVENT, IMAGE_MODEL_STORAGE_KEY, readStoredImageModel } from "@/lib/model-preference";
 
@@ -190,7 +188,6 @@ function CellVisualizeOwner({
   document: MapDocument;
   setEntry: (cellId: string, entry: VisualizeEntry) => void;
 }) {
-  const router = useRouter();
   const cellId = cell.id;
   const [imageModel, setImageModel] = useState<string>(() => {
     if (typeof window === "undefined") {
@@ -202,15 +199,11 @@ function CellVisualizeOwner({
     status: "idle",
   });
 
-  const successImageUrl = state.status === "success" ? state.result.imageUrl : null;
-
-  useEffect(() => {
-    if (!successImageUrl) return;
-    dispatchLibraryRefresh();
-    startTransition(() => {
-      router.refresh();
-    });
-  }, [successImageUrl, router]);
+  // Note: no manual revalidation here — the per-map SSE stream
+  // (`/api/maps/[slug]/events`) emits a `cell_visualization` event the
+  // moment `patchMapCellVisualization` runs, which `LiveMapShell` merges
+  // into the document. The action's own `useActionState` updates this
+  // tile's UI synchronously.
 
   useEffect(() => {
     const sync = () => setImageModel(readStoredImageModel());

@@ -1,8 +1,8 @@
 import { appConfig } from "@/lib/config";
 import {
   emitStep,
+  type GenerationSinkEvent,
   type GenerationStreamSink,
-  type GenerationTraceEvent,
 } from "@/lib/generation-stream";
 import {
   mapBriefSchema,
@@ -1738,7 +1738,7 @@ REFERENCE SHAPE ONLY (reuse your skeleton.dimension keys—not these literal ide
 [{"id":"illustration-positive","coordinates":{"axis_one":"Anchored","axis_two":"Controlled"},"label":"Worked cell","status":"existing","confidence":0.86,"examples":[{"name":"Named Reference A","description":"Brief role","coordinates":{"axis_one":"Anchored","axis_two":"Controlled"},"brand":"ResponsibleOrg","year":"2019","status":"existing","confidence":0.9,"evidenceNote":"Anchors quadrant with two independently cited referents"},{"name":"Named Reference B",...}]} , {"id":"illustration-blocked","coordinates":{"axis_one":"Pinned","axis_two":"Inverted"},"label":"Forbidden crossing","status":"impossible","explanation":"State which rule forbids coexistence","examples":[]}]
 `;
 
-  const eventBuffers: GenerationTraceEvent[][] = sink
+  const eventBuffers: GenerationSinkEvent[][] = sink
     ? Array.from({ length: batchCount }, () => [])
     : [];
   let nextFlushBatch = 0;
