@@ -11,6 +11,7 @@ import type { GenerationStreamSink } from "@/lib/generation-stream";
 import { buildFallbackMapDocument } from "@/lib/map-fallback-document";
 import { buildMapJob, enrichPublishedMap, type MapEngineModels } from "@/lib/map-engine";
 import { resolveRequestedChatModel } from "@/lib/chat-model-options";
+import { MAP_TOPIC, publish as publishBusEvent, type MapEvent } from "@/lib/server-event-bus";
 import { applyMapPatch, logGenerationRun, saveMap } from "@/lib/store";
 import type {
   GenerationJobResult,
@@ -300,6 +301,17 @@ export async function runMapGenerationCore(
         `[runMapGenerationCore] enrichment for ${savedSlug} failed:`,
         error instanceof Error ? error.message : error,
       );
+    } finally {
+      // Fire the terminal `complete` bus event the moment ALL enrichment
+      // (anchor verification, gap probes, SerpAPI reference images) is
+      // finished — success OR failure. The map page listens for this so
+      // the per-cell "Searching examples…" placeholders stay up until
+      // the global SerpAPI pass is genuinely done, instead of timing out
+      // on a fixed window that may end too early on slow runs.
+      publishBusEvent<MapEvent>(MAP_TOPIC(savedSlug), {
+        kind: "complete",
+        slug: savedSlug,
+      });
     }
 
     const metricsFinal = collector.finalize();

@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ENRICHMENT_WINDOW_MS } from "@/components/map-card";
 import { MapPosterExport } from "@/components/map-poster-export";
 import { MapRenderer } from "@/components/map-renderer";
 import { MapVisibilityControl } from "@/components/map-visibility-control";
@@ -15,6 +14,20 @@ type LiveStatus = "generating" | "published" | "failed";
 
 const RECONNECT_BASE_MS = 1_000;
 const RECONNECT_MAX_MS = 15_000;
+
+/**
+ * Upper bound for how long SerpAPI enrichment could plausibly still be
+ * running on a freshly-published map. We strongly prefer the explicit
+ * `complete` bus event for ending enrichment, but if that signal is
+ * dropped (cross-instance SSE, long disconnect, etc.) we fall back to
+ * this cap so the cell-level loading state can't stay on forever.
+ *
+ * Also used as the "definitely done by now" cutoff when we mount on a
+ * map that was published before this client connected — we have no way
+ * to replay the missed `complete` event onto a fresh subscriber, so
+ * anything older than this is treated as already-enriched.
+ */
+const ENRICHMENT_HARD_CAP_MS = 6 * 60_000;
 
 export function LiveMapShell({
   initial,
@@ -43,15 +56,23 @@ export function LiveMapShell({
 
   // Track the timestamp (ms) at which the map first reached `published`,
   // either as carried in from the server snapshot or observed live in
-  // this client. The renderer keeps its cell-level "Searching examples…"
-  // placeholders alive until ENRICHMENT_WINDOW_MS has elapsed past this,
-  // mirroring the sidebar's enrichment indicator and avoiding the
-  // jarring "loading stopped but the sidebar says we're still searching"
-  // gap the user reported.
+  // this client. Used to decide whether enrichment could plausibly still
+  // be in flight when we mount on a map that's already past publish.
   const [publishedAtMs, setPublishedAtMs] = useState<number | null>(() =>
     initial.publishedAt ? new Date(initial.publishedAt).getTime() : null,
   );
-  const [nowMs, setNowMs] = useState<number>(() => Date.now());
+
+  // Enrichment is "done" only once the runner has finished its SerpAPI
+  // pass (anchor verification, gap probes, reference image lookups) and
+  // published the terminal `complete` bus event. For maps that loaded
+  // long after publish — past the hard cap — we optimistically mark
+  // enrichment as done because the server has no way to replay the
+  // missed event onto a fresh subscriber.
+  const initialEnrichmentDone =
+    initial.status !== "generating" &&
+    initial.publishedAt !== null &&
+    Date.now() - new Date(initial.publishedAt).getTime() >= ENRICHMENT_HARD_CAP_MS;
+  const [enrichmentDone, setEnrichmentDone] = useState<boolean>(initialEnrichmentDone);
 
   useEffect(() => {
     if (initialLive === "failed") return;
@@ -102,10 +123,14 @@ export function LiveMapShell({
           return;
         }
         case "complete": {
-          // Informational only; the connection stays open and we keep
-          // listening for late patches (cell visualizations, axis tweaks).
+          // Terminal SerpAPI enrichment signal — the runner has finished
+          // anchor verification, gap probes, and reference-image
+          // lookups. From this point on cells stop showing the
+          // "Searching examples…" placeholder. The SSE connection stays
+          // open in case late patches arrive.
           setStatus("published");
           setPublishedAtMs((prev) => prev ?? Date.now());
+          setEnrichmentDone(true);
           return;
         }
         case "failed": {
@@ -152,38 +177,30 @@ export function LiveMapShell({
     };
   }, [slug, initialLive]);
 
-  const enrichmentDeadlineMs = publishedAtMs ? publishedAtMs + ENRICHMENT_WINDOW_MS : null;
-  const withinEnrichmentWindow =
-    status === "published" &&
-    enrichmentDeadlineMs !== null &&
-    nowMs < enrichmentDeadlineMs;
-
-  // Tick a re-render every few seconds while we're inside the enrichment
-  // window so we naturally drop the cell-level placeholder at the
-  // deadline without leaving it on forever if the SerpAPI passes never
-  // land. We don't tick during pure generating — the SSE stream already
-  // re-renders us on every patch.
+  // Safety cap so cells never stay in a forever-loading state if the
+  // `complete` event is missed (e.g. the writer ran in a different
+  // process and the safety-poll dropped it, or the user kept the tab
+  // open through a long disconnect). We strongly prefer the real
+  // signal from the bus; this only fires if it never arrives.
   useEffect(() => {
-    if (!withinEnrichmentWindow || !enrichmentDeadlineMs) return;
-    const tickId = setInterval(() => setNowMs(Date.now()), 5_000);
-    const stopId = setTimeout(
-      () => setNowMs(Date.now()),
-      Math.max(0, enrichmentDeadlineMs - Date.now()) + 100,
-    );
-    return () => {
-      clearInterval(tickId);
-      clearTimeout(stopId);
-    };
-  }, [withinEnrichmentWindow, enrichmentDeadlineMs]);
+    if (enrichmentDone || !publishedAtMs) return;
+    const elapsed = Date.now() - publishedAtMs;
+    const remaining = Math.max(0, ENRICHMENT_HARD_CAP_MS - elapsed);
+    const id = setTimeout(() => setEnrichmentDone(true), remaining);
+    return () => clearTimeout(id);
+  }, [enrichmentDone, publishedAtMs]);
 
   // The top "Sketching the grid" banner only fires while the server is
   // still building the document. The cell-level loading state stays on
-  // through both phases (generating + enrichment) so it matches the
-  // sidebar's "Searching examples…" indicator.
+  // through both phases (generating + SerpAPI enrichment) so it matches
+  // the sidebar's "Searching examples…" indicator. We hold it until the
+  // runner publishes the terminal `complete` bus event rather than
+  // dropping it on a fixed timer.
   const isLive = status === "generating";
+  const enrichmentInFlight = status === "published" && !enrichmentDone;
   const isLiveForCells = useMemo(
-    () => isLive || withinEnrichmentWindow,
-    [isLive, withinEnrichmentWindow],
+    () => isLive || enrichmentInFlight,
+    [isLive, enrichmentInFlight],
   );
   const showIndicator = isLive;
   const displayedTitle = simplifyMapDisplayTitle(
