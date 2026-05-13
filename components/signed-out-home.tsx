@@ -10,6 +10,12 @@ type SignedOutHomeProps = {
   galleryHref?: string;
   preview: ListedLeaderboardEntry[];
   mapPreview?: SavedMap[];
+  /**
+   * When true the hero collapses sign-in/up CTAs and surfaces "Start a new
+   * map" linking to `/create`. The three preview panels render the same in
+   * both states so the overview stays the universal landing surface.
+   */
+  isSignedIn?: boolean;
 };
 
 const AXIS_EXAMPLES = [
@@ -25,6 +31,7 @@ export function SignedOutHome({
   galleryHref = "/gallery",
   preview,
   mapPreview = [],
+  isSignedIn = false,
 }: SignedOutHomeProps) {
   const resolvedSignUpHref = signUpHref ?? "/auth/sign-up";
   const cards = preview.slice(0, 6);
@@ -39,6 +46,7 @@ export function SignedOutHome({
         galleryHref={galleryHref}
         signUpHref={resolvedSignUpHref}
         signInHref={signInHref}
+        isSignedIn={isSignedIn}
       />
 
       {/* Three sticky-header / scroll-body panels. On mobile they stack and
@@ -140,10 +148,12 @@ function Hero({
   galleryHref,
   signUpHref,
   signInHref,
+  isSignedIn,
 }: {
   galleryHref: string;
   signUpHref: string;
   signInHref: string;
+  isSignedIn: boolean;
 }) {
   return (
     <section className="shrink-0 border border-border bg-card/50 p-4 md:p-5">
@@ -164,20 +174,32 @@ function Hero({
             Browse maps
             <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} aria-hidden />
           </Link>
-          <Link
-            href={signUpHref}
-            className="inline-flex h-9 items-center gap-1.5 border border-border bg-card px-3.5 font-mono text-[11px] uppercase tracking-[0.22em] text-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            Start a map
-            <Sparkles className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-          </Link>
-          <Link
-            href={signInHref}
-            className="inline-flex h-9 items-center gap-1.5 border border-transparent px-2.5 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            <LogIn className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-            Sign in
-          </Link>
+          {isSignedIn ? (
+            <Link
+              href="/create"
+              className="inline-flex h-9 items-center gap-1.5 border border-border bg-card px-3.5 font-mono text-[11px] uppercase tracking-[0.22em] text-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              Start a new map
+              <Sparkles className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+            </Link>
+          ) : (
+            <>
+              <Link
+                href={signUpHref}
+                className="inline-flex h-9 items-center gap-1.5 border border-border bg-card px-3.5 font-mono text-[11px] uppercase tracking-[0.22em] text-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                Start a map
+                <Sparkles className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+              </Link>
+              <Link
+                href={signInHref}
+                className="inline-flex h-9 items-center gap-1.5 border border-transparent px-2.5 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                <LogIn className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                Sign in
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </section>

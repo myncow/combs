@@ -1,9 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ChevronsLeft, ChevronsRight, Plus, Shield, Trophy } from "lucide-react";
-import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { ChevronsLeft, ChevronsRight } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MapCard } from "@/components/map-card";
 import { LIBRARY_REFRESH_EVENT } from "@/lib/client-events";
@@ -26,20 +25,22 @@ type MapsListFrame =
 
 export type ExplorerSidebarProps = {
   isSignedIn: boolean;
-  isAdmin?: boolean;
   initialMaps?: { items: SavedMap[]; total: number };
   /** Set when server-side library load threw — shown until client refresh succeeds. */
   initialHydrationError?: string;
 };
 
+/**
+ * Personal library rail. Lists ONLY the signed-in viewer's own maps; cross-app
+ * navigation (New map, Leaderboard, Admin) lives in the header / settings menu
+ * so this surface stays focused on the user's own work.
+ */
 export function ExplorerSidebar({
   isSignedIn,
-  isAdmin = false,
   initialMaps,
   initialHydrationError,
 }: ExplorerSidebarProps) {
   const searchParams = useSearchParams();
-  const pathname = usePathname() ?? "/";
   const topicFamily = searchParams.get("topicFamily") ?? undefined;
   const reduceMotion = useReducedMotion() ?? false;
 
@@ -48,7 +49,14 @@ export function ExplorerSidebar({
   const [loadErr, setLoadErr] = useState<string | null>(() => initialHydrationError ?? null);
 
   const loadMaps = useCallback(async () => {
-    const qs = new URLSearchParams({ pageSize: "48", sort: "recent", status: "library", page: "1" });
+    if (!isSignedIn) return;
+    const qs = new URLSearchParams({
+      pageSize: "48",
+      sort: "recent",
+      status: "library",
+      page: "1",
+      scope: "mine",
+    });
     if (topicFamily) qs.set("topicFamily", topicFamily);
     const res = await fetch(`/api/maps?${qs}`, { cache: "no-store" });
     if (!res.ok) {
@@ -56,9 +64,14 @@ export function ExplorerSidebar({
     }
     const data = (await res.json()) as MapsPayload;
     setMaps(Array.isArray(data.items) ? data.items : []);
-  }, [topicFamily]);
+  }, [isSignedIn, topicFamily]);
 
   useEffect(() => {
+    if (!isSignedIn) {
+      setMaps([]);
+      setLoadErr(null);
+      return;
+    }
     let cancelled = false;
     void (async () => {
       if (!cancelled) {
@@ -78,7 +91,7 @@ export function ExplorerSidebar({
     return () => {
       cancelled = true;
     };
-  }, [topicFamily, loadMaps, initialHydrationError]);
+  }, [isSignedIn, topicFamily, loadMaps, initialHydrationError]);
 
   // Live updates via SSE — the global maps stream pushes status flips and
   // deletions, replacing the previous 4s polling loop. The hydration
@@ -86,6 +99,7 @@ export function ExplorerSidebar({
   const loadMapsRef = useRef(loadMaps);
   loadMapsRef.current = loadMaps;
   useEffect(() => {
+    if (!isSignedIn) return;
     let closed = false;
     let source: EventSource | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -159,19 +173,20 @@ export function ExplorerSidebar({
       if (source) source.close();
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, []);
+  }, [isSignedIn]);
 
   useEffect(() => {
+    if (!isSignedIn) return;
     const refreshLibrary = () => {
       void loadMaps().catch(() => {
-        /* The regular hydration effect and polling will retry. */
+        /* The regular hydration effect and SSE will retry. */
       });
     };
     window.addEventListener(LIBRARY_REFRESH_EVENT, refreshLibrary);
     return () => {
       window.removeEventListener(LIBRARY_REFRESH_EVENT, refreshLibrary);
     };
-  }, [loadMaps]);
+  }, [isSignedIn, loadMaps]);
 
   const handleMapDeleted = useCallback(
     (deletedSlug: string) => {
@@ -197,10 +212,6 @@ export function ExplorerSidebar({
     };
   }, []);
 
-  const isLeaderboardActive = pathname.startsWith("/leaderboard");
-  const isHomeActive = pathname === "/";
-  const isAdminActive = pathname.startsWith("/admin");
-
   return (
     <aside
       className={cn(
@@ -209,49 +220,18 @@ export function ExplorerSidebar({
           ? "w-full md:max-h-none md:w-12 md:max-w-12"
           : "max-h-[44vh] w-full md:max-h-none md:w-[min(320px,30vw)] md:max-w-[min(320px,30vw)]",
       )}
-      aria-label={isSignedIn ? "My maps" : "Maps"}
+      aria-label="My maps"
     >
-      <div
-        className={cn(
-          "flex shrink-0 flex-col border-b border-border bg-card/40",
-          collapsed ? "gap-1 p-1.5" : "gap-1 px-2 py-2",
-        )}
-      >
-        <SidebarNavLink
-          href="/"
-          icon={<Plus className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden strokeWidth={2.5} />}
-          label="New map"
-          active={isHomeActive}
-          collapsed={collapsed}
-        />
-        <SidebarNavLink
-          href="/leaderboard"
-          icon={<Trophy className="h-3.5 w-3.5 shrink-0" aria-hidden strokeWidth={2.25} />}
-          label="Top list"
-          active={isLeaderboardActive}
-          collapsed={collapsed}
-        />
-        {isAdmin ? (
-          <SidebarNavLink
-            href="/admin/maps"
-            icon={<Shield className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden strokeWidth={2.25} />}
-            label="Admin · all maps"
-            active={isAdminActive}
-            collapsed={collapsed}
-          />
-        ) : null}
-      </div>
-
       {!collapsed ? (
         <div className="flex items-center justify-between border-b border-border px-3 py-2">
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-            {isSignedIn ? "My maps" : "Maps"}
+            My maps
           </p>
           <button
             type="button"
             onClick={() => setCollapsed(true)}
             className="inline-flex h-7 w-7 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            aria-label={isSignedIn ? "Collapse my maps" : "Collapse maps"}
+            aria-label="Collapse my maps"
             aria-expanded
             title="Collapse"
           >
@@ -263,7 +243,7 @@ export function ExplorerSidebar({
           type="button"
           onClick={() => setCollapsed(false)}
           className="inline-flex h-9 w-9 shrink-0 items-center justify-center self-center border-b border-border text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          aria-label={isSignedIn ? "Expand my maps" : "Expand maps"}
+          aria-label="Expand my maps"
           aria-expanded={false}
           title="Expand"
         >
@@ -311,37 +291,5 @@ export function ExplorerSidebar({
         </div>
       ) : null}
     </aside>
-  );
-}
-
-function SidebarNavLink({
-  href,
-  icon,
-  label,
-  active,
-  collapsed,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  label: string;
-  active: boolean;
-  collapsed: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      aria-label={label}
-      aria-current={active ? "page" : undefined}
-      className={cn(
-        "inline-flex h-9 items-center gap-2 border px-3 font-mono text-[11px] font-semibold uppercase tracking-[0.22em] transition-[border-color,background-color,color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        active
-          ? "border-foreground bg-foreground text-background"
-          : "border-border bg-card text-foreground hover:border-primary/35 hover:bg-[color:color-mix(in_srgb,var(--primary)_6%,var(--card))] hover:text-primary",
-        collapsed && "md:h-9 md:w-9 md:justify-center md:px-0",
-      )}
-    >
-      {icon}
-      <span className={cn(collapsed && "md:hidden")}>{label}</span>
-    </Link>
   );
 }

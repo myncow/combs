@@ -127,7 +127,7 @@ export function GapSpotlightSheet({
       >
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div className="min-w-0">
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-primary">Top list</p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-primary">Leaderboard</p>
             <h3
               id={titleId}
               className="mt-1.5 font-sans text-xl font-semibold leading-tight tracking-[-0.02em] text-foreground"

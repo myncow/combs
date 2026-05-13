@@ -39,7 +39,7 @@ describe.skipIf(!isLeaderboardStoreTestDbConfigured)("content store", () => {
     expect(galleryPage && galleryPage.key === "gallery" ? galleryPage.heading : null).toBe("Maps");
     expect(leaderboardPage?.key).toBe("leaderboard");
     expect(leaderboardPage && leaderboardPage.key === "leaderboard" ? leaderboardPage.heading : null).toBe(
-      "Top list",
+      "Leaderboard",
     );
   });
 });

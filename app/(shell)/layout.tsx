@@ -2,62 +2,56 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { ExplorerSidebar } from "@/components/explorer-sidebar";
 import { getSessionUser } from "@/lib/auth/admin";
-import type { NavigationLink, SavedMap, SiteSettings } from "@/lib/types";
+import type { NavigationLink, SiteSettings } from "@/lib/types";
 import { getNavigation, getSiteSettings, listMaps } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
 async function ExplorerSidebarLoader() {
   const user = await getSessionUser();
-  const isSignedIn = Boolean(user);
-  const mapsResult = user
-    ? await listMaps({
-        pageSize: 48,
-        status: "library",
-        page: 1,
-        ownerId: user.id,
-        // Surface the public catalog alongside the viewer's own library so
-        // seeded/system maps (no owner) stay visible after sign-in.
-        includePublic: true,
-      })
-    : await listMaps({
-        pageSize: 48,
-        status: "library",
-        page: 1,
-        publicOnly: true,
-      });
+  if (!user) return null;
+  // Personal library only — `includePublic` removed so the rail no longer
+  // mixes in seed/system maps. The public catalog lives at /gallery.
+  const mapsResult = await listMaps({
+    pageSize: 48,
+    status: "library",
+    page: 1,
+    ownerId: user.id,
+  });
 
   return (
     <ExplorerSidebar
-      isSignedIn={isSignedIn}
-      isAdmin={user?.isAdmin ?? false}
+      isSignedIn
       initialMaps={{ items: mapsResult.items, total: mapsResult.total }}
     />
   );
 }
 
 export default async function ShellLayout({ children }: { children: React.ReactNode }) {
-  const footerData: { settings: SiteSettings; links: NavigationLink[] } = await Promise.all([
+  const [footerSettings, footerLinks, sessionUser] = await Promise.all([
     getSiteSettings(),
     getNavigation("footer_primary"),
-  ]).then(([settings, links]) => ({
-    settings,
-    links,
-  }));
+    getSessionUser(),
+  ]);
+  const isSignedIn = Boolean(sessionUser);
 
   return (
     <>
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        <div className="order-2 flex md:order-1 md:min-h-0">
-          <Suspense
-            fallback={<aside className="hidden w-[min(320px,30vw)] shrink-0 border-r border-border md:block md:h-full" />}
-          >
-            <ExplorerSidebarLoader />
-          </Suspense>
-        </div>
+        {isSignedIn ? (
+          <div className="order-2 flex md:order-1 md:min-h-0">
+            <Suspense
+              fallback={
+                <aside className="hidden w-[min(320px,30vw)] shrink-0 border-r border-border md:block md:h-full" />
+              }
+            >
+              <ExplorerSidebarLoader />
+            </Suspense>
+          </div>
+        ) : null}
         <div className="order-1 flex min-h-0 min-w-0 flex-1 flex-col md:order-2">{children}</div>
       </div>
-      <ShellFooter settings={footerData.settings} links={footerData.links} />
+      <ShellFooter settings={footerSettings} links={footerLinks} />
     </>
   );
 }

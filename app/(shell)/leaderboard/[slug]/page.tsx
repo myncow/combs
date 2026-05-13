@@ -13,7 +13,7 @@ export async function generateMetadata({
     return {};
   }
   return {
-    title: `${entry.storyTitle} | Top List`,
+    title: `${entry.storyTitle} | Leaderboard`,
     description: entry.storySummary,
     openGraph: {
       title: entry.storyTitle,

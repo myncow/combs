@@ -23,6 +23,46 @@ afterEach(() => {
 });
 
 describe("SignedOutHome", () => {
+  it("renders sign-up + sign-in CTAs when signed-out", () => {
+    render(
+      <SignedOutHome
+        signInHref="/auth/sign-in?x=1"
+        signUpHref="/auth/sign-up?x=1"
+        leaderboardHref="/leaderboard"
+        preview={[]}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: /start a map/i })).toHaveAttribute(
+      "href",
+      "/auth/sign-up?x=1",
+    );
+    expect(screen.getByRole("link", { name: /sign in/i })).toHaveAttribute(
+      "href",
+      "/auth/sign-in?x=1",
+    );
+    expect(screen.queryByRole("link", { name: /start a new map/i })).toBeNull();
+  });
+
+  it("renders 'Start a new map' linking to /create when signed-in", () => {
+    render(
+      <SignedOutHome
+        isSignedIn
+        signInHref="/auth/sign-in"
+        signUpHref="/auth/sign-up"
+        leaderboardHref="/leaderboard"
+        preview={[]}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: /start a new map/i })).toHaveAttribute(
+      "href",
+      "/create",
+    );
+    expect(screen.queryByRole("link", { name: /sign in/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^start a map$/i })).toBeNull();
+  });
+
   it("shows the browse hero, start CTA, and the spotlight grid", () => {
     const preview = [
       makeListedLeaderboardEntry({ id: "1", slug: "first", storyTitle: "Featured story" }),

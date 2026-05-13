@@ -117,7 +117,7 @@ export async function ensureEditorialContentSeeded() {
         {
           id: "nav_header_top_list",
           location: "header_primary",
-          label: "Top list",
+          label: "Leaderboard",
           href: "/leaderboard",
           sortOrder: 1,
           isEnabled: true,
@@ -141,7 +141,7 @@ export async function ensureEditorialContentSeeded() {
         {
           id: "nav_footer_top_list",
           location: "footer_primary",
-          label: "Top list",
+          label: "Leaderboard",
           href: "/leaderboard",
           sortOrder: 3,
           isEnabled: true,
@@ -210,7 +210,7 @@ export async function getNavigation(location: NavigationLocation): Promise<Navig
         {
           id: "nav_header_top_list",
           location,
-          label: "Top list",
+          label: "Leaderboard",
           href: "/leaderboard",
           sortOrder: 1,
           isEnabled: true,
@@ -238,7 +238,7 @@ export async function getNavigation(location: NavigationLocation): Promise<Navig
         {
           id: "nav_footer_top_list",
           location,
-          label: "Top list",
+          label: "Leaderboard",
           href: "/leaderboard",
           sortOrder: 3,
           isEnabled: true,
