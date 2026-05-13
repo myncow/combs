@@ -63,10 +63,6 @@ export const testBreadMapDocument: MapDocument = {
       values: [...fermentations],
     },
   ],
-  cellSchema: {
-    primaryX: "grain",
-    primaryY: "fermentation",
-  },
   cells: buildCells(),
   featuredExamples: [
     {

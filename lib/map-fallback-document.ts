@@ -153,10 +153,6 @@ export function buildFallbackMapDocument(
     domain: brief.domain,
     topicFamily: brief.topicFamily,
     dimensions,
-    cellSchema: {
-      primaryX: x.key,
-      primaryY: y.key,
-    },
     cells,
     featuredExamples,
     notableGaps: cells

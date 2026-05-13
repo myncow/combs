@@ -79,7 +79,6 @@ describe("enrichMapDocumentReferenceImages", () => {
         { key: "ax", label: "AX", description: "d", values: ["a", "b"] },
         { key: "ay", label: "AY", description: "d", values: ["c", "d"] },
       ],
-      cellSchema: { primaryX: "ax", primaryY: "ay" },
       cells: [
         {
           id: "c1",
@@ -152,7 +151,6 @@ describe("enrichMapDocumentReferenceImages", () => {
         { key: "ax", label: "AX", description: "d", values: ["0", "1", "2"] },
         { key: "ay", label: "AY", description: "d", values: ["0", "1"] },
       ],
-      cellSchema: { primaryX: "ax", primaryY: "ay" },
       featuredExamples: examples.slice(0, 4),
       cells: [
         {
@@ -204,7 +202,6 @@ describe("enrichMapDocumentReferenceImages", () => {
         { key: "ax", label: "AX", description: "d", values: ["0", "1"] },
         { key: "ay", label: "AY", description: "d", values: ["0", "1"] },
       ],
-      cellSchema: { primaryX: "ax", primaryY: "ay" },
       featuredExamples: [
         {
           name: "SecondToken",

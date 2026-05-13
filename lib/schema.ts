@@ -60,6 +60,7 @@ export const mapCellVisualizationSchema = z.object({
   caption: z.string().optional(),
   updatedAt: z.string(),
   imageModel: z.string().min(1).max(160).optional(),
+  prompt: z.string().max(8000).optional(),
   byteHash: z.string().regex(/^[a-f0-9]{64}$/).optional(),
 });
 
@@ -111,11 +112,6 @@ export const mapDocumentSchema = z.object({
     )
     .min(2)
     .max(2),
-  cellSchema: z.object({
-    primaryX: z.string(),
-    primaryY: z.string(),
-    secondary: z.array(z.string()).optional(),
-  }),
   cells: z.array(mapCellSchema).min(9),
   featuredExamples: z.array(mapExampleSchema).min(2),
   notableGaps: z
@@ -226,7 +222,7 @@ export const leaderboardVoteResultSchema = z.object({
 
 export const mapFiltersSchema = z.object({
   topicFamily: z.string().optional(),
-  status: z.enum(["all", "published", "internal", "failed", "live", "library"]).optional(),
+  status: z.enum(["all", "published", "failed", "live", "library"]).optional(),
   sort: z
     .enum(["recent", "quality"])
     .default("recent")

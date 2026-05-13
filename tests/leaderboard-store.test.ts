@@ -17,6 +17,7 @@ vi.mock("@/lib/cell-visualization-storage", async () => {
 
 import { resetDbClientForTests, getDb } from "@/lib/db/client";
 import {
+  applyMapPatch,
   castLeaderboardVote,
   getLeaderboardEntryBySlug,
   getMapBySlug,
@@ -25,6 +26,8 @@ import {
   publishGapSpotlight,
   saveMap,
 } from "@/lib/store";
+import { mapsTable, spotlightsTable, spotlightVotesTable } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import type { MapBrief, MapDocument, NormalizedMapBrief } from "@/lib/types";
 import { testBreadMapDocument } from "./fixtures/bread-map-document";
 
@@ -218,6 +221,51 @@ describe.skipIf(!isLeaderboardStoreTestDbConfigured)("leaderboard store", () => 
     expect(listed.items.map((entry) => entry.cellId)).toEqual(
       expect.arrayContaining(["rice-sourdough", "rice-chemical"]),
     );
+  });
+
+  it("preserves cell ids across applyMapPatch so spotlights and votes survive a re-edit", async () => {
+    await patchMapCellVisualization("bread-map", "rice-sourdough", {
+      imageUrl: "https://images.test/rice-sourdough-survives.jpg",
+      updatedAt: "2026-05-04T00:00:00.000Z",
+    });
+
+    const spotlight = await publishGapSpotlight({
+      mapSlug: "bread-map",
+      cellId: "rice-sourdough",
+      storyTitle: "Survives an edit",
+      storySummary: "This spotlight must remain after the map is patched.",
+    });
+
+    await castLeaderboardVote({
+      slug: spotlight.slug,
+      requesterId: "viewer-survives",
+      direction: "up",
+    });
+
+    const db = getDb();
+    const mapRow = await db.select().from(mapsTable).where(eq(mapsTable.slug, "bread-map")).limit(1);
+    const mapId = mapRow[0]!.id;
+
+    await applyMapPatch({
+      mapId,
+      mutate: (current) => ({
+        ...current,
+        summary: "Patched after spotlight publish.",
+      }),
+    });
+
+    const stillThere = await getLeaderboardEntryBySlug(spotlight.slug, "viewer-survives");
+    expect(stillThere).not.toBeNull();
+    expect(stillThere!.imageUrl).toBe("https://images.test/rice-sourdough-survives.jpg");
+
+    const votes = await db
+      .select()
+      .from(spotlightVotesTable)
+      .where(eq(spotlightVotesTable.spotlightId, spotlight.id));
+    expect(votes).toHaveLength(1);
+    expect(votes[0]!.direction).toBe("up");
+
+    void spotlightsTable;
   });
 
   it("supports anonymous vote mutation plus top/new sorting and topic-family filtering", async () => {

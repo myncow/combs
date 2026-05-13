@@ -12,7 +12,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
-export const mapStatusEnum = pgEnum("map_status", ["published", "internal", "failed", "generating"]);
+export const mapStatusEnum = pgEnum("map_status", ["published", "failed", "generating"]);
 export const mapCellStatusEnum = pgEnum("map_cell_status", ["existing", "rare", "gap", "tension", "impossible"]);
 export const pageStatusEnum = pgEnum("page_status", ["draft", "published", "archived"]);
 export const pageTemplateEnum = pgEnum("page_template", ["home", "listing"]);
@@ -282,14 +282,6 @@ export const mapGenerationRunsTable = pgTable("map_generation_runs", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const examplePromptsTable = pgTable("example_prompts", {
-  id: varchar("id", { length: 64 }).primaryKey(),
-  title: varchar("title", { length: 120 }).notNull(),
-  topicFamily: varchar("topic_family", { length: 80 }).notNull(),
-  prompt: text("prompt").notNull(),
-  whyItWorks: text("why_it_works").notNull(),
-});
-
 export const spotlightsTable = pgTable(
   "spotlights",
   {
@@ -431,5 +423,3 @@ export const listingPageRevisionsTable = pgTable("listing_page_revisions", {
   emptyStateTitle: varchar("empty_state_title", { length: 120 }).notNull(),
   emptyStateBody: text("empty_state_body").notNull(),
 });
-
-export const generationRunsTable = mapGenerationRunsTable;

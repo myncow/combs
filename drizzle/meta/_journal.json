@@ -57,6 +57,13 @@
       "when": 1778638800000,
       "tag": "0007_map_visibility_ownership",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1778684352190,
+      "tag": "0008_drop_example_prompts_and_internal_status",
+      "breakpoints": true
     }
   ]
 }

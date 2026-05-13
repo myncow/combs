@@ -132,7 +132,6 @@ describe("runMapGenerationCore", () => {
       domain: "d",
       topicFamily: "t",
       dimensions: normalizedBrief.dimensions.map((d) => ({ ...d, values: ["1"] })),
-      cellSchema: { primaryX: "a", primaryY: "a" },
       cells: [],
       featuredExamples: [],
       notableGaps: [],

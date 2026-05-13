@@ -33,7 +33,6 @@ Create a Postgres database, point `DATABASE_URL` at it, then apply schema:
 
 ```bash
 pnpm db:migrate
-pnpm db:backfill
 pnpm dev
 ```
 
@@ -43,10 +42,9 @@ Other commands:
 pnpm lint
 pnpm test
 pnpm build
-pnpm db:backfill
 ```
 
-`pnpm db:backfill` seeds editorial site content and backfills existing document-era map and leaderboard rows into the relational schema used by the current app.
+Editorial site content (site settings, navigation, page revisions) seeds itself on first read at runtime — there is no separate backfill step.
 
 ### Tests and Postgres
 
@@ -63,5 +61,4 @@ GitHub Actions (`.github/workflows/ci.yml`) starts Postgres, migrates, then runs
   - `GET /api/maps/[slug]`
   - `GET /api/example-images`
   - `POST /api/example-images`
-  - `GET /api/example-prompts` (reads `example_prompts` in Postgres)
 - The create flow uses a server action for generation and persistence.

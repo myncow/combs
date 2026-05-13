@@ -72,10 +72,6 @@ function skeleton(): MapSkeletonInput {
       { key: "axis_x", label: "Axis X", description: "X", values: ["A", "B", "C"] },
       { key: "axis_y", label: "Axis Y", description: "Y", values: ["1", "2", "3"] },
     ],
-    cellSchema: {
-      primaryX: "axis_x",
-      primaryY: "axis_y",
-    },
     constraints: [
       {
         label: "Constraint one",

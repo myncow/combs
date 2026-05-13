@@ -18,7 +18,6 @@ const STATUS_OPTIONS: Array<{ value: "all" | MapVisibility; label: string }> = [
   { value: "published", label: "Published" },
   { value: "generating", label: "Generating" },
   { value: "failed", label: "Failed" },
-  { value: "internal", label: "Internal" },
 ];
 
 function paramValue(value: string | string[] | undefined): string {

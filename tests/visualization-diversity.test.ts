@@ -17,7 +17,6 @@ const baseDoc: MapDocument = {
     { key: "ax", label: "AX", description: "", values: ["a", "b"] },
     { key: "ay", label: "AY", description: "", values: ["c", "d"] },
   ],
-  cellSchema: { primaryX: "ax", primaryY: "ay" },
   cells: [],
   featuredExamples: [],
   notableGaps: [],

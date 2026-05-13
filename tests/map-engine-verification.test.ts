@@ -39,10 +39,6 @@ function verificationDoc(): MapDocument {
         values: ["1", "2", "3"],
       },
     ],
-    cellSchema: {
-      primaryX: "axis_x",
-      primaryY: "axis_y",
-    },
     cells: [
       {
         id: "a-1",

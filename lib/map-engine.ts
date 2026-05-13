@@ -937,9 +937,7 @@ function postProcessMapDocument(document: MapDocument, brief: NormalizedMapBrief
 }
 
 function getPrimaryDimensions(skeleton: MapSkeletonInput) {
-  const xDimension = skeleton.dimensions.find((dimension) => dimension.key === skeleton.cellSchema.primaryX) ?? skeleton.dimensions[0];
-  const yDimension = skeleton.dimensions.find((dimension) => dimension.key === skeleton.cellSchema.primaryY) ?? skeleton.dimensions[1];
-
+  const [xDimension, yDimension] = skeleton.dimensions;
   return { xDimension, yDimension };
 }
 
@@ -1447,7 +1445,7 @@ async function modelGenerateMapSkeleton(
 You are an expert systems analyst specializing in orthogonal 2-axis combinatorial maps.
 Your job is to build the structural SKELETON of a gap-first combinatorial map for whatever domain the normalized brief declares.
 Do NOT generate the cells. You MUST emit every structural field:
-title, slug, summary, intro, domain, topicFamily, dimensions, cellSchema, constraints, renderingHints, and seo.
+title, slug, summary, intro, domain, topicFamily, dimensions, constraints, renderingHints, and seo.
 ${researchSection}${emptyResearchNotice}
 Skeleton quality targets:
 - FORBIDDEN WORDS in every user-visible string (title, summary, intro, domain, topicFamily, dimension labels/descriptions, value labels, constraint labels/explanations, seo.title, seo.description): the words "taxonomy", "taxonomic", and "taxonomical". Use plain words like "map", "guide", "structure", "classification scheme", or just the domain name. Internal constraint kinds may stay as-is — this rule applies to human-readable copy only.
@@ -1985,7 +1983,7 @@ export async function generateMapDocument(
   }
 
   if (liveId) {
-    // First substantive patch: dimensions, cellSchema, summary, intro, etc.
+    // First substantive patch: dimensions, summary, intro, etc.
     // The grid in `live` mode lays out as soon as dimensions populate.
     await applyMapPatch({
       mapId: liveId,
@@ -1998,7 +1996,6 @@ export async function generateMapDocument(
         domain: skeleton.domain || current.domain,
         topicFamily: skeleton.topicFamily || current.topicFamily,
         dimensions: skeleton.dimensions,
-        cellSchema: skeleton.cellSchema,
         constraints: skeleton.constraints ?? current.constraints,
         renderingHints: skeleton.renderingHints ?? current.renderingHints,
         visualSeries: skeleton.visualSeries ?? current.visualSeries,

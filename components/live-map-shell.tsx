@@ -25,7 +25,7 @@ export function LiveMapShell({
   const reduceMotion = useReducedMotion() ?? false;
   const [doc, setDoc] = useState<MapDocument>(initial.document);
   const initialLive: LiveStatus =
-    initial.status === "published" || initial.status === "internal"
+    initial.status === "published"
       ? "published"
       : initial.status === "failed"
         ? "failed"

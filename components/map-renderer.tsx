@@ -601,10 +601,8 @@ export function MapRenderer({
   live?: boolean;
   canMutateMap?: boolean;
 }) {
-  const xDimension =
-    document.dimensions.find((dimension) => dimension.key === document.cellSchema.primaryX) ?? document.dimensions[0];
-  const yDimension =
-    document.dimensions.find((dimension) => dimension.key === document.cellSchema.primaryY) ?? document.dimensions[1];
+  const xDimension = document.dimensions[0];
+  const yDimension = document.dimensions[1];
 
   if (!xDimension || !yDimension || !xDimension.values?.length || !yDimension.values?.length) {
     return <LiveSkeletonGrid live={live} />;

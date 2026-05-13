@@ -1,7 +1,7 @@
 import type { GenerationMetrics } from "@/lib/generation-metrics";
 
 export const MAP_CELL_STATUSES = ["existing", "rare", "gap", "tension", "impossible"] as const;
-export const MAP_VISIBILITY = ["published", "internal", "failed", "generating"] as const;
+export const MAP_VISIBILITY = ["published", "failed", "generating"] as const;
 export const MAP_VISUAL_SERIES_PRESETS = [
   "natural-history-plate",
   "editorial-habitat-photo",
@@ -174,11 +174,6 @@ export interface MapDocument {
     description: string;
     values: string[];
   }>;
-  cellSchema: {
-    primaryX: string;
-    primaryY: string;
-    secondary?: string[];
-  };
   cells: MapCell[];
   featuredExamples: MapExample[];
   notableGaps: Array<{
@@ -260,15 +255,6 @@ export interface SavedMap {
    * Keep optional so stored rows that pre-date this field stay compatible.
    */
   thumbnailUrl?: string | null;
-}
-
-export interface ExamplePrompt {
-  id: string;
-  title: string;
-  topicFamily: string;
-  prompt: string;
-  whyItWorks: string;
-  traits?: [string, string, string];
 }
 
 export interface SiteSettings {

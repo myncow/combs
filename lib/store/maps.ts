@@ -1,9 +1,9 @@
-import { and, asc, desc, eq, ilike, inArray, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
+import { del as deleteBlob } from "@vercel/blob";
 import { materializeCellImageAsset } from "@/lib/cell-visualization-storage";
 import { appConfig } from "@/lib/config";
 import { getDb } from "@/lib/db/client";
 import {
-  examplePromptsTable,
   mapAxesTable,
   mapAxisValuesTable,
   mapCalloutsTable,
@@ -22,7 +22,6 @@ import {
 } from "@/lib/db/schema";
 import type { GenerationMetrics } from "@/lib/generation-metrics";
 import type {
-  ExamplePrompt,
   GenerationRun,
   LeaderboardEntry,
   LeaderboardSort,
@@ -216,54 +215,56 @@ async function resolveVisualizationMediaAssetInput(
   };
 }
 
-async function clearMapRelations(db: DbLike, mapId: string) {
-  const cellRows = await db
-    .select({ id: mapCellsTable.id })
-    .from(mapCellsTable)
-    .where(eq(mapCellsTable.mapId, mapId));
-  const cellIds = cellRows.map((row: any) => row.id);
-
-  const exampleRows = await db
-    .select({ id: mapExamplesTable.id })
-    .from(mapExamplesTable)
-    .where(eq(mapExamplesTable.mapId, mapId));
-  const exampleIds = exampleRows.map((row: any) => row.id);
-
-  if (cellIds.length) {
-    await db.delete(mapCellBadgesTable).where(inArray(mapCellBadgesTable.cellId, cellIds));
-    await db.delete(mapCellCoordinatesTable).where(inArray(mapCellCoordinatesTable.cellId, cellIds));
-  }
-  if (exampleIds.length) {
-    await db
-      .delete(mapExampleReferenceImagesTable)
-      .where(inArray(mapExampleReferenceImagesTable.exampleId, exampleIds));
-    await db.delete(mapFeaturedExamplesTable).where(inArray(mapFeaturedExamplesTable.exampleId, exampleIds));
-  }
-
-  await db.delete(mapExamplesTable).where(eq(mapExamplesTable.mapId, mapId));
-  await db.delete(mapCalloutsTable).where(eq(mapCalloutsTable.mapId, mapId));
-  await db.delete(mapConstraintsTable).where(eq(mapConstraintsTable.mapId, mapId));
-  await db.delete(mapCellsTable).where(eq(mapCellsTable.mapId, mapId));
-
-  const axisRows = await db
-    .select({ id: mapAxesTable.id })
-    .from(mapAxesTable)
-    .where(eq(mapAxesTable.mapId, mapId));
-  const axisIds = axisRows.map((row: any) => row.id);
-  if (axisIds.length) {
-    await db.delete(mapAxisValuesTable).where(inArray(mapAxisValuesTable.axisId, axisIds));
-  }
-  await db.delete(mapAxesTable).where(eq(mapAxesTable.mapId, mapId));
-}
-
 function findCellByCoordinates(document: MapDocument, coordinates: Record<string, string>) {
   return document.cells.find((cell) =>
     Object.entries(coordinates).every(([key, value]) => cell.coordinates[key] === value),
   );
 }
 
+/**
+ * Persist `document` against the existing relational rows for `mapId`.
+ *
+ * Cell `id` is preserved across calls (keyed by `cell_key`) so that cross-table
+ * references — most importantly `spotlights.cell_id` (ON DELETE CASCADE) and
+ * the spotlight votes hanging off it — survive subsequent edits. Axes,
+ * examples, constraints, callouts, and per-cell child rows (badges,
+ * coordinates) are wiped and re-inserted because nothing outside the map
+ * references their ids; replacing them is simpler than computing a per-row
+ * diff and there are no FKs to worry about.
+ */
 async function syncMapRelations(db: DbLike, mapId: string, document: MapDocument) {
-  await clearMapRelations(db, mapId);
+  const existingCellRows = await db
+    .select({ id: mapCellsTable.id, cellKey: mapCellsTable.cellKey })
+    .from(mapCellsTable)
+    .where(eq(mapCellsTable.mapId, mapId));
+  const existingCellIdByKey = new Map<string, string>(
+    existingCellRows.map((row: any) => [row.cellKey, row.id]),
+  );
+
+  const nextCellKeys = new Set(document.cells.map((cell) => cell.id));
+  const cellIdsToDelete = existingCellRows
+    .filter((row: any) => !nextCellKeys.has(row.cellKey))
+    .map((row: any) => row.id);
+  if (cellIdsToDelete.length) {
+    await db.delete(mapCellsTable).where(inArray(mapCellsTable.id, cellIdsToDelete));
+  }
+
+  // Wipe everything outside `map_cells`. Deleting axes cascades through
+  // `map_axis_values` and `map_cell_coordinates`; deleting examples cascades
+  // through `map_featured_examples` and `map_example_reference_images`.
+  await db.delete(mapAxesTable).where(eq(mapAxesTable.mapId, mapId));
+  await db.delete(mapExamplesTable).where(eq(mapExamplesTable.mapId, mapId));
+  await db.delete(mapConstraintsTable).where(eq(mapConstraintsTable.mapId, mapId));
+  await db.delete(mapCalloutsTable).where(eq(mapCalloutsTable.mapId, mapId));
+
+  // Per-cell child rows get re-inserted below, but axes deletion only cleared
+  // coordinates — we need to reset badges for cells that survive too.
+  const preservedCellIds = document.cells
+    .map((cell) => existingCellIdByKey.get(cell.id))
+    .filter((id): id is string => typeof id === "string");
+  if (preservedCellIds.length) {
+    await db.delete(mapCellBadgesTable).where(inArray(mapCellBadgesTable.cellId, preservedCellIds));
+  }
 
   const axisIdByKey = new Map<string, string>();
   const axisValueIdByAxisValue = new Map<string, string>();
@@ -293,8 +294,10 @@ async function syncMapRelations(db: DbLike, mapId: string, document: MapDocument
   }
 
   for (const [cellIndex, cell] of document.cells.entries()) {
-    const cellId = `cell_${crypto.randomUUID()}`;
+    const existingCellId = existingCellIdByKey.get(cell.id);
+    const cellId = existingCellId ?? `cell_${crypto.randomUUID()}`;
     cellIdByKey.set(cell.id, cellId);
+
     const visualizationAssetId = cell.visualization?.imageUrl
       ? await ensureMediaAsset(
           db,
@@ -306,8 +309,7 @@ async function syncMapRelations(db: DbLike, mapId: string, document: MapDocument
         )
       : null;
 
-    await db.insert(mapCellsTable).values({
-      id: cellId,
+    const cellValues = {
       mapId,
       cellKey: cell.id,
       label: cell.label,
@@ -320,7 +322,13 @@ async function syncMapRelations(db: DbLike, mapId: string, document: MapDocument
       visualizationImageModel: cell.visualization?.imageModel ?? null,
       visualizationPrompt: cell.visualization?.prompt ?? null,
       visualizationByteHash: cell.visualization?.byteHash ?? null,
-    });
+    };
+
+    if (existingCellId) {
+      await db.update(mapCellsTable).set(cellValues).where(eq(mapCellsTable.id, existingCellId));
+    } else {
+      await db.insert(mapCellsTable).values({ id: cellId, ...cellValues });
+    }
 
     let badgeIndex = 0;
     for (const badge of cell.badges) {
@@ -419,12 +427,11 @@ async function syncMapRelations(db: DbLike, mapId: string, document: MapDocument
   }
 
   for (const [calloutIndex, callout] of document.notableGaps.entries()) {
+    const matchedCell = findCellByCoordinates(document, callout.coordinates);
     await db.insert(mapCalloutsTable).values({
       id: `callout_${crypto.randomUUID()}`,
       mapId,
-      cellId: findCellByCoordinates(document, callout.coordinates)?.id
-        ? cellIdByKey.get(findCellByCoordinates(document, callout.coordinates)!.id) ?? null
-        : null,
+      cellId: matchedCell ? cellIdByKey.get(matchedCell.id) ?? null : null,
       kind: "notable_gap",
       label: callout.label,
       explanation: callout.explanation,
@@ -434,12 +441,11 @@ async function syncMapRelations(db: DbLike, mapId: string, document: MapDocument
   }
 
   for (const [calloutIndex, callout] of document.impossibleCombos.entries()) {
+    const matchedCell = findCellByCoordinates(document, callout.coordinates);
     await db.insert(mapCalloutsTable).values({
       id: `callout_${crypto.randomUUID()}`,
       mapId,
-      cellId: findCellByCoordinates(document, callout.coordinates)?.id
-        ? cellIdByKey.get(findCellByCoordinates(document, callout.coordinates)!.id) ?? null
-        : null,
+      cellId: matchedCell ? cellIdByKey.get(matchedCell.id) ?? null : null,
       kind: "impossible_combo",
       label: callout.label,
       explanation: callout.explanation,
@@ -480,7 +486,6 @@ function buildStoredMapDocument(row: MapRow): MapDocument {
     domain: row.domain,
     topicFamily: row.topicFamily,
     dimensions: [],
-    cellSchema: { primaryX: "", primaryY: "" },
     cells: [],
     featuredExamples: [],
     notableGaps: [],
@@ -665,7 +670,6 @@ async function hydrateMapDocument(db: DbLike, row: MapRow): Promise<MapDocument>
       description: axis.description,
       values: (valuesByAxisId.get(axis.id) ?? []).map((value: any) => value.label),
     })),
-    cellSchema: { primaryX: axisRows[0]?.axisKey ?? "", primaryY: axisRows[1]?.axisKey ?? "" },
     cells,
     featuredExamples: featuredRows
       .map((featured: any) => exampleById.get(featured.exampleId))
@@ -771,23 +775,6 @@ async function hydrateSpotlightRows(
   );
 
   return attachViewerVote(items, votes, requesterId);
-}
-
-export async function listExamplePrompts(): Promise<ExamplePrompt[]> {
-  try {
-    const db = getDb();
-    const rows = await db.select().from(examplePromptsTable).orderBy(asc(examplePromptsTable.title));
-    return rows.map((row) => ({
-      id: row.id,
-      title: row.title,
-      topicFamily: row.topicFamily,
-      prompt: row.prompt,
-      whyItWorks: row.whyItWorks,
-    }));
-  } catch (error) {
-    logReadFallback("listExamplePrompts", error);
-    return [];
-  }
 }
 
 export async function listLeaderboardTopicFamilies(): Promise<string[]> {
@@ -1218,7 +1205,61 @@ export async function deleteMapBySlug(slug: string) {
   const db = getDb();
   const existingMap = await getMapBySlug(slug);
   if (!existingMap) return null;
+
+  // Collect media_assets that this map's cells/spotlights are the only owners
+  // of. We do this BEFORE the cascade delete (the FK on
+  // map_cells.visualization_asset_id is `set null` only on asset delete; on
+  // map delete the cell row vanishes and the asset row is left orphaned).
+  const ownedAssetRows: Array<{ id: string; provider: string; storageKey: string | null; publicUrl: string }> =
+    await db
+      .select({
+        id: mediaAssetsTable.id,
+        provider: mediaAssetsTable.provider,
+        storageKey: mediaAssetsTable.storageKey,
+        publicUrl: mediaAssetsTable.publicUrl,
+      })
+      .from(mediaAssetsTable)
+      .where(
+        and(
+          isNotNull(mediaAssetsTable.id),
+          or(
+            inArray(
+              mediaAssetsTable.id,
+              db
+                .select({ id: mapCellsTable.visualizationAssetId })
+                .from(mapCellsTable)
+                .where(and(eq(mapCellsTable.mapId, existingMap.id), isNotNull(mapCellsTable.visualizationAssetId))),
+            ),
+            inArray(
+              mediaAssetsTable.id,
+              db
+                .select({ id: spotlightsTable.imageAssetId })
+                .from(spotlightsTable)
+                .where(and(eq(spotlightsTable.mapId, existingMap.id), isNotNull(spotlightsTable.imageAssetId))),
+            ),
+          )!,
+        ),
+      );
+
   await db.delete(mapsTable).where(eq(mapsTable.slug, slug));
+
+  if (ownedAssetRows.length) {
+    const assetIds = ownedAssetRows.map((row) => row.id);
+    await db.delete(mediaAssetsTable).where(inArray(mediaAssetsTable.id, assetIds));
+
+    const blobUrls = ownedAssetRows
+      .filter((row) => row.provider === "vercel_blob")
+      .map((row) => row.publicUrl)
+      .filter((url): url is string => typeof url === "string" && url.length > 0);
+    if (blobUrls.length) {
+      try {
+        await deleteBlob(blobUrls);
+      } catch (error) {
+        console.error(`[deleteMapBySlug] blob cleanup failed for ${slug}:`, error);
+      }
+    }
+  }
+
   return existingMap;
 }
 
@@ -1380,7 +1421,6 @@ function buildPlaceholderDocument(brief: MapBrief, slug: string): MapDocument {
     domain: "",
     topicFamily: "",
     dimensions: [],
-    cellSchema: { primaryX: "", primaryY: "" },
     cells: [],
     featuredExamples: [],
     notableGaps: [],

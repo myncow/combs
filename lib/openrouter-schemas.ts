@@ -202,15 +202,6 @@ export const mapDocumentJsonSchema = {
       minItems: 2,
       maxItems: 2,
     },
-    cellSchema: {
-      type: "object",
-      properties: {
-        primaryX: { type: "string" },
-        primaryY: { type: "string" },
-      },
-      required: ["primaryX", "primaryY"],
-      additionalProperties: false,
-    },
     cells: {
       type: "array",
       items: mapCellSchema,
@@ -274,7 +265,6 @@ export const mapDocumentJsonSchema = {
     "domain",
     "topicFamily",
     "dimensions",
-    "cellSchema",
     "cells",
     "featuredExamples",
     "notableGaps",
@@ -300,15 +290,6 @@ export const mapSkeletonJsonSchema = {
       items: dimensionDocumentSchema,
       minItems: 2,
       maxItems: 2,
-    },
-    cellSchema: {
-      type: "object",
-      properties: {
-        primaryX: { type: "string" },
-        primaryY: { type: "string" },
-      },
-      required: ["primaryX", "primaryY"],
-      additionalProperties: false,
     },
     constraints: {
       type: "array",
@@ -357,7 +338,6 @@ export const mapSkeletonJsonSchema = {
     "domain",
     "topicFamily",
     "dimensions",
-    "cellSchema",
     "constraints",
     "renderingHints",
     "seo",

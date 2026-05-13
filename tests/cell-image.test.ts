@@ -26,10 +26,6 @@ const birdDocument: MapDocument = {
       values: ["Wading", "Perching", "Soaring"],
     },
   ],
-  cellSchema: {
-    primaryX: "habitat",
-    primaryY: "behavior",
-  },
   cells: [],
   featuredExamples: [],
   notableGaps: [
@@ -209,10 +205,6 @@ const eggHamDocument: MapDocument = {
       values: ["Translucent Pale Pink", "Mahogany"],
     },
   ],
-  cellSchema: {
-    primaryX: "yolk-chroma",
-    primaryY: "meat-pigmentation",
-  },
   cells: [
     eggHamCell,
     {
