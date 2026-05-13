@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Globe, Lock, Save, Send, X } from "lucide-react";
 import { publishGapSpotlightAction, type PublishGapSpotlightActionState } from "@/app/actions";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { dispatchLibraryRefresh } from "@/lib/client-events";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 import { cn } from "@/lib/utils";
 
 const LOCAL_DRAFT_PREFIX = "raster-gap-spotlight-draft";
@@ -99,20 +100,45 @@ export function GapSpotlightSheet({
     window.setTimeout(() => setDraftFeedback(null), 1800);
   }
 
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const titleId = useId();
+  useFocusTrap(dialogRef, true);
+
+  useEffect(() => {
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-[color:color-mix(in_srgb,var(--foreground)_58%,transparent)] p-4">
-      <div className="w-full max-w-lg border border-border bg-background shadow-2xl">
+    <div
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-[color:color-mix(in_srgb,var(--foreground)_58%,transparent)] p-4"
+      onClick={onClose}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        onClick={(event) => event.stopPropagation()}
+        className="w-full max-w-lg border border-border bg-background shadow-[var(--shadow-overlay)]"
+      >
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div className="min-w-0">
             <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-primary">Top list</p>
-            <h3 className="mt-1.5 font-sans text-xl font-semibold leading-tight tracking-[-0.02em] text-foreground">
+            <h3
+              id={titleId}
+              className="mt-1.5 font-sans text-xl font-semibold leading-tight tracking-[-0.02em] text-foreground"
+            >
               Submit your spotlight
             </h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-9 w-9 items-center justify-center border border-border bg-card text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
+            className="inline-flex h-9 w-9 items-center justify-center border border-border bg-card text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             aria-label="Close"
           >
             <X className="h-4 w-4" aria-hidden />
@@ -224,7 +250,12 @@ export function GapSpotlightSheet({
           </div>
 
           {state.status === "error" ? (
-            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary">{state.message}</p>
+            <p
+              role="alert"
+              className="font-mono text-[11px] uppercase tracking-[0.2em] text-destructive"
+            >
+              {state.message}
+            </p>
           ) : null}
         </form>
       </div>

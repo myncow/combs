@@ -119,7 +119,7 @@ export default async function AdminMapsPage({
               <select
                 name="status"
                 defaultValue={status}
-                className="mt-1 h-9 w-full border border-border bg-background px-2 font-mono text-[11px] uppercase tracking-[0.14em] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="mt-1 h-9 w-full border-b border-border bg-transparent font-mono text-[12px] uppercase tracking-[0.14em] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {STATUS_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -135,7 +135,7 @@ export default async function AdminMapsPage({
               <select
                 name="visibility"
                 defaultValue={visibility ?? ""}
-                className="mt-1 h-9 w-full border border-border bg-background px-2 font-mono text-[11px] uppercase tracking-[0.14em] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="mt-1 h-9 w-full border-b border-border bg-transparent font-mono text-[12px] uppercase tracking-[0.14em] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="">All</option>
                 <option value="public">Public</option>
@@ -251,31 +251,27 @@ export default async function AdminMapsPage({
             aria-label="Pagination"
             className="flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground"
           >
-            <Link
-              href={pageHref(Math.max(1, page - 1))}
-              aria-disabled={page <= 1}
-              className={
-                page <= 1
-                  ? "pointer-events-none opacity-50"
-                  : "hover:text-foreground"
-              }
-            >
-              ← Prev
-            </Link>
+            {page <= 1 ? (
+              <span aria-disabled="true" className="opacity-50">
+                ← Prev
+              </span>
+            ) : (
+              <Link href={pageHref(page - 1)} className="hover:text-foreground">
+                ← Prev
+              </Link>
+            )}
             <span>
               Page {page} of {pageCount}
             </span>
-            <Link
-              href={pageHref(Math.min(pageCount, page + 1))}
-              aria-disabled={page >= pageCount}
-              className={
-                page >= pageCount
-                  ? "pointer-events-none opacity-50"
-                  : "hover:text-foreground"
-              }
-            >
-              Next →
-            </Link>
+            {page >= pageCount ? (
+              <span aria-disabled="true" className="opacity-50">
+                Next →
+              </span>
+            ) : (
+              <Link href={pageHref(page + 1)} className="hover:text-foreground">
+                Next →
+              </Link>
+            )}
           </nav>
         ) : null}
       </div>

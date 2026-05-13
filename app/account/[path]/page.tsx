@@ -1,6 +1,6 @@
 import { AccountView } from "@neondatabase/auth/react";
 import { accountViewPaths } from "@neondatabase/auth/react/ui/server";
-import { ShellPage, SurfacePanel } from "@/components/raster-shell";
+import { ShellPage } from "@/components/raster-shell";
 
 export const dynamicParams = false;
 
@@ -17,11 +17,7 @@ export default async function AccountPathPage({
 
   return (
     <ShellPage size="content">
-      <SurfacePanel padded={false}>
-        <div className="p-6 md:p-8">
-          <AccountView path={path} />
-        </div>
-      </SurfacePanel>
+      <AccountView path={path} />
     </ShellPage>
   );
 }

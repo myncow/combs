@@ -12,7 +12,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, React.ComponentProps<"tex
         "caret-[color:var(--primary)]",
         "placeholder:text-muted-foreground",
         "transition-[border-color,opacity] duration-150 ease-out",
-        "focus:outline-none focus:border-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "focus:outline-none focus:border-foreground focus-visible:outline-none",
         "disabled:cursor-not-allowed disabled:opacity-50",
         "resize-none rounded-none",
         className,

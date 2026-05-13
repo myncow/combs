@@ -267,7 +267,7 @@ function ConfirmDeleteDialog({
             className={cn(
               "inline-flex h-9 items-center gap-2 border border-[color:var(--destructive)] bg-[color:var(--destructive)] px-3",
               "font-mono text-[11px] uppercase tracking-[0.22em] text-[color:var(--destructive-foreground)]",
-              "transition-colors duration-150 hover:bg-[color:color-mix(in_srgb,var(--destructive)_88%,#000)]",
+              "transition-colors duration-150 hover:bg-[color:color-mix(in_srgb,var(--destructive)_88%,var(--foreground))]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--destructive)] focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               "disabled:cursor-not-allowed disabled:opacity-60",
             )}

@@ -58,6 +58,7 @@ import {
 import { visualizeCellAction, type VisualizeCellActionState } from "@/app/actions";
 import { authClient } from "@/lib/auth/client";
 import { buildAuthRedirectHref } from "@/lib/auth/redirect";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 import { dispatchLibraryRefresh } from "@/lib/client-events";
 import { CELL_IMAGE_MODEL } from "@/lib/config";
 import { IMAGE_MODEL_CHANGE_EVENT, IMAGE_MODEL_STORAGE_KEY, readStoredImageModel } from "@/lib/model-preference";
@@ -1143,18 +1144,18 @@ function CellTile({
             <EmptyCellBody />
           )}
 
-          <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 bg-[linear-gradient(180deg,rgba(7,10,15,0.78),transparent_82%)] px-3 pb-6 pt-2.5 md:px-2 md:pt-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.55)] md:text-[10px]">
+          <div className="image-overlay-top pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 px-3 pb-6 pt-2.5 md:px-2 md:pt-2">
+            <span className="image-overlay-text font-mono text-[10px] uppercase tracking-[0.22em] md:text-[10px]">
               {code}
             </span>
           </div>
 
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-[linear-gradient(180deg,transparent_0%,rgba(7,10,15,0.55)_45%,rgba(7,10,15,0.92)_100%)] px-3 pb-2.5 pt-8 md:px-2 md:pb-2">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/80 [text-shadow:0_1px_2px_rgba(0,0,0,0.55)]">
+          <div className="image-overlay-bottom pointer-events-none absolute inset-x-0 bottom-0 px-3 pb-2.5 pt-8 md:px-2 md:pb-2">
+            <p className="image-overlay-text image-overlay-text--muted font-mono text-[10px] uppercase tracking-[0.18em]">
               {display.label}
             </p>
             {primaryTitle ? (
-              <h3 className="mt-1 line-clamp-2 font-sans text-[15px] font-semibold leading-[1.12] tracking-[-0.01em] text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.55)] md:text-[14px]">
+              <h3 className="image-overlay-text mt-1 line-clamp-2 font-sans text-[15px] font-semibold leading-[1.12] tracking-[-0.01em] md:text-[14px]">
                 {primaryTitle}
               </h3>
             ) : null}
@@ -1384,6 +1385,7 @@ function CellDrawer({
 }) {
   const reduceMotion = useReducedMotion();
   const drawerId = "cell-drawer";
+  const drawerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!cell) return;
@@ -1398,6 +1400,8 @@ function CellDrawer({
       window.removeEventListener("keydown", handleEscape);
     };
   }, [cell, onClose]);
+
+  useFocusTrap(drawerRef, Boolean(cell));
 
   if (typeof window === "undefined") return null;
 
@@ -1422,6 +1426,9 @@ function CellDrawer({
           />
           <motion.aside
             id={drawerId}
+            ref={(node) => {
+              drawerRef.current = node;
+            }}
             role="dialog"
             aria-modal="true"
             aria-label={`Detail: ${cell.label}`}
@@ -1873,7 +1880,10 @@ function DrawerBody({
               </div>
             )}
             {canGenerate && state.status === "error" ? (
-              <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.22em] text-primary">
+              <p
+                role="alert"
+                className="mt-2 font-mono text-[11px] uppercase tracking-[0.22em] text-destructive"
+              >
                 {state.message}
               </p>
             ) : null}
@@ -2191,17 +2201,28 @@ function ViewerModal({
   onCopy: () => void;
   onClose: () => void;
 }) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+  useFocusTrap(containerRef, true);
+
   if (typeof window === "undefined") return null;
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center overscroll-contain bg-foreground/45 p-4 backdrop-blur-[1px] dark:bg-black/82 sm:p-6"
+      className="fixed inset-0 z-[100] flex items-center justify-center overscroll-contain bg-[color:var(--overlay-on-image-strong)] p-4 backdrop-blur-[1px] sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-label={`Image viewer for ${cell.label}`}
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-6xl overflow-hidden border border-border bg-card shadow-2xl"
+        ref={containerRef}
+        className="relative w-full max-w-6xl overflow-hidden border border-border bg-card shadow-[var(--shadow-overlay)]"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-3 border-b border-border bg-card px-4 py-3 text-foreground">

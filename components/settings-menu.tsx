@@ -82,7 +82,7 @@ export function SettingsMenu({ isAdmin = false }: { isAdmin?: boolean }) {
       <button
         type="button"
         id={triggerId}
-        aria-haspopup="dialog"
+        aria-haspopup="menu"
         aria-expanded={open}
         title="Settings"
         aria-label="Open settings"
@@ -97,8 +97,9 @@ export function SettingsMenu({ isAdmin = false }: { isAdmin?: boolean }) {
 
       {open ? (
         <MenuPanel
-          role="dialog"
+          role="menu"
           aria-label="Settings"
+          aria-labelledby={triggerId}
           className="absolute right-0 top-full z-30 mt-1.5 w-[min(340px,92vw)] origin-top-right"
         >
           <div className="border-b border-border px-4 py-2.5">
@@ -138,6 +139,7 @@ export function SettingsMenu({ isAdmin = false }: { isAdmin?: boolean }) {
           {isAdmin ? (
             <div className="border-t border-border px-4 py-3">
               <Link
+                role="menuitem"
                 href="/admin/maps"
                 onClick={() => setOpen(false)}
                 className="inline-flex w-full items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
