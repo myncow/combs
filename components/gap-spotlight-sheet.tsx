@@ -132,7 +132,7 @@ export function GapSpotlightSheet({
               id={titleId}
               className="mt-1.5 font-sans text-xl font-semibold leading-tight tracking-[-0.02em] text-foreground"
             >
-              Submit your spotlight
+              Publish to leaderboard
             </h3>
           </div>
           <button
@@ -210,7 +210,7 @@ export function GapSpotlightSheet({
             <div className="min-w-0 flex-1 space-y-1.5">
               {mapIsPublic ? (
                 <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Source map is <span className="text-primary">public</span> — visitors can open it from this spotlight.
+                  Source map is <span className="text-primary">public</span> — visitors can open it from this entry.
                 </p>
               ) : (
                 <label className="flex items-start gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -224,8 +224,8 @@ export function GapSpotlightSheet({
                     Make source map public when publishing.{" "}
                     <span className={cn(makePublic ? "text-primary" : "text-foreground")}>
                       {makePublic
-                        ? "Anyone visiting the spotlight can open the full map."
-                        : "Spotlight will be visible, but the source-map link will 404 for other viewers."}
+                        ? "Anyone visiting the entry can open the full map."
+                        : "Entry will be visible, but the source-map link will 404 for other viewers."}
                     </span>
                   </span>
                 </label>

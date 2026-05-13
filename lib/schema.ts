@@ -137,6 +137,11 @@ export const mapDocumentSchema = z.object({
     accent: z.string(),
     gradient: z.union([z.tuple([z.string(), z.string()]), z.array(z.string()).min(2).max(4)]),
     icon: z.string().optional(),
+    /**
+     * Stashed by `buildFallbackMapDocument` so the live map page can keep
+     * the skeleton loader up until the real skeleton patch arrives.
+     */
+    scaffold: z.boolean().optional(),
   }),
   visualSeries: z
     .object({
@@ -234,9 +239,9 @@ export const mapFiltersSchema = z.object({
   topicFamily: z.string().optional(),
   status: z.enum(["all", "published", "failed", "live", "library"]).optional(),
   sort: z
-    .enum(["recent", "quality"])
+    .enum(["recent", "quality", "top"])
     .default("recent")
-    .transform((s): "recent" => (s === "quality" ? "recent" : s)),
+    .transform((s): "recent" | "top" => (s === "quality" ? "recent" : s)),
   page: z.coerce.number().min(1).default(1),
   /** Sidebar and index UIs may request more rows per page than card grids. */
   pageSize: z.coerce.number().min(1).max(64).default(9),

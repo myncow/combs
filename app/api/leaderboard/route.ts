@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const { data: session } = await getAuth().getSession();
   if (!session?.user) {
-    return NextResponse.json({ error: "Sign in to publish to the top list." }, { status: 401 });
+    return NextResponse.json({ error: "Sign in to publish to the leaderboard." }, { status: 401 });
   }
 
   const body = await request.json().catch(() => null);
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       : null;
     if (!map || !viewerCanMutateMap(map, viewer)) {
       return NextResponse.json(
-        { error: "Only the map owner or an admin can publish this spotlight." },
+        { error: "Only the map owner or an admin can publish this entry." },
         { status: 403 },
       );
     }
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ item: entry }, { status: 201 });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Could not publish spotlight." },
+      { error: error instanceof Error ? error.message : "Could not publish entry." },
       { status: 400 },
     );
   }

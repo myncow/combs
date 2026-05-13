@@ -191,6 +191,15 @@ export interface MapDocument {
     accent: string;
     gradient: string[];
     icon?: string;
+    /**
+     * True while the document is the synthetic fallback scaffold that
+     * `runMapGenerationCore` writes before the real skeleton arrives. The
+     * map page reads this to keep the loading skeleton up instead of
+     * flashing generic placeholder axes. Cleared on the first real skeleton
+     * patch. Stashed inside `renderingHints` because that is the only
+     * JSONB column already persisted in `applyMapPatch`.
+     */
+    scaffold?: boolean;
   };
   visualSeries?: {
     presetId: MapVisualSeriesPresetId;

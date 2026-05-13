@@ -858,17 +858,38 @@ export async function listLeaderboardEntries({
   page = 1,
   pageSize = 12,
   requesterId,
+  ownerId,
 }: {
   topicFamily?: string;
   sort?: LeaderboardSort;
   page?: number;
   pageSize?: number;
   requesterId?: string;
+  /**
+   * When set, restrict to entries whose source map was created by this
+   * Neon Auth user id. Used by the "mine" scope toggle on /leaderboard.
+   * The `spotlights` table has no owner column today; we join through
+   * `maps.created_by_neon_user_id` instead, so no migration is required.
+   */
+  ownerId?: string;
 }) {
   try {
     const db = getDb();
-    const whereClause =
-      topicFamily && topicFamily !== "All" ? eq(spotlightsTable.topicFamilySnapshot, topicFamily) : undefined;
+    const filters = [
+      topicFamily && topicFamily !== "All"
+        ? eq(spotlightsTable.topicFamilySnapshot, topicFamily)
+        : undefined,
+      ownerId
+        ? inArray(
+            spotlightsTable.mapId,
+            db
+              .select({ id: mapsTable.id })
+              .from(mapsTable)
+              .where(eq(mapsTable.createdByNeonUserId, ownerId)),
+          )
+        : undefined,
+    ].filter(Boolean);
+    const whereClause = filters.length ? and(...filters as any) : undefined;
     const rows = await db
       .select()
       .from(spotlightsTable)
@@ -996,10 +1017,10 @@ export async function publishGapSpotlight({
     throw new Error("Map not found.");
   }
   if (!cell || !["gap", "tension", "impossible"].includes(cell.status)) {
-    throw new Error("Only visualized frontier cells can be published.");
+    throw new Error("Only visualized cells can be published to the leaderboard.");
   }
   if (!cell.visualizationAssetId || !assetUrl) {
-    throw new Error("Generate an image for this frontier cell before publishing it.");
+    throw new Error("Generate an image for this cell before publishing it to the leaderboard.");
   }
 
   if (makePublic && !map.isPublic) {
@@ -1183,6 +1204,7 @@ export async function listMaps({
   includePublic = false,
   query,
   visibility,
+  sort = "recent",
 }: {
   topicFamily?: string;
   status?: MapListingVisibility | "all";
@@ -1203,6 +1225,13 @@ export async function listMaps({
   query?: string;
   /** Restrict by public/private map visibility. */
   visibility?: "public" | "private";
+  /**
+   * Ordering. `recent` (default) sorts by publishedAt desc. `top` floats
+   * maps that have appeared on the leaderboard to the front, ordered by
+   * the sum of their entries' scores. The result still falls back to
+   * publishedAt desc as a tie-breaker.
+   */
+  sort?: "recent" | "top";
 }) {
   try {
     const db = getDb();
@@ -1252,11 +1281,25 @@ export async function listMaps({
 
     const whereClause = conditions.length ? and(...conditions) : undefined;
 
+    // `top` ordering: float maps that have leaderboard entries to the top,
+    // ranked by the summed score of those entries (publishedAt breaks ties).
+    // Implemented with a correlated subquery so we don't need a schema
+    // migration.
+    const topScoreExpr = sql<number>`COALESCE((
+      SELECT SUM(${spotlightsTable.score})
+      FROM ${spotlightsTable}
+      WHERE ${spotlightsTable.mapId} = ${mapsTable.id}
+    ), 0)`;
+    const orderBy =
+      sort === "top"
+        ? [desc(topScoreExpr), desc(mapsTable.publishedAt)]
+        : [desc(mapsTable.publishedAt)];
+
     const rows = await db
       .select()
       .from(mapsTable)
       .where(whereClause)
-      .orderBy(desc(mapsTable.publishedAt))
+      .orderBy(...orderBy)
       .limit(pageSize)
       .offset((page - 1) * pageSize);
 

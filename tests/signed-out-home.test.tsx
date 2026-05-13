@@ -90,13 +90,13 @@ describe("SignedOutHome", () => {
       "/gallery",
     );
 
-    const spotlights = screen.getByRole("region", { name: /top spotlights/i });
-    expect(spotlights).toBeInTheDocument();
+    const entries = screen.getByRole("region", { name: /top leaderboard entries/i });
+    expect(entries).toBeInTheDocument();
     expect(screen.getByText("Featured story")).toBeInTheDocument();
     expect(screen.getByText("Second")).toBeInTheDocument();
   });
 
-  it("renders an empty-state spotlight panel when there are no entries", () => {
+  it("renders an empty-state leaderboard panel when there are no entries", () => {
     render(
       <SignedOutHome
         signInHref="/auth/sign-in"
@@ -108,9 +108,9 @@ describe("SignedOutHome", () => {
 
     // The section still renders so the layout stays viewport-locked; the
     // panel just shows an empty-state line instead of cards.
-    const spotlights = screen.getByRole("region", { name: /top spotlights/i });
-    expect(spotlights).toBeInTheDocument();
-    expect(spotlights).toHaveTextContent(/no spotlights yet/i);
+    const entries = screen.getByRole("region", { name: /top leaderboard entries/i });
+    expect(entries).toBeInTheDocument();
+    expect(entries).toHaveTextContent(/no entries yet/i);
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(document.querySelector("#create-map-topic")).toBeNull();
   });

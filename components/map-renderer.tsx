@@ -27,6 +27,7 @@ import {
 } from "@/lib/motion";
 import { type MapCell, type MapCellStatus, type MapDocument, type MapExample } from "@/lib/types";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { Search } from "lucide-react";
 import {
   Fragment,
   createContext,
@@ -601,7 +602,19 @@ export function MapRenderer({
   const xDimension = document.dimensions[0];
   const yDimension = document.dimensions[1];
 
-  if (!xDimension || !yDimension || !xDimension.values?.length || !yDimension.values?.length) {
+  // While the runner has only patched the synthetic fallback scaffold, treat
+  // the document as if it had no axes so the live skeleton keeps animating.
+  // The real skeleton patch strips `renderingHints.scaffold` and unlocks the
+  // grid.
+  const isScaffold = document.renderingHints?.scaffold === true;
+
+  if (
+    isScaffold ||
+    !xDimension ||
+    !yDimension ||
+    !xDimension.values?.length ||
+    !yDimension.values?.length
+  ) {
     return <LiveSkeletonGrid live={live} />;
   }
 
@@ -922,6 +935,7 @@ function MapRendererInner({
                         key={`${row}-${column}`}
                         position={position}
                         seedIndex={seedIndex}
+                        variant="pending"
                         ariaLabel={`Generating cell at ${rowCode(rowIndex)}·${columnCode(colIndex)}`}
                       />
                     );
@@ -1338,16 +1352,24 @@ function EmptyCellBody() {
 /**
  * Empty cell during live generation. Hatched background (matching the
  * map-card synthetic placeholder language) with a barely-perceptible
- * staggered breath. No icon, no color — visual weight only.
+ * staggered breath, plus a sweeping shimmer and a small magnifying-glass
+ * indicator so users see the cell is still searching for examples.
  */
 function PlaceholderCell({
   position,
   seedIndex,
   ariaLabel,
+  variant = "searching",
 }: {
   position?: React.CSSProperties;
   seedIndex: number;
   ariaLabel: string;
+  /**
+   * `searching` shows the magnifying-glass + shimmer (cell exists but is
+   * still resolving its reference image). `pending` keeps the bare hatched
+   * cell that we use before the cell itself has streamed in.
+   */
+  variant?: "searching" | "pending";
 }) {
   const delay = `${(seedIndex * 0.22) % 5.2}s`;
   const style = position
@@ -1362,8 +1384,18 @@ function PlaceholderCell({
       className={cn(
         "live-cell-hatch relative aspect-[5/6] overflow-hidden border-0",
         position && "md:h-full md:aspect-auto",
+        variant === "searching" && "soft-wait-sheen",
       )}
-    />
+    >
+      {variant === "searching" ? (
+        <span
+          aria-hidden
+          className="soft-wait-orb absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-background/75 text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.04)] backdrop-blur-sm"
+        >
+          <Search className="h-3 w-3" aria-hidden />
+        </span>
+      ) : null}
+    </div>
   );
 }
 

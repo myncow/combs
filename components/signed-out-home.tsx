@@ -103,11 +103,11 @@ export function SignedOutHome({
         </Panel>
 
         <Panel
-          title="Top spotlights"
+          title="Top leaderboard entries"
           icon={<Trophy className="h-3.5 w-3.5 text-primary" aria-hidden />}
           actionHref={leaderboardHref}
           actionLabel="View all"
-          empty={cards.length === 0 ? "No spotlights yet." : undefined}
+          empty={cards.length === 0 ? "No entries yet." : undefined}
         >
           <ul className="divide-y divide-border">
             {cards.map((entry, index) => (
@@ -163,7 +163,7 @@ function Hero({
             Browse maps made from two axes.
           </h1>
           <p className="mt-1.5 text-[13.5px] leading-[1.5] text-muted-foreground">
-            Explore public grids, inspect frontier cells, start your own when a topic clicks.
+            Explore public grids, inspect standout cells, start your own when a topic clicks.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

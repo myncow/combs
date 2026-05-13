@@ -1997,7 +1997,16 @@ export async function generateMapDocument(
         topicFamily: skeleton.topicFamily || current.topicFamily,
         dimensions: skeleton.dimensions,
         constraints: skeleton.constraints ?? current.constraints,
-        renderingHints: skeleton.renderingHints ?? current.renderingHints,
+        // Real axes have arrived; strip the `scaffold` flag stashed in
+        // `renderingHints` so the client switches off the live skeleton.
+        renderingHints: (() => {
+          const next = skeleton.renderingHints ?? current.renderingHints;
+          if (!next) return next;
+          const { scaffold: _scaffold, ...rest } = next as typeof next & {
+            scaffold?: boolean;
+          };
+          return rest;
+        })(),
         visualSeries: skeleton.visualSeries ?? current.visualSeries,
         seo: skeleton.seo ?? current.seo,
       }),

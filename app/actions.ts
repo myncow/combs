@@ -185,7 +185,7 @@ export async function visualizeCellAction(
     if (!["gap", "tension", "impossible"].includes(targetCell.status)) {
       return {
         status: "error",
-        message: "This cell uses reference-led browsing rather than generated frontier visuals.",
+        message: "This cell uses reference-led browsing rather than generated visuals.",
       };
     }
     // Moderate every string that ends up interpolated into the sketch prompt
@@ -343,7 +343,7 @@ export async function publishGapSpotlightAction(
   if (!session?.user) {
     return {
       status: "error",
-      message: "Sign in to publish to the top list.",
+      message: "Sign in to publish to the leaderboard.",
     };
   }
   const sessionUser = session.user as { id?: string | null; email?: string | null };
@@ -379,7 +379,7 @@ export async function publishGapSpotlightAction(
     if (!map || !viewerCanMutateMap(map, viewer)) {
       return {
         status: "error",
-        message: "Only the map owner or an admin can publish this spotlight.",
+        message: "Only the map owner or an admin can publish this entry.",
       };
     }
     const entry = await publishGapSpotlight({
@@ -401,7 +401,7 @@ export async function publishGapSpotlightAction(
   } catch (error) {
     return {
       status: "error",
-      message: error instanceof Error ? error.message : "Could not publish this spotlight.",
+      message: error instanceof Error ? error.message : "Could not publish this entry.",
     };
   }
 }

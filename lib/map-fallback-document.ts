@@ -192,6 +192,9 @@ export function buildFallbackMapDocument(
       accent: "#d97706",
       gradient: ["#fef3c7", "#fde68a"],
       icon: "grid",
+      // Marks this document as the synthetic fallback so the live map page
+      // keeps the skeleton loader up until the real skeleton patch lands.
+      scaffold: true,
     },
     seo: {
       title: seoTitle,

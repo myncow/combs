@@ -106,13 +106,13 @@ export function LeaderboardVoteControls({
       ? "Your vote: up · click down to switch · click up to clear"
       : state.viewerVote === "down"
         ? "Your vote: down · click up to switch · click down to clear"
-        : "One vote per spotlight — pick up or down";
+        : "One vote per entry — pick up or down";
 
   return (
     <div className="space-y-2">
       <div
         role="radiogroup"
-        aria-label="Vote on this spotlight"
+        aria-label="Vote on this entry"
         aria-describedby={helperId}
         className="inline-flex items-stretch border border-border bg-background"
       >
@@ -130,7 +130,7 @@ export function LeaderboardVoteControls({
               : "text-muted-foreground hover:text-foreground",
           )}
           title={state.viewerVote === "up" ? "Click again to clear your vote" : "Upvote"}
-          aria-label="Upvote spotlight"
+          aria-label="Upvote entry"
         >
           <ArrowBigUp className={compact ? "h-4 w-4" : "h-5 w-5"} aria-hidden />
         </button>
@@ -156,7 +156,7 @@ export function LeaderboardVoteControls({
               : "text-muted-foreground hover:text-foreground",
           )}
           title={state.viewerVote === "down" ? "Click again to clear your vote" : "Downvote"}
-          aria-label="Downvote spotlight"
+          aria-label="Downvote entry"
         >
           <ArrowBigDown className={compact ? "h-4 w-4" : "h-5 w-5"} aria-hidden />
         </button>

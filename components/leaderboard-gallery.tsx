@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { LeaderboardShareActions } from "@/components/leaderboard-share-actions";
 import { LeaderboardVoteControls } from "@/components/leaderboard-vote-controls";
 import type { ListedLeaderboardEntry } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 function formatCoordinates(coords: Record<string, string>) {
   return Object.entries(coords)
@@ -16,22 +17,27 @@ function formatCoordinates(coords: Record<string, string>) {
     .join(" · ");
 }
 
-function spotlightAnchorId(slug: string) {
+function entryAnchorId(slug: string) {
   return `spotlight-${slug}`;
 }
 
 export function LeaderboardGallery({
   entries,
+  view = "gallery",
 }: {
   entries: ListedLeaderboardEntry[];
+  view?: "list" | "gallery";
 }) {
   const searchParams = useSearchParams();
+  // Backward compat: existing share links still use `?spotlight=<slug>`.
   const focusedSlug = searchParams.get("spotlight");
   const containerRef = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
     if (!focusedSlug || !containerRef.current) return;
-    const target = containerRef.current.querySelector<HTMLElement>(`#${CSS.escape(spotlightAnchorId(focusedSlug))}`);
+    const target = containerRef.current.querySelector<HTMLElement>(
+      `#${CSS.escape(entryAnchorId(focusedSlug))}`,
+    );
     if (!target) return;
     target.scrollIntoView({ behavior: "smooth", block: "start" });
     target.dataset.focused = "true";
@@ -43,13 +49,101 @@ export function LeaderboardGallery({
 
   if (!entries.length) return null;
 
+  if (view === "list") {
+    return (
+      <ul
+        ref={containerRef}
+        className="divide-y divide-border border border-border bg-card"
+      >
+        {entries.map((entry) => (
+          <li
+            key={entry.id}
+            id={entryAnchorId(entry.slug)}
+            className="scroll-mt-6 transition-colors duration-300 data-[focused=true]:bg-[color:color-mix(in_srgb,var(--primary)_8%,var(--card))]"
+          >
+            <div className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 px-4 py-3 md:grid-cols-[72px_minmax(0,1fr)_auto_auto] md:gap-5 md:px-5">
+              {/* Expand link wraps the thumbnail so a single click jumps to
+                  the gallery view focused on this entry. */}
+              <Link
+                href={`/leaderboard?view=gallery&spotlight=${encodeURIComponent(entry.slug)}`}
+                aria-label={`Expand ${entry.storyTitle}`}
+                className="block aspect-square h-16 w-16 overflow-hidden border border-border bg-muted md:h-[72px] md:w-[72px]"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={entry.imageUrl}
+                  alt=""
+                  referrerPolicy="no-referrer"
+                  className="h-full w-full object-cover"
+                />
+              </Link>
+
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  <span className="truncate">{entry.topicFamily}</span>
+                  <span aria-hidden>·</span>
+                  <span className="truncate">{entry.mapTitle}</span>
+                </div>
+                <h3 className="mt-1 truncate font-sans text-[15px] font-semibold leading-tight tracking-[-0.01em] text-foreground md:text-[16px]">
+                  <Link
+                    href={`/leaderboard?view=gallery&spotlight=${encodeURIComponent(entry.slug)}`}
+                    className="transition-colors hover:text-primary"
+                  >
+                    {entry.storyTitle}
+                  </Link>
+                </h3>
+                <p className="mt-0.5 truncate text-[12.5px] leading-snug text-muted-foreground">
+                  {entry.storySummary}
+                </p>
+                {Object.keys(entry.coordinatesSnapshot).length ? (
+                  <p className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/80">
+                    {entry.cellLabel} · {formatCoordinates(entry.coordinatesSnapshot)}
+                  </p>
+                ) : (
+                  <p className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/80">
+                    {entry.cellLabel}
+                  </p>
+                )}
+              </div>
+
+              <div className="hidden items-center md:flex">
+                <LeaderboardVoteControls
+                  slug={entry.slug}
+                  score={entry.score}
+                  upvotes={entry.upvotes}
+                  downvotes={entry.downvotes}
+                  viewerVote={entry.viewerVote ?? null}
+                  compact
+                />
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <Button asChild variant="secondary" size="sm">
+                  <Link
+                    href={`/leaderboard?view=gallery&spotlight=${encodeURIComponent(entry.slug)}`}
+                    aria-label={`Expand ${entry.storyTitle}`}
+                  >
+                    Expand
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
   return (
     <ul ref={containerRef} className="grid gap-5">
       {entries.map((entry) => (
         <li
           key={entry.id}
-          id={spotlightAnchorId(entry.slug)}
-          className="scroll-mt-6 border border-border bg-card transition-shadow duration-300 data-[focused=true]:shadow-[0_0_0_2px_var(--primary)]"
+          id={entryAnchorId(entry.slug)}
+          className={cn(
+            "scroll-mt-6 border border-border bg-card transition-shadow duration-300",
+            "data-[focused=true]:shadow-[0_0_0_2px_var(--primary)]",
+          )}
         >
           <div className="grid gap-0 md:grid-cols-[1.2fr_1fr]">
             <div className="relative overflow-hidden border-b border-border bg-muted md:border-b-0 md:border-r">
