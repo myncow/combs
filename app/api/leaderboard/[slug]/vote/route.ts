@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getRequesterId } from "@/lib/guards";
+import { getVoterIdentity } from "@/lib/guards";
 import { leaderboardVoteRequestSchema } from "@/lib/schema";
 import { castLeaderboardVote } from "@/lib/store";
 
@@ -17,7 +17,7 @@ export async function POST(
     );
   }
 
-  const requesterId = await getRequesterId();
+  const requesterId = await getVoterIdentity();
   const entry = await castLeaderboardVote({
     slug,
     requesterId,

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { MapRenderer } from "@/components/map-renderer";
+import { MapVisibilityControl } from "@/components/map-visibility-control";
 import { dispatchLibraryRefresh } from "@/lib/client-events";
 import type { GenerationTraceEvent } from "@/lib/generation-stream";
 import { revealTransition } from "@/lib/motion";
@@ -16,10 +17,12 @@ export function LiveMapShell({
   initial,
   slug,
   canMutateMap = false,
+  viewerLabel,
 }: {
   initial: SavedMap;
   slug: string;
   canMutateMap?: boolean;
+  viewerLabel?: string;
 }) {
   const router = useRouter();
   const reduceMotion = useReducedMotion() ?? false;
@@ -108,7 +111,7 @@ export function LiveMapShell({
 
   return (
     <div className="flex flex-1 min-h-0 flex-col">
-      <div className="shrink-0 py-3 lg:py-2">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 py-3 lg:py-2">
         <h1
           key={displayedTitle}
           className={cn(
@@ -118,6 +121,14 @@ export function LiveMapShell({
         >
           {displayedTitle}
         </h1>
+        {canMutateMap ? (
+          <MapVisibilityControl
+            slug={slug}
+            initialIsPublic={Boolean(initial.isPublic)}
+            canMutate={canMutateMap}
+            viewerLabel={viewerLabel}
+          />
+        ) : null}
       </div>
       <AnimatePresence initial={false}>
         {showIndicator ? (
@@ -175,7 +186,12 @@ export function LiveMapShell({
         ) : null}
       </AnimatePresence>
       <div className="flex-1 min-h-0 flex flex-col pb-3 md:pb-2">
-        <MapRenderer document={doc} live={isLive} canMutateMap={canMutateMap} />
+        <MapRenderer
+          document={doc}
+          live={isLive}
+          canMutateMap={canMutateMap}
+          mapIsPublic={Boolean(initial.isPublic)}
+        />
       </div>
     </div>
   );

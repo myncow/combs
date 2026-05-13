@@ -7,16 +7,12 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
@@ -24,9 +20,11 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  /* Single 2px radius across the system — `rounded-sm`/`rounded-md`/`rounded-lg`
+   * all resolve to the same hairline corner. `rounded-none` remains for true 0px. */
   --radius-lg: 2px;
   --radius-md: 2px;
-  --radius-sm: 0px;
+  --radius-sm: 2px;
 
   --font-sans: var(--font-geist-sans), "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -48,7 +46,10 @@
  *   - Section vertical   40–56px (py-10 / py-14)
  *
  * Surfaces:
- *   - Hairline borders only (1px). Radius 0–2px. No drop shadows.
+ *   - Hairline borders only (1px). Radius 0–2px.
+ *   - Drop shadows are reserved for genuine floating surfaces (modal scrims,
+ *     drawers) via the single var(--shadow-overlay) token. Flat surfaces
+ *     stay shadow-free.
  *   - One accent (cobalt, var(--primary)) reserved for "gap" signal
  *     and for focus/hover emphasis on primary actions.
  *

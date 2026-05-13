@@ -100,27 +100,41 @@ export function LeaderboardVoteControls({
     }
   }
 
+  const helperId = `vote-helper-${slug}`;
+  const helperText =
+    state.viewerVote === "up"
+      ? "Your vote: up · click down to switch · click up to clear"
+      : state.viewerVote === "down"
+        ? "Your vote: down · click up to switch · click down to clear"
+        : "One vote per spotlight — pick up or down";
+
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2">
+      <div
+        role="radiogroup"
+        aria-label="Vote on this spotlight"
+        aria-describedby={helperId}
+        className="inline-flex items-stretch border border-border bg-background"
+      >
         <button
           type="button"
-          aria-pressed={state.viewerVote === "up"}
+          role="radio"
+          aria-checked={state.viewerVote === "up"}
           disabled={busy}
           onClick={() => void submitVote("up")}
           className={cn(
-            "inline-flex items-center justify-center border transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50",
+            "inline-flex items-center justify-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50",
             compact ? "h-8 w-8" : "h-10 w-10",
             state.viewerVote === "up"
-              ? "border-foreground bg-foreground text-background"
-              : "border-border bg-background text-muted-foreground hover:border-border-strong hover:text-foreground",
+              ? "bg-foreground text-background"
+              : "text-muted-foreground hover:text-foreground",
           )}
-          title="Upvote"
+          title={state.viewerVote === "up" ? "Click again to clear your vote" : "Upvote"}
           aria-label="Upvote spotlight"
         >
           <ArrowBigUp className={compact ? "h-4 w-4" : "h-5 w-5"} aria-hidden />
         </button>
-        <div className="min-w-[4.5rem] border border-border bg-card px-3 py-2 text-center">
+        <div className="min-w-[4.5rem] border-x border-border bg-card px-3 py-1 text-center">
           <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
             Score
           </div>
@@ -130,24 +144,28 @@ export function LeaderboardVoteControls({
         </div>
         <button
           type="button"
-          aria-pressed={state.viewerVote === "down"}
+          role="radio"
+          aria-checked={state.viewerVote === "down"}
           disabled={busy}
           onClick={() => void submitVote("down")}
           className={cn(
-            "inline-flex items-center justify-center border transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50",
+            "inline-flex items-center justify-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50",
             compact ? "h-8 w-8" : "h-10 w-10",
             state.viewerVote === "down"
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-border bg-background text-muted-foreground hover:border-border-strong hover:text-foreground",
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground",
           )}
-          title="Downvote"
+          title={state.viewerVote === "down" ? "Click again to clear your vote" : "Downvote"}
           aria-label="Downvote spotlight"
         >
           <ArrowBigDown className={compact ? "h-4 w-4" : "h-5 w-5"} aria-hidden />
         </button>
       </div>
-      <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-        {state.upvotes} up · {state.downvotes} down
+      <p
+        id={helperId}
+        className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground"
+      >
+        {state.upvotes} up · {state.downvotes} down · <span className="normal-case tracking-normal">{helperText}</span>
       </p>
       {error ? (
         <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-destructive">{error}</p>

@@ -223,6 +223,111 @@ describe.skipIf(!isLeaderboardStoreTestDbConfigured)("leaderboard store", () => 
     );
   });
 
+  it("flips the source map to public when publishGapSpotlight is called with makePublic", async () => {
+    const db = getDb();
+    await db
+      .update(mapsTable)
+      .set({ isPublic: false })
+      .where(eq(mapsTable.slug, "bread-map"));
+
+    await patchMapCellVisualization("bread-map", "rice-sourdough", {
+      imageUrl: "https://images.test/rice-makepublic.jpg",
+      updatedAt: "2026-05-04T00:00:00.000Z",
+    });
+
+    await publishGapSpotlight({
+      mapSlug: "bread-map",
+      cellId: "rice-sourdough",
+      storyTitle: "Make me public",
+      storySummary: "Publishing should also flip the map's visibility.",
+      makePublic: true,
+      publishedByNeonUserId: "user_test",
+    });
+
+    const after = await db
+      .select({ isPublic: mapsTable.isPublic, updatedBy: mapsTable.updatedByNeonUserId })
+      .from(mapsTable)
+      .where(eq(mapsTable.slug, "bread-map"))
+      .limit(1);
+    expect(after[0]?.isPublic).toBe(true);
+    expect(after[0]?.updatedBy).toBe("user_test");
+  });
+
+  it("does not change visibility when publishGapSpotlight is called without makePublic", async () => {
+    const db = getDb();
+    await db
+      .update(mapsTable)
+      .set({ isPublic: false })
+      .where(eq(mapsTable.slug, "bread-map"));
+
+    await patchMapCellVisualization("bread-map", "rice-sourdough", {
+      imageUrl: "https://images.test/rice-stayprivate.jpg",
+      updatedAt: "2026-05-04T00:00:00.000Z",
+    });
+
+    await publishGapSpotlight({
+      mapSlug: "bread-map",
+      cellId: "rice-sourdough",
+      storyTitle: "Stay private",
+      storySummary: "Publishing without the flag should not change visibility.",
+    });
+
+    const after = await db
+      .select({ isPublic: mapsTable.isPublic })
+      .from(mapsTable)
+      .where(eq(mapsTable.slug, "bread-map"))
+      .limit(1);
+    expect(after[0]?.isPublic).toBe(false);
+  });
+
+  it("scopes votes by requesterId so the same person across IPs can't double-count", async () => {
+    await patchMapCellVisualization("bread-map", "rice-sourdough", {
+      imageUrl: "https://images.test/rice-double.jpg",
+      updatedAt: "2026-05-04T00:00:00.000Z",
+    });
+    const spotlight = await publishGapSpotlight({
+      mapSlug: "bread-map",
+      cellId: "rice-sourdough",
+      storyTitle: "One vote per identity",
+      storySummary: "Re-voting from the same identity must replace, not stack.",
+    });
+
+    const first = await castLeaderboardVote({
+      slug: spotlight.slug,
+      requesterId: "user:alice",
+      direction: "up",
+    });
+    expect(first?.upvotes).toBe(1);
+
+    // Same identity re-votes the same way → no change.
+    const second = await castLeaderboardVote({
+      slug: spotlight.slug,
+      requesterId: "user:alice",
+      direction: "up",
+    });
+    expect(second?.upvotes).toBe(1);
+
+    // Same identity flips → counts move, never stack.
+    const flipped = await castLeaderboardVote({
+      slug: spotlight.slug,
+      requesterId: "user:alice",
+      direction: "down",
+    });
+    expect(flipped?.upvotes).toBe(0);
+    expect(flipped?.downvotes).toBe(1);
+    expect(flipped?.score).toBe(-1);
+
+    // Different identity adds independently.
+    const other = await castLeaderboardVote({
+      slug: spotlight.slug,
+      requesterId: "ip:1.2.3.4",
+      direction: "up",
+    });
+    expect(other?.upvotes).toBe(1);
+    expect(other?.downvotes).toBe(1);
+    expect(other?.score).toBe(0);
+  });
+
   it("preserves cell ids across applyMapPatch so spotlights and votes survive a re-edit", async () => {
     await patchMapCellVisualization("bread-map", "rice-sourdough", {
       imageUrl: "https://images.test/rice-sourdough-survives.jpg",

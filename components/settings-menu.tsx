@@ -1,6 +1,7 @@
 "use client";
 
-import { Settings as SettingsIcon } from "lucide-react";
+import Link from "next/link";
+import { Settings as SettingsIcon, Shield } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -38,7 +39,7 @@ function subscribeToTheme(onChange: () => void) {
   };
 }
 
-export function SettingsMenu() {
+export function SettingsMenu({ isAdmin = false }: { isAdmin?: boolean }) {
   const triggerId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -133,6 +134,19 @@ export function SettingsMenu() {
               })}
             </div>
           </fieldset>
+
+          {isAdmin ? (
+            <div className="border-t border-border px-4 py-3">
+              <Link
+                href="/admin/maps"
+                onClick={() => setOpen(false)}
+                className="inline-flex w-full items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                <Shield className="h-3.5 w-3.5 text-primary" aria-hidden strokeWidth={2.25} />
+                Admin · all maps
+              </Link>
+            </div>
+          ) : null}
         </MenuPanel>
       ) : null}
     </div>

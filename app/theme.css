@@ -10,6 +10,8 @@
  *   --muted        warm stone (inert surface)
  *   --primary      single accent — signals "the missing picture" only
  *   --destructive  muted russet warning for irreversible actions
+ *   --shadow-overlay   the only allowed shadow (genuine floating surfaces)
+ *   --overlay-on-image*  scrim + foreground tokens for text-on-photo tiles
  *
  * Authored as raw CSS colors so Tailwind v4 `@theme inline` (see globals.css)
  * can reference them directly.
@@ -21,8 +23,6 @@
 
   --card: #f7f7f3;
   --card-foreground: #1c1e1f;
-  --popover: #f7f7f3;
-  --popover-foreground: #1c1e1f;
 
   --primary: #2b4a8b;
   --primary-foreground: #f7f7f3;
@@ -33,9 +33,6 @@
   --muted: #cfc9be;
   --muted-foreground: #5f6360;
 
-  --accent: #2b4a8b;
-  --accent-foreground: #f7f7f3;
-
   --destructive: #7a3f2e;
   --destructive-foreground: #f7f7f3;
 
@@ -45,6 +42,17 @@
   --ring: #1c1e1f;
 
   --radius: 2px;
+
+  /* The single permitted shadow token. Use only on genuine floating
+   * surfaces (modal scrims, drawers). Keep flat surfaces shadow-free. */
+  --shadow-overlay: 0 18px 48px rgba(28, 30, 31, 0.18);
+
+  /* Image-tile overlay tokens — read text on top of photography. */
+  --overlay-on-image: rgba(7, 10, 15, 0.62);
+  --overlay-on-image-strong: rgba(7, 10, 15, 0.82);
+  --overlay-on-image-foreground: #f7f7f3;
+  --overlay-on-image-border: rgba(247, 247, 243, 0.18);
+
   color-scheme: light;
 }
 
@@ -54,8 +62,6 @@ html.dark {
 
   --card: #1c1e1d;
   --card-foreground: #e8eae4;
-  --popover: #1c1e1d;
-  --popover-foreground: #e8eae4;
 
   --primary: #6e8fc9;
   --primary-foreground: #141616;
@@ -66,9 +72,6 @@ html.dark {
   --muted: #2a2c28;
   --muted-foreground: #9a9a94;
 
-  --accent: #6e8fc9;
-  --accent-foreground: #141616;
-
   --destructive: #bd6e65;
   --destructive-foreground: #141616;
 
@@ -76,6 +79,12 @@ html.dark {
   --border-strong: rgba(232, 234, 228, 0.45);
   --input: rgba(232, 234, 228, 0.48);
   --ring: #e8eae4;
+
+  --shadow-overlay: 0 24px 60px rgba(0, 0, 0, 0.62);
+  --overlay-on-image: rgba(7, 10, 15, 0.62);
+  --overlay-on-image-strong: rgba(7, 10, 15, 0.82);
+  --overlay-on-image-foreground: #f7f7f3;
+  --overlay-on-image-border: rgba(247, 247, 243, 0.18);
 
   color-scheme: dark;
 }

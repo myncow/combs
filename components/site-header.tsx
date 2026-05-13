@@ -34,9 +34,11 @@ function LogoMark({ className = "" }: { className?: string }) {
 export function SiteHeader({
   brandName = "Raster",
   primaryLinks = [],
+  isAdmin = false,
 }: {
   brandName?: string;
   primaryLinks?: NavigationLink[];
+  isAdmin?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -68,10 +70,10 @@ export function SiteHeader({
 
   return (
     <header className="sticky top-0 z-20 shrink-0 border-b border-border bg-[color:color-mix(in_srgb,var(--background)_92%,transparent)] backdrop-blur-md">
-      <div className="mx-auto flex max-w-[1240px] items-center gap-5 px-5 py-2.5 md:px-8 md:py-2">
+      <div className="mx-auto flex max-w-[1240px] items-center gap-5 px-5 py-2 md:px-8">
         <Link
           href="/"
-          aria-label="Raster — home"
+          aria-label={`${brandName} — home`}
           onClick={handleHomeClick}
           className="flex shrink-0 items-center gap-2.5 rounded-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
@@ -102,7 +104,7 @@ export function SiteHeader({
           })}
         </nav>
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
-          <SettingsMenu />
+          <SettingsMenu isAdmin={isAdmin} />
           <HeaderAuth />
         </div>
       </div>

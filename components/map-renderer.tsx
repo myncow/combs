@@ -596,10 +596,13 @@ export function MapRenderer({
   document,
   live = false,
   canMutateMap = false,
+  mapIsPublic = false,
 }: {
   document: MapDocument;
   live?: boolean;
   canMutateMap?: boolean;
+  /** Source map's `is_public` so the publish-spotlight sheet can warn / offer to flip it. */
+  mapIsPublic?: boolean;
 }) {
   const xDimension = document.dimensions[0];
   const yDimension = document.dimensions[1];
@@ -615,6 +618,7 @@ export function MapRenderer({
       yDimension={yDimension}
       live={live}
       canMutateMap={canMutateMap}
+      mapIsPublic={mapIsPublic}
     />
   );
 }
@@ -625,12 +629,14 @@ function MapRendererInner({
   yDimension,
   live,
   canMutateMap,
+  mapIsPublic,
 }: {
   document: MapDocument;
   xDimension: MapDocument["dimensions"][number];
   yDimension: MapDocument["dimensions"][number];
   live: boolean;
   canMutateMap: boolean;
+  mapIsPublic: boolean;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -1030,6 +1036,7 @@ function MapRendererInner({
         }
         isSignedIn={isSignedIn}
         canMutateMap={canMutateMap}
+        mapIsPublic={mapIsPublic}
         authPending={authPending}
         signInHref={signInHref}
       />
@@ -1356,6 +1363,7 @@ function CellDrawer({
   rowCode: rowCodeValue,
   isSignedIn,
   canMutateMap,
+  mapIsPublic,
   authPending,
   signInHref,
 }: {
@@ -1370,6 +1378,7 @@ function CellDrawer({
   rowCode: string;
   isSignedIn: boolean;
   canMutateMap: boolean;
+  mapIsPublic: boolean;
   authPending: boolean;
   signInHref: string;
 }) {
@@ -1467,6 +1476,7 @@ function CellDrawer({
                   rowCodeValue={rowCodeValue}
                   isSignedIn={isSignedIn}
                   canMutateMap={canMutateMap}
+                  mapIsPublic={mapIsPublic}
                   authPending={authPending}
                   signInHref={signInHref}
                 />
@@ -1492,6 +1502,7 @@ function DrawerBody({
   rowCodeValue,
   isSignedIn,
   canMutateMap,
+  mapIsPublic,
   authPending,
   signInHref,
 }: {
@@ -1506,6 +1517,7 @@ function DrawerBody({
   rowCodeValue: string;
   isSignedIn: boolean;
   canMutateMap: boolean;
+  mapIsPublic: boolean;
   authPending: boolean;
   signInHref: string;
 }) {
@@ -1917,6 +1929,7 @@ function DrawerBody({
           onClose={() => setIsPublishSheetOpen(false)}
           mapSlug={document.slug}
           mapTitle={document.title}
+          mapIsPublic={mapIsPublic}
           topicFamily={document.topicFamily}
           cellId={cell.id}
           cellLabel={cell.label}

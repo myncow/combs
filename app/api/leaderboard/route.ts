@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { viewerCanMutateMap } from "@/lib/auth/permissions";
 import { getAuth } from "@/lib/auth/server";
-import { getRequesterId, moderateText } from "@/lib/guards";
+import { getVoterIdentity, moderateText } from "@/lib/guards";
 import { leaderboardFiltersSchema, publishGapSpotlightSchema } from "@/lib/schema";
 import { getMapBySlug, listLeaderboardEntries, publishGapSpotlight } from "@/lib/store";
 
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     page: searchParams.get("page") ?? "1",
     pageSize: searchParams.get("pageSize") ?? "12",
   });
-  const requesterId = await getRequesterId();
+  const requesterId = await getVoterIdentity();
   const entries = await listLeaderboardEntries({
     topicFamily: filters.topicFamily,
     sort: filters.sort,
@@ -61,7 +61,10 @@ export async function POST(request: Request) {
         { status: 403 },
       );
     }
-    const entry = await publishGapSpotlight(parsed.data);
+    const entry = await publishGapSpotlight({
+      ...parsed.data,
+      publishedByNeonUserId: sessionUser.id ?? null,
+    });
     revalidatePath("/leaderboard");
     revalidatePath(`/leaderboard/${entry.slug}`);
     revalidatePath("/api/leaderboard");

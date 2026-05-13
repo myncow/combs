@@ -167,12 +167,22 @@ export const gapSpotlightDraftSchema = z.object({
   updatedAt: z.string(),
 });
 
-export const publishGapSpotlightSchema = gapSpotlightDraftSchema.pick({
-  mapSlug: true,
-  cellId: true,
-  storyTitle: true,
-  storySummary: true,
-});
+export const publishGapSpotlightSchema = gapSpotlightDraftSchema
+  .pick({
+    mapSlug: true,
+    cellId: true,
+    storyTitle: true,
+    storySummary: true,
+  })
+  .extend({
+    /**
+     * Optional: flip the source map to public so anyone visiting the spotlight
+     * detail link can actually open the map. Defaults to true at the API edge
+     * because a private source map makes the published spotlight orphaned for
+     * everyone except the owner/admin.
+     */
+    makePublic: z.boolean().optional(),
+  });
 
 export const leaderboardEntrySchema = z.object({
   id: z.string(),

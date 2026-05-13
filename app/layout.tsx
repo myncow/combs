@@ -6,6 +6,7 @@ import "./globals.css";
 import { NeonAuthProviders } from "@/components/neon-auth-providers";
 import { SiteHeader } from "@/components/site-header";
 import { ThemeBootstrap } from "@/components/theme-bootstrap";
+import { getSessionUser } from "@/lib/auth/admin";
 import { getSiteUrl } from "@/lib/site-url";
 import { getNavigation, getSiteSettings } from "@/lib/store";
 import { THEME_STORAGE_KEY, parseThemeCookie } from "@/lib/theme-preference";
@@ -60,7 +61,12 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const cookiePref = parseThemeCookie(cookieStore.get(THEME_STORAGE_KEY)?.value);
   const ssrDark = (cookiePref ?? "system") === "dark";
-  const [settings, headerLinks] = await Promise.all([getSiteSettings(), getNavigation("header_primary")]);
+  const [settings, headerLinks, sessionUser] = await Promise.all([
+    getSiteSettings(),
+    getNavigation("header_primary"),
+    getSessionUser(),
+  ]);
+  const isAdmin = Boolean(sessionUser?.isAdmin);
 
   return (
     <html
@@ -73,7 +79,7 @@ export default async function RootLayout({
         <ThemeBootstrap />
         <NeonAuthProviders>
           <div className="flex h-dvh flex-col overflow-hidden">
-            <SiteHeader brandName={settings.appName} primaryLinks={headerLinks} />
+            <SiteHeader brandName={settings.appName} primaryLinks={headerLinks} isAdmin={isAdmin} />
             <div className="flex min-h-0 flex-1 flex-col">{children}</div>
           </div>
         </NeonAuthProviders>

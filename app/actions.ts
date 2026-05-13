@@ -353,6 +353,7 @@ export async function publishGapSpotlightAction(
     cellId: String(formData.get("cellId") ?? ""),
     storyTitle: String(formData.get("storyTitle") ?? "").slice(0, 120),
     storySummary: String(formData.get("storySummary") ?? "").slice(0, 220),
+    makePublic: formData.get("makePublic") === "true",
   });
 
   if (!parsed.success) {
@@ -381,11 +382,17 @@ export async function publishGapSpotlightAction(
         message: "Only the map owner or an admin can publish this spotlight.",
       };
     }
-    const entry = await publishGapSpotlight(parsed.data);
+    const entry = await publishGapSpotlight({
+      ...parsed.data,
+      publishedByNeonUserId: sessionUser.id ?? null,
+    });
     revalidatePath("/leaderboard");
     revalidatePath(`/leaderboard/${entry.slug}`);
     revalidatePath("/gallery");
     revalidatePath("/api/leaderboard");
+    if (parsed.data.makePublic) {
+      revalidatePath(`/maps/${parsed.data.mapSlug}`);
+    }
 
     return {
       status: "success",

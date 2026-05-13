@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, Grid3X3, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Grid3X3, LogIn, Sparkles } from "lucide-react";
+import { ShellPage } from "@/components/raster-shell";
 import type { ListedLeaderboardEntry, SavedMap } from "@/lib/types";
 import { pickMapThumbnail, simplifyMapDisplayTitle } from "@/lib/utils";
 
@@ -13,6 +14,7 @@ type SignedOutHomeProps = {
 };
 
 export function SignedOutHome({
+  signInHref,
   signUpHref,
   leaderboardHref,
   galleryHref = "/gallery",
@@ -29,21 +31,21 @@ export function SignedOutHome({
   ] as const;
 
   return (
-    <main className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-12 overflow-y-auto overscroll-contain px-5 pb-12 pt-10 md:px-8 md:pb-16 md:pt-16">
+    <ShellPage size="wide" className="gap-12">
       <section className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
         <div className="max-w-3xl">
-        <h1 className="font-sans text-[40px] font-semibold leading-[0.98] tracking-[-0.035em] text-foreground md:text-[56px]">
+        <h1 className="font-sans text-[32px] font-semibold leading-[1.02] tracking-[-0.03em] text-foreground md:text-[44px]">
           Browse maps
           <br />
           made from two axes.
         </h1>
-        <p className="mt-5 max-w-xl text-[15px] leading-[1.6] text-muted-foreground md:text-[16px]">
+        <p className="mt-4 max-w-xl text-[15px] leading-[1.6] text-muted-foreground">
           Explore public grids, inspect the frontier cells, and start your own map when a topic clicks.
         </p>
-        <div className="mt-8 flex flex-wrap gap-2">
+        <div className="mt-7 flex flex-wrap gap-2">
           <Link
             href={galleryHref}
-            className="group inline-flex h-11 items-center gap-2 border border-foreground bg-foreground px-5 font-mono text-[12px] uppercase tracking-[0.22em] text-background transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground"
+            className="group inline-flex h-11 items-center gap-2 border border-foreground bg-foreground px-5 font-mono text-[12px] uppercase tracking-[0.22em] text-background transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             Browse maps
             <ArrowRight
@@ -54,10 +56,17 @@ export function SignedOutHome({
           </Link>
           <Link
             href={resolvedSignUpHref}
-            className="inline-flex h-11 items-center gap-2 border border-border bg-card px-5 font-mono text-[12px] uppercase tracking-[0.22em] text-foreground transition-colors hover:border-primary hover:text-primary"
+            className="inline-flex h-11 items-center gap-2 border border-border bg-card px-5 font-mono text-[12px] uppercase tracking-[0.22em] text-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             Start a map
             <Sparkles className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+          </Link>
+          <Link
+            href={signInHref}
+            className="inline-flex h-11 items-center gap-2 border border-transparent px-3 font-mono text-[12px] uppercase tracking-[0.22em] text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            <LogIn className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+            Sign in
           </Link>
         </div>
         </div>
@@ -204,6 +213,6 @@ export function SignedOutHome({
           </ul>
         </section>
       ) : null}
-    </main>
+    </ShellPage>
   );
 }

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { getRequesterId } from "@/lib/guards";
+import { getVoterIdentity } from "@/lib/guards";
 import { Button } from "@/components/ui/button";
 import { EmptyStatePanel, PageHeader, ShellPage } from "@/components/raster-shell";
 import { getPageByKey, listLeaderboardEntries } from "@/lib/store";
@@ -49,7 +49,7 @@ export default async function LeaderboardPage({
   searchParams: Promise<{ sort?: string }>;
 }) {
   await connection();
-  const requesterId = await getRequesterId();
+  const requesterId = await getVoterIdentity();
   const { sort: sortParam } = await searchParams;
   const sort: LeaderboardSort = sortParam === "new" ? "new" : "top";
   const entries = await listLeaderboardEntries({

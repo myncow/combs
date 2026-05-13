@@ -911,11 +911,20 @@ export async function publishGapSpotlight({
   cellId,
   storyTitle,
   storySummary,
+  makePublic,
+  publishedByNeonUserId,
 }: {
   mapSlug: string;
   cellId: string;
   storyTitle: string;
   storySummary: string;
+  /**
+   * If true, also flips the source map to `is_public = true` as part of
+   * publishing. Without this, viewers reaching the spotlight's "View source
+   * map" link from a private map will hit a 404.
+   */
+  makePublic?: boolean;
+  publishedByNeonUserId?: string | null;
 }) {
   const db = getDb();
   const { map, cell, assetUrl, coordinates } = await getMapAndCellForSpotlight(db, mapSlug, cellId);
@@ -927,6 +936,17 @@ export async function publishGapSpotlight({
   }
   if (!cell.visualizationAssetId || !assetUrl) {
     throw new Error("Generate an image for this frontier cell before publishing it.");
+  }
+
+  if (makePublic && !map.isPublic) {
+    await db
+      .update(mapsTable)
+      .set({
+        isPublic: true,
+        updatedAt: new Date(),
+        updatedByNeonUserId: publishedByNeonUserId ?? null,
+      })
+      .where(eq(mapsTable.id, map.id));
   }
 
   const now = isoNow();

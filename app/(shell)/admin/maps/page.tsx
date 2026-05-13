@@ -211,6 +211,9 @@ export default async function AdminMapsPage({
                           slug={map.slug}
                           initialIsPublic={Boolean(map.isPublic)}
                           canMutate
+                          viewerLabel={
+                            map.createdByNeonUserId !== user.id ? "Admin override" : undefined
+                          }
                         />
                       </td>
                       <td className="px-3 py-2.5 font-mono text-[11px] text-muted-foreground">

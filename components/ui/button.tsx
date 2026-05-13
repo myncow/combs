@@ -18,9 +18,12 @@ const buttonVariants = cva(
         // Primary: graphite inverse block (the standard action).
         default:
           "border-foreground bg-foreground text-background hover:bg-primary hover:border-primary hover:text-primary-foreground",
-        // Emphasis: red block (destructive / "commit" moments only).
-        destructive:
+        // Commit: cobalt block — high-emphasis affirmative ("publish", "create").
+        commit:
           "border-primary bg-primary text-primary-foreground hover:bg-foreground hover:border-foreground hover:text-background",
+        // Destructive: muted russet — irreversible actions only.
+        destructive:
+          "border-destructive bg-destructive text-destructive-foreground hover:bg-foreground hover:border-foreground hover:text-background",
         // Outline: hairline frame on the page background.
         outline:
           "border-foreground/55 bg-transparent text-foreground hover:border-foreground hover:bg-foreground hover:text-background",
