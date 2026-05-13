@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Settings as SettingsIcon, Shield } from "lucide-react";
+import { Monitor, Moon, Settings as SettingsIcon, Shield, Sun } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -20,10 +20,14 @@ import {
 import { MenuPanel } from "@/components/raster-shell";
 import { cn } from "@/lib/utils";
 
-const THEME_OPTIONS: ReadonlyArray<{ id: ThemePreference; label: string }> = [
-  { id: "light", label: "Light" },
-  { id: "dark", label: "Dark" },
-  { id: "system", label: "Auto" },
+const THEME_OPTIONS: ReadonlyArray<{
+  id: ThemePreference;
+  label: string;
+  icon: typeof Sun;
+}> = [
+  { id: "light", label: "Light", icon: Sun },
+  { id: "system", label: "Auto", icon: Monitor },
+  { id: "dark", label: "Dark", icon: Moon },
 ];
 
 function subscribeToTheme(onChange: () => void) {
@@ -100,54 +104,48 @@ export function SettingsMenu({ isAdmin = false }: { isAdmin?: boolean }) {
           role="menu"
           aria-label="Settings"
           aria-labelledby={triggerId}
-          className="absolute right-0 top-full z-30 mt-1.5 w-[min(340px,92vw)] origin-top-right"
+          className="absolute right-0 top-full z-30 mt-1.5 w-[min(220px,92vw)] origin-top-right p-2"
         >
-          <div className="border-b border-border px-4 py-2.5">
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-              Settings
-            </span>
+          <div
+            role="radiogroup"
+            aria-label="Theme"
+            className="grid grid-cols-3 gap-1"
+          >
+            {THEME_OPTIONS.map((opt) => {
+              const Icon = opt.icon;
+              const selected = theme === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  aria-label={`${opt.label} theme`}
+                  title={opt.label}
+                  onClick={() => setTheme(opt.id)}
+                  className={cn(
+                    "inline-flex h-9 items-center justify-center border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                    selected
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-border bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground",
+                  )}
+                >
+                  <Icon className="h-4 w-4" aria-hidden strokeWidth={1.75} />
+                </button>
+              );
+            })}
           </div>
 
-          <fieldset className="m-0 min-w-0 border-0 p-0 px-4 py-3.5">
-            <legend className="float-none mb-0 block w-full p-0 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              Theme
-            </legend>
-            <div role="radiogroup" aria-label="Theme" className="mt-2.5 grid grid-cols-3 gap-px border border-border bg-border">
-              {THEME_OPTIONS.map((opt) => {
-                const selected = theme === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    onClick={() => setTheme(opt.id)}
-                    className={cn(
-                      "h-9 font-mono text-[11px] uppercase tracking-[0.18em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-                      selected
-                        ? "bg-foreground text-background"
-                        : "bg-background text-muted-foreground hover:bg-card hover:text-foreground",
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
-          </fieldset>
-
           {isAdmin ? (
-            <div className="border-t border-border px-4 py-3">
-              <Link
-                role="menuitem"
-                href="/admin/maps"
-                onClick={() => setOpen(false)}
-                className="inline-flex w-full items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              >
-                <Shield className="h-3.5 w-3.5 text-primary" aria-hidden strokeWidth={2.25} />
-                Admin · all maps
-              </Link>
-            </div>
+            <Link
+              role="menuitem"
+              href="/admin/maps"
+              onClick={() => setOpen(false)}
+              className="mt-2 inline-flex h-9 w-full items-center gap-2 border border-border bg-background px-3 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <Shield className="h-3.5 w-3.5 text-primary" aria-hidden strokeWidth={2.25} />
+              Admin · all maps
+            </Link>
           ) : null}
         </MenuPanel>
       ) : null}
