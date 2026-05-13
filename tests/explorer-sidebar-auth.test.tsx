@@ -12,7 +12,7 @@ vi.mock("@/components/map-card", () => ({
 }));
 
 describe("ExplorerSidebar", () => {
-  it("renders only the personal library rail (no nav links, no sign-in CTAs)", () => {
+  it("renders the personal library rail with a new-map shortcut and no other cross-app nav", () => {
     render(
       <ExplorerSidebar
         isSignedIn
@@ -22,8 +22,11 @@ describe("ExplorerSidebar", () => {
 
     expect(screen.getByLabelText("My maps")).toBeInTheDocument();
     expect(screen.getByText(/no maps yet/i)).toBeInTheDocument();
-    // Cross-app navigation belongs to the header / settings menu, not the rail.
-    expect(screen.queryByRole("link", { name: /new map/i })).toBeNull();
+    // The "+ New map" action is the only nav-style link allowed on the
+    // rail — it pairs with the personal library it sits above.
+    const newMapLink = screen.getByRole("link", { name: /new map/i });
+    expect(newMapLink).toHaveAttribute("href", "/create");
+    // Other cross-app navigation still belongs to the header / settings menu.
     expect(screen.queryByRole("link", { name: /leaderboard/i })).toBeNull();
     expect(screen.queryByRole("link", { name: /admin/i })).toBeNull();
   });

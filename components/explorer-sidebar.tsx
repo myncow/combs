@@ -1,7 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ChevronsLeft, ChevronsRight } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, Plus } from "lucide-react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MapCard } from "@/components/map-card";
@@ -223,14 +224,22 @@ export function ExplorerSidebar({
       aria-label="My maps"
     >
       {!collapsed ? (
-        <div className="flex items-center justify-between border-b border-border px-3 py-2">
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+        <div className="flex items-center gap-1.5 border-b border-border px-2 py-2">
+          <p className="min-w-0 flex-1 truncate px-1 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
             My maps
           </p>
+          <Link
+            href="/create"
+            aria-label="New map"
+            title="New map"
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center border border-border bg-background text-muted-foreground transition-colors duration-150 hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden strokeWidth={2} />
+          </Link>
           <button
             type="button"
             onClick={() => setCollapsed(true)}
-            className="inline-flex h-7 w-7 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             aria-label="Collapse my maps"
             aria-expanded
             title="Collapse"
@@ -239,16 +248,26 @@ export function ExplorerSidebar({
           </button>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => setCollapsed(false)}
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center self-center border-b border-border text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          aria-label="Expand my maps"
-          aria-expanded={false}
-          title="Expand"
-        >
-          <ChevronsRight className="h-4 w-4" aria-hidden />
-        </button>
+        <div className="flex flex-col items-center gap-1 border-b border-border py-1.5">
+          <Link
+            href="/create"
+            aria-label="New map"
+            title="New map"
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center border border-border bg-background text-muted-foreground transition-colors duration-150 hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden strokeWidth={2} />
+          </Link>
+          <button
+            type="button"
+            onClick={() => setCollapsed(false)}
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            aria-label="Expand my maps"
+            aria-expanded={false}
+            title="Expand"
+          >
+            <ChevronsRight className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
       )}
 
       {!collapsed ? (

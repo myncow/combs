@@ -359,6 +359,37 @@ textarea {
   animation: soft-wait-breathe 5s ease-in-out infinite;
 }
 
+/* Pulsing colored glow used wherever a background search/SerpAPI lookup
+ * is in flight (sidebar map card, individual cell tile). The ring scales
+ * and the box-shadow halo brightens in sync so a glance is enough to
+ * register "we're still looking". */
+@keyframes search-glow-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 color-mix(in srgb, var(--primary) 38%, transparent),
+      0 0 0 0 color-mix(in srgb, var(--primary) 16%, transparent);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow:
+      0 0 0 4px color-mix(in srgb, var(--primary) 12%, transparent),
+      0 0 14px 2px color-mix(in srgb, var(--primary) 36%, transparent);
+    transform: scale(1.06);
+  }
+}
+
+.search-glow {
+  animation: search-glow-pulse 1.9s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-glow {
+    animation: none;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 22%, transparent);
+  }
+}
+
 .soft-wait-progress {
   position: relative;
   overflow: hidden;

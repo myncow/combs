@@ -1393,9 +1393,9 @@ function PlaceholderCell({
       {variant === "searching" ? (
         <span
           aria-hidden
-          className="soft-wait-orb absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-background/75 text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.04)] backdrop-blur-sm"
+          className="search-glow absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-primary/40 bg-[color:color-mix(in_srgb,var(--primary)_22%,var(--background))] text-primary backdrop-blur-sm"
         >
-          <Search className="h-3 w-3" aria-hidden />
+          <Search className="h-3 w-3" aria-hidden strokeWidth={2.25} />
         </span>
       ) : null}
     </div>

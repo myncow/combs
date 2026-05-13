@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
+import { Search } from "lucide-react";
 import Link from "next/link";
 import { DeleteMapButton } from "@/components/delete-map-button";
 import { Spinner } from "@/components/ui/spinner";
@@ -174,15 +175,17 @@ export function MapCard({
                 ) : isEnriching ? (
                   <motion.p
                     key="enriching"
-                    className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground"
+                    className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-primary"
                     initial={{ opacity: 0, y: 2 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -2 }}
                     transition={entryTransition()}
                   >
-                    <span aria-hidden className="relative inline-flex h-1.5 w-1.5 shrink-0">
-                      <span className="absolute inset-0 animate-ping rounded-full bg-primary/50" />
-                      <span className="absolute inset-0 rounded-full bg-primary/80" />
+                    <span
+                      aria-hidden
+                      className="search-glow inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-primary/40 bg-[color:color-mix(in_srgb,var(--primary)_22%,var(--background))] text-primary"
+                    >
+                      <Search className="h-2.5 w-2.5" strokeWidth={2.5} />
                     </span>
                     Searching examples…
                   </motion.p>
