@@ -147,6 +147,14 @@ export interface LeaderboardEntry {
   score: number;
   upvotes: number;
   downvotes: number;
+  /**
+   * Resolved display name (or email local-part) of the source map's
+   * creator. Populated by `listLeaderboardEntries` /
+   * `getLeaderboardEntryBySlug` via a batched lookup against
+   * `neon_auth.user`. `null` when the source map has no owner or the
+   * lookup failed (legacy/seed rows, transient DB error).
+   */
+  createdByDisplayName?: string | null;
 }
 
 export interface ListedLeaderboardEntry extends LeaderboardEntry {

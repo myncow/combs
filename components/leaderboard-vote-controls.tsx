@@ -126,22 +126,20 @@ export function LeaderboardVoteControls({
           <ArrowBigUp className={compact ? "h-4 w-4" : "h-5 w-5"} aria-hidden />
         </button>
         <div
+          aria-label={`Score: ${state.score}`}
           className={cn(
-            "flex flex-col items-center justify-center border-x border-border bg-card px-3 py-1 text-center",
-            compact ? "h-8 min-w-[3.75rem]" : "h-10 min-w-[4.5rem]",
+            "flex items-center justify-center border-x border-border bg-card px-3 text-center",
+            compact ? "h-8 min-w-[3.25rem]" : "h-10 min-w-[3.75rem]",
           )}
         >
-          <div className="font-mono text-[9px] uppercase tracking-[0.22em] text-muted-foreground/80">
-            Score
-          </div>
-          <div
+          <span
             className={cn(
               "font-sans font-semibold tabular-nums leading-none text-foreground",
-              compact ? "text-[15px]" : "text-[20px]",
+              compact ? "text-[15px]" : "text-[18px]",
             )}
           >
             {state.score}
-          </div>
+          </span>
         </div>
         <button
           type="button"

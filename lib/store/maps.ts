@@ -814,6 +814,33 @@ async function hydrateSpotlightRows(
     : [];
   const assetById = new Map<string, any>(assets.map((asset: any) => [asset.id, asset]));
 
+  // Resolve the source-map creator for each spotlight in one batched lookup
+  // so the leaderboard can attribute entries to their author without an
+  // N+1. Failures degrade to `null` — UI treats that as "no byline".
+  const mapIds = Array.from(
+    new Set(
+      rows
+        .map((row) => row.mapId)
+        .filter((value): value is string => typeof value === "string" && value.length > 0),
+    ),
+  );
+  const mapOwnerRows = mapIds.length
+    ? ((await db
+        .select({ id: mapsTable.id, createdByNeonUserId: mapsTable.createdByNeonUserId })
+        .from(mapsTable)
+        .where(inArray(mapsTable.id, mapIds))) as Array<{
+        id: string;
+        createdByNeonUserId: string | null;
+      }>)
+    : [];
+  const ownerByMapId = new Map<string, string | null>(
+    mapOwnerRows.map((row) => [row.id, row.createdByNeonUserId ?? null]),
+  );
+  const creatorNames = await resolveCreatorNames(
+    db,
+    mapOwnerRows.map((row) => row.createdByNeonUserId),
+  );
+
   let votes: LeaderboardVote[] = [];
   if (requesterId && rows.length) {
     votes = ((await db
@@ -830,8 +857,9 @@ async function hydrateSpotlightRows(
       )) as any[]).map(toLeaderboardVote);
   }
 
-  const items = rows.map((row) =>
-    serializeLeaderboardEntry({
+  const items = rows.map((row) => {
+    const ownerId = ownerByMapId.get(row.mapId) ?? null;
+    return serializeLeaderboardEntry({
       id: row.id,
       slug: row.slug,
       mapId: row.mapId,
@@ -849,8 +877,9 @@ async function hydrateSpotlightRows(
       score: row.score,
       upvotes: row.upvotes,
       downvotes: row.downvotes,
-    }),
-  );
+      createdByDisplayName: ownerId ? (creatorNames.get(ownerId) ?? null) : null,
+    });
+  });
 
   return attachViewerVote(items, votes, requesterId);
 }

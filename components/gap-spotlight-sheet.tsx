@@ -85,7 +85,7 @@ export function GapSpotlightSheet({
     window.localStorage.removeItem(storageKey);
     dispatchLibraryRefresh();
     onClose();
-    router.push(`/leaderboard?spotlight=${state.slug}`);
+    router.push(`/?spotlight=${state.slug}`);
   }, [onClose, router, state, storageKey]);
 
   function saveDraft() {

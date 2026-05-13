@@ -29,5 +29,5 @@ export default async function LeaderboardEntryPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  redirect(`/leaderboard?spotlight=${encodeURIComponent(slug)}`);
+  redirect(`/?spotlight=${encodeURIComponent(slug)}`);
 }
