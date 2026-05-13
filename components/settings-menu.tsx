@@ -106,8 +106,8 @@ export function SettingsMenu() {
             </span>
           </div>
 
-          <fieldset className="px-4 py-3.5">
-            <legend className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+          <fieldset className="m-0 min-w-0 border-0 p-0 px-4 py-3.5">
+            <legend className="float-none mb-0 block w-full p-0 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
               Theme
             </legend>
             <div role="radiogroup" aria-label="Theme" className="mt-2.5 grid grid-cols-3 gap-px border border-border bg-border">
