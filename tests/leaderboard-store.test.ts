@@ -22,6 +22,7 @@ import {
   getLeaderboardEntryBySlug,
   getMapBySlug,
   listLeaderboardEntries,
+  listMaps,
   patchMapCellVisualization,
   publishGapSpotlight,
   saveMap,
@@ -221,6 +222,48 @@ describe.skipIf(!isLeaderboardStoreTestDbConfigured)("leaderboard store", () => 
     expect(listed.items.map((entry) => entry.cellId)).toEqual(
       expect.arrayContaining(["rice-sourdough", "rice-chemical"]),
     );
+  });
+
+  it("listMaps with ownerId + includePublic returns the union of mine and public", async () => {
+    const db = getDb();
+    // Seed a public unowned map (mimics prod seed maps with created_by_neon_user_id = null).
+    await saveMap({
+      brief: briefFixture(),
+      normalizedBrief: normalizedBriefFixture("Seeded"),
+      document: clonedDocument("Public Seed", "public-seed", "Seeded"),
+      status: "published",
+    });
+    await db
+      .update(mapsTable)
+      .set({ isPublic: true, createdByNeonUserId: null })
+      .where(eq(mapsTable.slug, "public-seed"));
+
+    // And a private map owned by alice.
+    await saveMap({
+      brief: briefFixture(),
+      normalizedBrief: normalizedBriefFixture("Alice"),
+      document: clonedDocument("Alice Private", "alice-private", "Alice"),
+      status: "published",
+    });
+    await db
+      .update(mapsTable)
+      .set({ isPublic: false, createdByNeonUserId: "alice" })
+      .where(eq(mapsTable.slug, "alice-private"));
+
+    // ownerId only: alice sees just her private map.
+    const ownerOnly = await listMaps({ ownerId: "alice", status: "library" });
+    expect(ownerOnly.items.map((m) => m.slug).sort()).toEqual(["alice-private"]);
+
+    // ownerId + includePublic: alice sees her private + the public seed.
+    const union = await listMaps({ ownerId: "alice", includePublic: true, status: "library" });
+    expect(union.items.map((m) => m.slug).sort()).toEqual(
+      ["alice-private", "public-seed"].sort(),
+    );
+
+    // includePublic alone (no ownerId): only public maps.
+    const publicOnly = await listMaps({ includePublic: true, status: "library" });
+    expect(publicOnly.items.map((m) => m.slug)).toContain("public-seed");
+    expect(publicOnly.items.map((m) => m.slug)).not.toContain("alice-private");
   });
 
   it("flips the source map to public when publishGapSpotlight is called with makePublic", async () => {

@@ -47,6 +47,9 @@ export async function GET(request: Request) {
       page: filters.page,
       pageSize: filters.pageSize,
       ownerId: user.id,
+      // Mirror the SSR sidebar: signed-in viewers see their own library plus
+      // the public catalog so unowned seed maps stay reachable.
+      includePublic: true,
     });
     return NextResponse.json(maps);
   }

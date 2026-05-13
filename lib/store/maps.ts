@@ -1116,6 +1116,7 @@ export async function listMaps({
   pageSize = 9,
   ownerId,
   publicOnly = false,
+  includePublic = false,
   query,
   visibility,
 }: {
@@ -1127,6 +1128,13 @@ export async function listMaps({
   ownerId?: string;
   /** Restrict to maps with `is_public = true` (gallery / signed-out browse). */
   publicOnly?: boolean;
+  /**
+   * When combined with `ownerId`, also include maps that are `is_public = true`
+   * regardless of owner. Lets the signed-in sidebar surface the public catalog
+   * alongside the viewer's own (possibly private) library, so seed maps with
+   * `created_by_neon_user_id = null` aren't invisible after sign-in.
+   */
+  includePublic?: boolean;
   /** Case-insensitive admin/library search across common identifying fields. */
   query?: string;
   /** Restrict by public/private map visibility. */
@@ -1147,8 +1155,14 @@ export async function listMaps({
     if (topicFamily && topicFamily !== "All") {
       conditions.push(eq(mapsTable.topicFamily, topicFamily));
     }
-    if (ownerId) {
+    if (ownerId && includePublic) {
+      conditions.push(
+        or(eq(mapsTable.createdByNeonUserId, ownerId), eq(mapsTable.isPublic, true))!,
+      );
+    } else if (ownerId) {
       conditions.push(eq(mapsTable.createdByNeonUserId, ownerId));
+    } else if (includePublic) {
+      conditions.push(eq(mapsTable.isPublic, true));
     }
     if (publicOnly) {
       conditions.push(eq(mapsTable.isPublic, true));

@@ -16,6 +16,9 @@ async function ExplorerSidebarLoader() {
         status: "library",
         page: 1,
         ownerId: user.id,
+        // Surface the public catalog alongside the viewer's own library so
+        // seeded/system maps (no owner) stay visible after sign-in.
+        includePublic: true,
       })
     : await listMaps({
         pageSize: 48,
