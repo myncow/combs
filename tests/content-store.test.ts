@@ -32,7 +32,7 @@ describe.skipIf(!isLeaderboardStoreTestDbConfigured)("content store", () => {
     ]);
 
     expect(settings.appName).toBe("Raster");
-    expect(headerLinks[0]?.href).toBe("/leaderboard");
+    expect(headerLinks).toEqual([]);
     expect(homePage?.key).toBe("home");
     expect(homePage && homePage.key === "home" ? homePage.heroTitle : null).toBe("New map");
     expect(galleryPage?.key).toBe("gallery");

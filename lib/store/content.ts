@@ -138,14 +138,6 @@ async function runEditorialSeed() {
     if (!navLinks.length) {
       await tx.insert(navigationLinksTable).values([
         {
-          id: "nav_header_top_list",
-          location: "header_primary",
-          label: "Leaderboard",
-          href: "/leaderboard",
-          sortOrder: 1,
-          isEnabled: true,
-        },
-        {
           id: "nav_footer_home",
           location: "footer_primary",
           label: "Home",
@@ -159,14 +151,6 @@ async function runEditorialSeed() {
           label: "Maps",
           href: "/gallery",
           sortOrder: 2,
-          isEnabled: true,
-        },
-        {
-          id: "nav_footer_top_list",
-          location: "footer_primary",
-          label: "Leaderboard",
-          href: "/leaderboard",
-          sortOrder: 3,
           isEnabled: true,
         },
       ]);
@@ -232,18 +216,6 @@ async function _getNavigation(location: NavigationLocation): Promise<NavigationL
     }));
   } catch (error) {
     console.error("[content:getNavigation] fallback", error);
-    if (location === "header_primary") {
-      return [
-        {
-          id: "nav_header_top_list",
-          location,
-          label: "Leaderboard",
-          href: "/leaderboard",
-          sortOrder: 1,
-          isEnabled: true,
-        },
-      ];
-    }
     if (location === "footer_primary") {
       return [
         {
@@ -260,14 +232,6 @@ async function _getNavigation(location: NavigationLocation): Promise<NavigationL
           label: "Maps",
           href: "/gallery",
           sortOrder: 2,
-          isEnabled: true,
-        },
-        {
-          id: "nav_footer_top_list",
-          location,
-          label: "Leaderboard",
-          href: "/leaderboard",
-          sortOrder: 3,
           isEnabled: true,
         },
       ];

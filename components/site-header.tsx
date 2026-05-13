@@ -4,6 +4,7 @@ import { HeaderAuth } from "@/components/header-auth";
 import { SettingsMenu } from "@/components/settings-menu";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
 import type { MouseEvent } from "react";
 import type { NavigationLink } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -104,6 +105,14 @@ export function SiteHeader({
           })}
         </nav>
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          <Link
+            href="/create"
+            aria-label="New map"
+            title="New map"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center border border-border bg-background text-muted-foreground transition-colors duration-150 hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            <Plus className="h-4 w-4" aria-hidden strokeWidth={2} />
+          </Link>
           <SettingsMenu isAdmin={isAdmin} />
           <HeaderAuth />
         </div>

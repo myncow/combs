@@ -18,12 +18,6 @@ type SignedOutHomeProps = {
   isSignedIn?: boolean;
 };
 
-const AXIS_EXAMPLES = [
-  ["Mushrooms", "Cap shape", "Gill density"],
-  ["Sneakers", "Sole geometry", "Material texture"],
-  ["Bird beaks", "Curve", "Length"],
-] as const;
-
 export function SignedOutHome({
   signInHref,
   signUpHref,
@@ -49,9 +43,9 @@ export function SignedOutHome({
         isSignedIn={isSignedIn}
       />
 
-      {/* Three sticky-header / scroll-body panels. On mobile they stack and
+      {/* Two sticky-header / scroll-body panels. On mobile they stack and
           the outer page becomes scrollable (intentional fallback). */}
-      <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto md:grid-cols-3 md:overflow-hidden">
+      <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto md:grid-cols-2 md:overflow-hidden">
         <Panel
           title="Public maps"
           icon={<Grid3X3 className="h-3.5 w-3.5 text-primary" aria-hidden />}

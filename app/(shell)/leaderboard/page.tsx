@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
+import { Clock, LayoutGrid, List as ListIcon, Trophy, User } from "lucide-react";
 import { getSessionUser } from "@/lib/auth/admin";
 import { getVoterIdentity } from "@/lib/guards";
 import { Button } from "@/components/ui/button";
@@ -21,9 +22,20 @@ const SCOPE_LABEL: Record<LeaderboardScope, string> = {
   mine: "Mine",
 };
 
+const SCOPE_ICON: Record<LeaderboardScope, typeof Trophy> = {
+  top: Trophy,
+  new: Clock,
+  mine: User,
+};
+
 const VIEW_LABEL: Record<LeaderboardView, string> = {
   list: "List",
   gallery: "Gallery",
+};
+
+const VIEW_ICON: Record<LeaderboardView, typeof LayoutGrid> = {
+  list: ListIcon,
+  gallery: LayoutGrid,
 };
 
 const GALLERY_PAGE_SIZE = 24;
@@ -43,7 +55,13 @@ function SegmentedNav<T extends string>({
 }: {
   label: string;
   current: T;
-  options: Array<{ value: T; label: string; disabled?: boolean }>;
+  options: Array<{
+    value: T;
+    label: string;
+    icon: typeof Trophy;
+    disabled?: boolean;
+    disabledHint?: string;
+  }>;
   paramName: string;
   baseParams: URLSearchParams;
 }) {
@@ -54,16 +72,18 @@ function SegmentedNav<T extends string>({
       className="inline-flex items-center border border-border bg-card"
     >
       {options.map((option) => {
+        const Icon = option.icon;
         const active = option.value === current;
         if (option.disabled) {
           return (
             <span
               key={option.value}
               aria-disabled="true"
-              className="px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground/60"
-              title="Sign in to filter your entries"
+              aria-label={option.label}
+              title={option.disabledHint ?? option.label}
+              className="inline-flex h-9 w-9 items-center justify-center text-muted-foreground/40"
             >
-              {option.label}
+              <Icon className="h-4 w-4" aria-hidden strokeWidth={1.75} />
             </span>
           );
         }
@@ -77,14 +97,16 @@ function SegmentedNav<T extends string>({
             scroll={false}
             role="tab"
             aria-selected={active}
+            aria-label={option.label}
+            title={option.label}
             className={cn(
-              "px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.22em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              "inline-flex h-9 w-9 items-center justify-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               active
                 ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {option.label}
+            <Icon className="h-4 w-4" aria-hidden strokeWidth={1.75} />
           </Link>
         );
       })}
@@ -181,9 +203,15 @@ export default async function LeaderboardPage({
                 return carry;
               })()}
               options={[
-                { value: "top", label: SCOPE_LABEL.top },
-                { value: "new", label: SCOPE_LABEL.new },
-                { value: "mine", label: SCOPE_LABEL.mine, disabled: !user },
+                { value: "top", label: SCOPE_LABEL.top, icon: SCOPE_ICON.top },
+                { value: "new", label: SCOPE_LABEL.new, icon: SCOPE_ICON.new },
+                {
+                  value: "mine",
+                  label: SCOPE_LABEL.mine,
+                  icon: SCOPE_ICON.mine,
+                  disabled: !user,
+                  disabledHint: "Sign in to filter your entries",
+                },
               ]}
             />
             <SegmentedNav<LeaderboardView>
@@ -196,8 +224,8 @@ export default async function LeaderboardPage({
                 return carry;
               })()}
               options={[
-                { value: "gallery", label: VIEW_LABEL.gallery },
-                { value: "list", label: VIEW_LABEL.list },
+                { value: "gallery", label: VIEW_LABEL.gallery, icon: VIEW_ICON.gallery },
+                { value: "list", label: VIEW_LABEL.list, icon: VIEW_ICON.list },
               ]}
             />
           </div>
