@@ -429,36 +429,6 @@ function StatusMark({ status, size = 14 }: { status: MapCellStatus; size?: numbe
   );
 }
 
-const STATUS_LEGEND_ITEMS: Array<{ status: MapCellStatus; description: string }> = [
-  { status: "existing", description: "documented examples" },
-  { status: "rare", description: "uncommon but real" },
-  { status: "gap", description: "possible, unexplored" },
-  { status: "tension", description: "exists with tradeoffs" },
-  { status: "impossible", description: "ruled out" },
-];
-
-function StatusLegend() {
-  return (
-    <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-3">
-      <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-        Legend
-      </span>
-      {STATUS_LEGEND_ITEMS.map(({ status, description }) => (
-        <div key={status} className="flex items-center gap-2">
-          <StatusMark status={status} size={14} />
-          <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground">
-            {statusDisplay[status].label}
-          </span>
-          <span className="text-[12px] leading-none text-muted-foreground">
-            {description}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-
 function columnCode(index: number) {
   // Zero-padded to the natural width of a draftsman's grid column. Two digits
   // is enough for any human-scale map and keeps the codes visually anchored
@@ -753,7 +723,7 @@ function MapRendererInner({
             {yDimension.label}
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-px bg-border">
+        <div className="grid grid-cols-2 gap-px border border-border bg-border">
           {document.cells.map((cell, index) => {
             const colIdx = columns.indexOf(cell.coordinates[xDimension.key]);
             const rowIdx = rows.indexOf(cell.coordinates[yDimension.key]);
@@ -813,7 +783,7 @@ function MapRendererInner({
         Matrix (md+): top strip names both axes; grid below is ticks + cells only.
       */}
       <div
-        className="relative hidden flex-col gap-px border-t border-x border-border bg-background md:flex md:flex-1 md:min-h-0"
+        className="relative hidden flex-col gap-px border border-border bg-background md:flex md:flex-1 md:min-h-0"
         role="grid"
         aria-label={`Matrix of ${xDimension.label} against ${yDimension.label}`}
       >
@@ -1020,8 +990,6 @@ function MapRendererInner({
           })}
         </div>
       </div>
-
-      <StatusLegend />
 
       <CellDrawer
         document={document}
