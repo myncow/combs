@@ -6,8 +6,9 @@ import { MapRenderer } from "@/components/map-renderer";
 import { ShellPage } from "@/components/raster-shell";
 import { MapVisibilityControl } from "@/components/map-visibility-control";
 import { getSessionUser } from "@/lib/auth/admin";
+import { MapCostBadge } from "@/components/map-cost-badge";
 import { viewerCanMutateMap, viewerCanReadMap } from "@/lib/auth/permissions";
-import { getMapBySlug } from "@/lib/store";
+import { getMapBySlug, getMapCostBreakdown } from "@/lib/store";
 import { simplifyMapDisplayTitle } from "@/lib/utils";
 
 function displayTitle(title: string, topicFamily: string) {
@@ -51,6 +52,8 @@ export default async function MapPage({
     notFound();
   }
 
+  const costBreakdown = canMutate ? await getMapCostBreakdown(map.id) : null;
+
   // Route through `LiveMapShell` whenever the page might still be receiving
   // server-driven updates: generation in flight, recently failed, OR within
   // the SerpAPI enrichment window after publish (the SSE endpoint keeps
@@ -75,14 +78,19 @@ export default async function MapPage({
             <h1 className="font-sans text-[28px] font-semibold leading-[1.05] tracking-[-0.02em] text-foreground sm:text-[36px] lg:text-[26px]">
               {displayTitle(map.title, map.topicFamily)}
             </h1>
-            {canMutate ? (
-              <MapVisibilityControl
-                slug={map.slug}
-                initialIsPublic={Boolean(map.isPublic)}
-                canMutate={canMutate}
-                viewerLabel={adminOverrideLabel}
-              />
-            ) : null}
+            <div className="flex items-center gap-2">
+              {canMutate && costBreakdown ? (
+                <MapCostBadge breakdown={costBreakdown} />
+              ) : null}
+              {canMutate ? (
+                <MapVisibilityControl
+                  slug={map.slug}
+                  initialIsPublic={Boolean(map.isPublic)}
+                  canMutate={canMutate}
+                  viewerLabel={adminOverrideLabel}
+                />
+              ) : null}
+            </div>
           </div>
           <div className="flex-1 min-h-0 flex flex-col pb-3 md:pb-2">
             <MapRenderer

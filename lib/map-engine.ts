@@ -61,6 +61,13 @@ import { getSerpApiKey } from "@/lib/serpapi-images";
 
 export { stripTaxonomyWords };
 
+/** Optional per-request model overrides for the map generation pipeline. */
+export type MapEngineModels = {
+  mapModel?: string;
+  researchModel?: string;
+  suggestModel?: string;
+};
+
 function flushStructuredAttempts(
   collector: GenerationMetricsCollector | undefined,
   stageId: string,
@@ -297,9 +304,10 @@ async function callSuggestAxisPairsModel(
   brief: MapBrief,
   instructionsSuffix: string,
   signal?: AbortSignal,
+  modelOverride?: string,
 ): Promise<unknown | null> {
   return runStructuredModel<unknown>({
-    model: appConfig.openRouter.suggestModel,
+    model: modelOverride ?? appConfig.openRouter.suggestModel,
     instructions: SUGGEST_AXIS_INSTRUCTIONS + instructionsSuffix,
     input: JSON.stringify(brief),
     schemaName: "suggest_axis_pairs",
@@ -381,11 +389,12 @@ async function rankPairsByVisualYield(
 
 export async function suggestAxisPairs(
   briefInput: MapBriefInput,
-  options?: { signal?: AbortSignal; probeLimit?: number },
+  options?: { signal?: AbortSignal; probeLimit?: number; models?: MapEngineModels },
 ): Promise<SuggestAxisPairsResponse> {
   const brief = mapBriefSchema.parse(briefInput);
+  const suggestModel = options?.models?.suggestModel;
 
-  const response = await callSuggestAxisPairsModel(brief, "", options?.signal);
+  const response = await callSuggestAxisPairsModel(brief, "", options?.signal, suggestModel);
   const parsed = suggestAxisPairsResponseSchema.safeParse(response);
 
   if (!parsed.success || response == null) {
@@ -407,6 +416,7 @@ export async function suggestAxisPairs(
       brief,
       SUGGEST_AXIS_RETRY_SUFFIX,
       options?.signal,
+      suggestModel,
     );
     const retryParsed = suggestAxisPairsResponseSchema.safeParse(retryResponse);
     if (retryParsed.success) {
@@ -1290,6 +1300,7 @@ export async function normalizeMapBrief(
   briefInput: MapBriefInput,
   sink?: GenerationStreamSink,
   collector?: GenerationMetricsCollector,
+  models?: MapEngineModels,
 ): Promise<NormalizedMapBrief> {
   const brief = mapBriefSchema.parse(briefInput);
   emitStep(sink, "normalize_brief", "start");
@@ -1333,7 +1344,7 @@ Required output shape:
 `;
 
   const response = await runStructuredModel<NormalizedMapBriefInput>({
-    model: appConfig.openRouter.model,
+    model: models?.mapModel ?? appConfig.openRouter.model,
     instructions,
     input: JSON.stringify(brief),
     schemaName: "normalized_map_brief",
@@ -1432,6 +1443,7 @@ async function modelGenerateMapSkeleton(
   sink?: GenerationStreamSink,
   collector?: GenerationMetricsCollector,
   probeBudget?: ProbeBudget,
+  models?: MapEngineModels,
 ) {
   const researchSection = formatResearchForPrompt(research, "skeleton");
   const groundingState = getResearchGroundingState(research);
@@ -1467,7 +1479,7 @@ ${universalMapContract}
 
   async function callOnce(remediation: string): Promise<MapSkeletonInput | null> {
     const response = await runStructuredModel<MapSkeletonInput>({
-      model: appConfig.openRouter.model,
+      model: models?.mapModel ?? appConfig.openRouter.model,
       instructions: instructions + remediation,
       input: JSON.stringify(brief),
       schemaName: "map_skeleton",
@@ -1681,6 +1693,7 @@ async function modelGenerateMapCells(
     batchIndex: number,
     totalBatches: number,
   ) => void | Promise<void>,
+  models?: MapEngineModels,
 ) {
   // PERF NOTE (see plans/do-an-overall-evaluation-purrfect-whistle.md, P0.4):
   // `instructions` below — including `researchSection` — is computed once per
@@ -1797,7 +1810,7 @@ REFERENCE SHAPE ONLY (reuse your skeleton.dimension keys—not these literal ide
       structuredExternalCalls++;
       parseAttemptsUsed++;
       const response = await runStructuredModel<MapCellsBatchInput>({
-        model: appConfig.openRouter.model,
+        model: models?.mapModel ?? appConfig.openRouter.model,
         instructions,
         input: JSON.stringify({
           brief,
@@ -1866,7 +1879,7 @@ REPAIR MODE:
 - Do not repeat already-covered coordinates.
 - Keep labels, statuses, and examples as concrete and domain-specific as the main pass.`;
       const repairResponse = await runStructuredModel<MapCellsBatchInput>({
-        model: appConfig.openRouter.model,
+        model: models?.mapModel ?? appConfig.openRouter.model,
         instructions: repairInstructions,
         input: JSON.stringify({
           brief,
@@ -1949,7 +1962,7 @@ REPAIR MODE:
     retryTotal: parseRetryTotal,
     fallbackSyntheticBatchCount: fallbackSyntheticSlices,
     externalCalls: structuredExternalCalls,
-    model: appConfig.openRouter.model,
+    model: models?.mapModel ?? appConfig.openRouter.model,
     extras: {
       parseFailureCount,
       coordinateMismatchCount,
@@ -1965,19 +1978,20 @@ export async function generateMapDocument(
   brief: NormalizedMapBrief,
   sink?: GenerationStreamSink,
   collector?: GenerationMetricsCollector,
-  options?: { mapId?: string; probeBudget?: ProbeBudget },
+  options?: { mapId?: string; probeBudget?: ProbeBudget; models?: MapEngineModels },
 ): Promise<MapDocument | null> {
   const liveId = options?.mapId;
   const probeBudget = options?.probeBudget;
+  const models = options?.models;
 
   // Step 1: Fetch live research context via OpenRouter web plugin
-  const research = await fetchResearchContext(brief, undefined, sink, collector);
+  const research = await fetchResearchContext(brief, undefined, sink, collector, models?.researchModel);
   if (research.sources.length > 0) {
     console.log(`Research grounded via: ${research.sources.slice(0, 3).join(", ")}`);
   }
 
   // Step 2: Generate map skeleton using research-grounded axes (with optional visual probe gate)
-  const skeleton = await modelGenerateMapSkeleton(brief, research, sink, collector, probeBudget);
+  const skeleton = await modelGenerateMapSkeleton(brief, research, sink, collector, probeBudget, models);
   if (!skeleton) {
     return null;
   }
@@ -2053,6 +2067,7 @@ export async function generateMapDocument(
           });
         }
       : undefined,
+    models,
   );
 
   const document: MapDocument = {
@@ -2315,14 +2330,15 @@ export async function buildMapJob(
   briefInput: MapBriefInput,
   sink?: GenerationStreamSink,
   collector?: GenerationMetricsCollector,
-  options?: { mapId?: string },
+  options?: { mapId?: string; models?: MapEngineModels },
 ): Promise<{
   result: GenerationJobResult;
   normalizedBrief: NormalizedMapBrief | null;
   document: MapDocument | null;
 }> {
   const liveId = options?.mapId;
-  const normalizedBrief = await normalizeMapBrief(briefInput, sink, collector);
+  const models = options?.models;
+  const normalizedBrief = await normalizeMapBrief(briefInput, sink, collector, models);
   if (!normalizedBrief.accepted) {
     return {
       result: {
@@ -2350,7 +2366,7 @@ export async function buildMapJob(
   }
 
   const probeBudget = createProbeBudget();
-  const rawDocument = await generateMapDocument(normalizedBrief, sink, collector, { mapId: liveId, probeBudget });
+  const rawDocument = await generateMapDocument(normalizedBrief, sink, collector, { mapId: liveId, probeBudget, models });
   if (!rawDocument) {
     return {
       result: {

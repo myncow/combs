@@ -13,7 +13,6 @@
 
 import { PersistedReferenceThumbnails, type ExampleImageHit } from "@/components/example-image-thumbnails";
 import { GapSpotlightSheet } from "@/components/gap-spotlight-sheet";
-import { ImageModelPicker } from "@/components/image-model-picker";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { finalizeVisualizationCaption } from "@/lib/visualization-caption";
@@ -1808,7 +1807,6 @@ function DrawerBody({
                   <IndeterminateLoadingBar label={visualizationCopy.pendingLabel} />
                 ) : (
                   <div className="space-y-3">
-                    <ImageModelPicker />
                     <Button
                       type="submit"
                       form={vizFormId}
@@ -1883,7 +1881,6 @@ function DrawerBody({
                 ) : null}
                 {canUseGeneration ? (
                   <div className="space-y-3">
-                    <ImageModelPicker />
                     <div className="flex flex-wrap gap-2">
                       <Button
                         type="submit"

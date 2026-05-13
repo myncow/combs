@@ -37,6 +37,10 @@ export interface CellVisualizationMetrics {
   earlyAcceptStopped: boolean;
   materializationFetchMs?: number;
   materializationWriteMs?: number;
+  /** Token usage reported by the image model (token-billed models only). */
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
   stages?: GenerationStageMetric[];
 }
 

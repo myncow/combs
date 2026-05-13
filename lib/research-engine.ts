@@ -578,9 +578,10 @@ export async function fetchResearchContext(
   combines?: string,
   sink?: GenerationStreamSink,
   collector?: GenerationMetricsCollector,
+  researchModelOverride?: string,
 ): Promise<ResearchContext> {
   const apiKey = process.env.OPENROUTER_API_KEY;
-  const model = appConfig.openRouter.researchModel;
+  const model = researchModelOverride ?? appConfig.openRouter.researchModel;
 
   if (!apiKey) {
     return emptyResearchContext;

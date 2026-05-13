@@ -64,6 +64,13 @@
       "when": 1778684352190,
       "tag": "0008_drop_example_prompts_and_internal_status",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1778695409340,
+      "tag": "0009_cell_visualization_runs",
+      "breakpoints": true
     }
   ]
 }

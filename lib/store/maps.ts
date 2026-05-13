@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ilike, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNotNull, ne, or, sql, sum } from "drizzle-orm";
 import { del as deleteBlob } from "@vercel/blob";
 import { materializeCellImageAsset } from "@/lib/cell-visualization-storage";
 import { appConfig } from "@/lib/config";
@@ -12,6 +12,7 @@ import {
   type MapsListEvent,
 } from "@/lib/server-event-bus";
 import {
+  cellVisualizationRunsTable,
   mapAxesTable,
   mapAxisValuesTable,
   mapCalloutsTable,
@@ -30,6 +31,7 @@ import {
 } from "@/lib/db/schema";
 import type { GenerationMetrics } from "@/lib/generation-metrics";
 import type {
+  CellVisualizationRun,
   GenerationRun,
   LeaderboardEntry,
   LeaderboardSort,
@@ -43,6 +45,13 @@ import type {
   NormalizedMapBrief,
   SavedMap,
 } from "@/lib/types";
+import {
+  cellVisualizationCost,
+  formatUsd,
+  SERPAPI_COST_PER_CALL,
+  totalLlmCost,
+  type MapCostBreakdown,
+} from "@/lib/pricing";
 import { pickMapThumbnail, slugify } from "@/lib/utils";
 
 type DbLike = any;
@@ -1869,4 +1878,111 @@ export async function logGenerationRun(run: GenerationRun) {
     metrics: run.metrics ?? null,
     createdAt: new Date(run.createdAt),
   });
+}
+
+export async function logCellVisualizationRun(run: CellVisualizationRun) {
+  const db = getDb();
+  // Resolve the map_cells row id from (mapId, cellKey) so we can store a FK.
+  let resolvedCellId: string | null = null;
+  if (run.mapId && run.cellKey) {
+    try {
+      const rows = await db
+        .select({ id: mapCellsTable.id })
+        .from(mapCellsTable)
+        .where(and(eq(mapCellsTable.mapId, run.mapId), eq(mapCellsTable.cellKey, run.cellKey)))
+        .limit(1);
+      resolvedCellId = rows[0]?.id ?? null;
+    } catch {
+      // Best-effort; null is fine.
+    }
+  }
+  await db.insert(cellVisualizationRunsTable).values({
+    id: run.id,
+    mapId: run.mapId ?? null,
+    cellId: resolvedCellId,
+    imageModel: run.imageModel,
+    imageGenerationCalls: run.imageGenerationCalls,
+    promptTokens: run.promptTokens ?? null,
+    completionTokens: run.completionTokens ?? null,
+    totalTokens: run.totalTokens ?? null,
+    wallTimeMsTotal: run.wallTimeMsTotal ?? null,
+    createdAt: new Date(run.createdAt),
+  });
+}
+
+export async function getMapCostBreakdown(mapId: string): Promise<MapCostBreakdown | null> {
+  const db = getDb();
+  try {
+    // Latest successful generation run
+    const genRuns = await db
+      .select()
+      .from(mapGenerationRunsTable)
+      .where(and(eq(mapGenerationRunsTable.mapId, mapId), eq(mapGenerationRunsTable.status, "success")))
+      .orderBy(desc(mapGenerationRunsTable.createdAt))
+      .limit(1);
+    const genRun = genRuns[0] ?? null;
+
+    const vizRuns = await db
+      .select()
+      .from(cellVisualizationRunsTable)
+      .where(eq(cellVisualizationRunsTable.mapId, mapId));
+
+    // --- Generation cost ---
+    const generationLines: import("@/lib/pricing").CostLineItem[] = [];
+    let generationUsd = 0;
+
+    if (genRun?.metrics) {
+      const metrics = genRun.metrics as import("@/lib/generation-metrics").GenerationMetrics;
+      const llmCost = totalLlmCost(metrics.stages ?? []);
+      if (llmCost > 0) {
+        generationLines.push({ label: "LLM tokens", usd: llmCost, detail: formatUsd(llmCost) });
+        generationUsd += llmCost;
+      }
+      // SerpApi calls from all stages
+      const serpCalls = (metrics.stages ?? []).reduce(
+        (n, s) => n + (s.externalCallCount ?? 0),
+        0,
+      );
+      if (serpCalls > 0) {
+        const serpCost = serpCalls * SERPAPI_COST_PER_CALL;
+        generationLines.push({
+          label: "SerpApi searches",
+          usd: serpCost,
+          detail: `${serpCalls} calls · ${formatUsd(serpCost)}`,
+        });
+        generationUsd += serpCost;
+      }
+    }
+
+    // --- Visualization cost ---
+    const visualizationLines: import("@/lib/pricing").CostLineItem[] = [];
+    let visualizationUsd = 0;
+
+    for (const vr of vizRuns) {
+      const cost = cellVisualizationCost({
+        imageModel: vr.imageModel,
+        imageGenerationCalls: vr.imageGenerationCalls ?? 1,
+        promptTokens: vr.promptTokens ?? undefined,
+        completionTokens: vr.completionTokens ?? undefined,
+      });
+      if (cost > 0) {
+        visualizationLines.push({
+          label: vr.imageModel.split("/").pop() ?? vr.imageModel,
+          usd: cost,
+        });
+        visualizationUsd += cost;
+      }
+    }
+
+    return {
+      generationUsd,
+      generationLines,
+      visualizationUsd,
+      visualizationLines,
+      totalUsd: generationUsd + visualizationUsd,
+    };
+  } catch (error) {
+    console.error("[store:getMapCostBreakdown]", error);
+    return null;
+  }
 }

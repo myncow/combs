@@ -19,7 +19,7 @@ import {
   publishGapSpotlightSchema,
   type CellVisualizationResult,
 } from "@/lib/schema";
-import { getMapBySlug, patchMapCellVisualization, publishGapSpotlight } from "@/lib/store";
+import { getMapBySlug, logCellVisualizationRun, patchMapCellVisualization, publishGapSpotlight } from "@/lib/store";
 import {
   buildDiversificationSuffix,
   findHashCollisionAgainstOthers,
@@ -229,8 +229,9 @@ export async function visualizeCellAction(
       caption?: string;
       usedImageModel: string;
       usedPrompt?: string;
+      usedMetrics?: import("@/lib/generation-metrics").CellVisualizationMetrics;
     } | { error: VisualizeCellActionState }> {
-      const { result: raw, imageModel: usedImageModel, prompt: usedPrompt } =
+      const { result: raw, imageModel: usedImageModel, prompt: usedPrompt, metrics: usedMetrics } =
         await generateCellVisualizationWithMetrics(document, targetCell, {
           imageModel,
           extraPromptSuffix,
@@ -257,6 +258,7 @@ export async function visualizeCellAction(
           caption: parsed.data.caption,
           usedImageModel,
           usedPrompt,
+          usedMetrics,
         };
       } catch (error) {
         if (error instanceof DegenerateImageError) {
@@ -309,6 +311,24 @@ export async function visualizeCellAction(
       byteSize: attempt.materialized.byteSize,
       byteHash: attempt.materialized.byteHash,
     });
+
+    // Best-effort: log cost telemetry for this visualization run.
+    try {
+      await logCellVisualizationRun({
+        id: `viz_${crypto.randomUUID()}`,
+        mapId: documentMap.id,
+        cellKey: targetCell.id,
+        imageModel: attempt.usedImageModel,
+        imageGenerationCalls: attempt.usedMetrics?.imageGenerationCalls ?? 1,
+        promptTokens: attempt.usedMetrics?.promptTokens ?? null,
+        completionTokens: attempt.usedMetrics?.completionTokens ?? null,
+        totalTokens: attempt.usedMetrics?.totalTokens ?? null,
+        wallTimeMsTotal: attempt.usedMetrics?.wallTimeMsTotal ?? null,
+        createdAt: updatedAt,
+      });
+    } catch {
+      // non-critical
+    }
     revalidatePath(`/maps/${slug}`);
     revalidatePath("/gallery");
 

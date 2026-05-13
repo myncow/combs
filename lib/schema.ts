@@ -5,6 +5,38 @@ import {
   MAP_CELL_STATUSES,
   MAP_VISUAL_SERIES_PRESETS,
 } from "@/lib/types";
+import { isAllowedChatModel } from "@/lib/chat-model-options";
+import { isAllowedImageModel } from "@/lib/config";
+
+const chatModelField = z
+  .string()
+  .trim()
+  .max(160)
+  .optional()
+  .refine((v) => v === undefined || v === "" || isAllowedChatModel(v), {
+    message: "Model is not in the allowed list.",
+  })
+  .transform((v) => (v === "" ? undefined : v));
+
+const imageModelField = z
+  .string()
+  .trim()
+  .max(160)
+  .optional()
+  .refine((v) => v === undefined || v === "" || isAllowedImageModel(v), {
+    message: "Image model is not in the allowed list.",
+  })
+  .transform((v) => (v === "" ? undefined : v));
+
+/** Optional client model overrides. Each field is validated against the server allowlist. */
+export const modelOverridesSchema = z.object({
+  mapModel: chatModelField,
+  researchModel: chatModelField,
+  suggestModel: chatModelField,
+  imageModel: imageModelField,
+}).optional();
+
+export type ModelOverrides = z.infer<typeof modelOverridesSchema>;
 
 export const mapBriefSchema = z.object({
   topic: z.string().trim().min(2).max(120),
@@ -17,6 +49,8 @@ export const mapBriefSchema = z.object({
   mustIncludeExamples: z.array(z.string().trim().min(2).max(80)).max(5).default([]),
   mustAvoid: z.array(z.string().trim().min(2).max(80)).max(5).default([]),
   extraContext: z.string().trim().max(1500).optional(),
+  /** Optional per-request model overrides (validated against the curated allowlist). */
+  models: modelOverridesSchema,
 });
 
 export const normalizedMapBriefSchema = mapBriefSchema.extend({

@@ -338,3 +338,17 @@ export interface GenerationRun {
   metrics?: GenerationMetrics | null;
   createdAt: string;
 }
+
+export interface CellVisualizationRun {
+  id: string;
+  mapId?: string | null;
+  /** The cell's `cellKey` value used to resolve the DB row id. */
+  cellKey?: string | null;
+  imageModel: string;
+  imageGenerationCalls: number;
+  promptTokens?: number | null;
+  completionTokens?: number | null;
+  totalTokens?: number | null;
+  wallTimeMsTotal?: number | null;
+  createdAt: string;
+}

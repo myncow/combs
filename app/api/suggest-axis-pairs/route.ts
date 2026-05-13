@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { suggestAxisPairs } from "@/lib/map-engine";
 import { checkRateLimit, getRequesterId, moderateText } from "@/lib/guards";
 import { getAuth } from "@/lib/auth/server";
-import { mapBriefSchema, suggestAxisPairsRequestSchema } from "@/lib/schema";
+import { mapBriefSchema, modelOverridesSchema, suggestAxisPairsRequestSchema } from "@/lib/schema";
+import { resolveRequestedChatModel } from "@/lib/chat-model-options";
+import { appConfig } from "@/lib/config";
 
 export const runtime = "nodejs";
 
@@ -41,6 +43,12 @@ export async function POST(req: NextRequest) {
     .filter((c) => c.length >= 2)
     .slice(0, 4);
 
+  // Optional model overrides from request body (validated against allowlist).
+  const rawModels = modelOverridesSchema.safeParse((raw as Record<string, unknown>)?.models);
+  const suggestModel = rawModels.success && rawModels.data?.suggestModel
+    ? resolveRequestedChatModel(rawModels.data.suggestModel, appConfig.openRouter.suggestModel)
+    : undefined;
+
   const briefInput = mapBriefSchema.parse({
     topic,
     combines,
@@ -50,7 +58,10 @@ export async function POST(req: NextRequest) {
   });
 
   try {
-    const { pairs } = await suggestAxisPairs(briefInput, { signal: req.signal });
+    const { pairs } = await suggestAxisPairs(briefInput, {
+      signal: req.signal,
+      models: suggestModel ? { suggestModel } : undefined,
+    });
     return NextResponse.json({ pairs });
   } catch (e) {
     if (req.signal.aborted) {

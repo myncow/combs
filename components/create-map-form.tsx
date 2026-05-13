@@ -15,6 +15,7 @@ import { dispatchLibraryRefresh } from "@/lib/client-events";
 import { authClient } from "@/lib/auth/client";
 import { buildAuthRedirectHref } from "@/lib/auth/redirect";
 import type { SuggestAxisPairInput } from "@/lib/schema";
+import { readAllModelPreferences } from "@/lib/model-preference";
 
 /** Short, single-noun categories. Picturable taxonomies where visual traits matter. */
 const ROTATING_PLACEHOLDERS = [
@@ -322,10 +323,14 @@ export function CreateMapForm() {
     setSuggestLoading(true);
     setSuggestErr(null);
     try {
+      const prefs = readAllModelPreferences();
       const res = await fetch("/api/suggest-axis-pairs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: t }),
+        body: JSON.stringify({
+          topic: t,
+          models: { suggestModel: prefs.suggestModel },
+        }),
         signal: controller.signal,
       });
       const data = (await res.json()) as { error?: string; pairs?: SuggestAxisPairInput[] };
@@ -430,12 +435,18 @@ export function CreateMapForm() {
       extra = parts.join("\n");
     }
 
+    const prefs = readAllModelPreferences();
     return {
       topic: topicStr,
       extraContext: extra || undefined,
       candidateDimensions: lock ? [lock.primary.label.slice(0, 40), lock.secondary.label.slice(0, 40)] : [],
       inferDimensions: !lock,
       combines: lock ? `${lock.primary.label} × ${lock.secondary.label}`.slice(0, 180) : undefined,
+      models: {
+        mapModel: prefs.mapModel,
+        researchModel: prefs.researchModel,
+        suggestModel: prefs.suggestModel,
+      },
     };
   }
 

@@ -9,7 +9,8 @@ import { GenerationMetricsCollector } from "@/lib/generation-metrics";
 import { withMetricsGenerationSink } from "@/lib/generation-sink-metrics";
 import type { GenerationStreamSink } from "@/lib/generation-stream";
 import { buildFallbackMapDocument } from "@/lib/map-fallback-document";
-import { buildMapJob, enrichPublishedMap } from "@/lib/map-engine";
+import { buildMapJob, enrichPublishedMap, type MapEngineModels } from "@/lib/map-engine";
+import { resolveRequestedChatModel } from "@/lib/chat-model-options";
 import { applyMapPatch, logGenerationRun, saveMap } from "@/lib/store";
 import type {
   GenerationJobResult,
@@ -135,8 +136,18 @@ export async function runMapGenerationCore(
 
   try {
     const mergedSink = withMetricsGenerationSink(options?.sink, collector);
+    // Extract validated model overrides from the brief (already parsed by the schema).
+    const briefModels = (briefInput as { models?: { mapModel?: string; researchModel?: string; suggestModel?: string } | undefined }).models;
+    const engineModels: MapEngineModels | undefined = briefModels
+      ? {
+          mapModel: resolveRequestedChatModel(briefModels.mapModel, appConfig.openRouter.model),
+          researchModel: resolveRequestedChatModel(briefModels.researchModel, appConfig.openRouter.researchModel),
+          suggestModel: resolveRequestedChatModel(briefModels.suggestModel, appConfig.openRouter.suggestModel),
+        }
+      : undefined;
     const { result, normalizedBrief, document } = await buildMapJob(briefInput, mergedSink, collector, {
       mapId: reserved?.id,
+      models: engineModels,
     });
 
     const metricsBase = collector.finalize();

@@ -282,6 +282,26 @@ export const mapGenerationRunsTable = pgTable("map_generation_runs", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const cellVisualizationRunsTable = pgTable(
+  "cell_visualization_runs",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    mapId: varchar("map_id", { length: 64 }).references(() => mapsTable.id, { onDelete: "set null" }),
+    cellId: varchar("cell_id", { length: 64 }).references(() => mapCellsTable.id, { onDelete: "set null" }),
+    imageModel: varchar("image_model", { length: 160 }).notNull(),
+    imageGenerationCalls: integer("image_generation_calls").default(1).notNull(),
+    promptTokens: integer("prompt_tokens"),
+    completionTokens: integer("completion_tokens"),
+    totalTokens: integer("total_tokens"),
+    wallTimeMsTotal: integer("wall_time_ms_total"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("cell_viz_runs_map_idx").on(table.mapId),
+    index("cell_viz_runs_cell_idx").on(table.cellId),
+  ],
+);
+
 export const spotlightsTable = pgTable(
   "spotlights",
   {

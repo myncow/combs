@@ -22,6 +22,11 @@ type ChatImageResponse = {
       images?: unknown;
     };
   }>;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
   error?: { message?: string; code?: number | string; metadata?: unknown };
 };
 
@@ -304,6 +309,30 @@ function visualizationFromPayload(payload: ChatImageResponse, cell: MapCell): Ce
   return null;
 }
 
+function extractUsage(payload: ChatImageResponse): { promptTokens: number; completionTokens: number; totalTokens: number } | null {
+  const u = payload.usage;
+  if (!u) return null;
+  const p = u.prompt_tokens ?? 0;
+  const c = u.completion_tokens ?? 0;
+  const t = u.total_tokens ?? (p + c);
+  if (p === 0 && c === 0 && t === 0) return null;
+  return { promptTokens: p, completionTokens: c, totalTokens: t };
+}
+
+function mergeUsage(
+  a: { promptTokens: number; completionTokens: number; totalTokens: number } | null,
+  b: { promptTokens: number; completionTokens: number; totalTokens: number } | null,
+): { promptTokens: number; completionTokens: number; totalTokens: number } | null {
+  if (!a && !b) return null;
+  const pa = a?.promptTokens ?? 0;
+  const pb = b?.promptTokens ?? 0;
+  const ca = a?.completionTokens ?? 0;
+  const cb = b?.completionTokens ?? 0;
+  const ta = a?.totalTokens ?? 0;
+  const tb = b?.totalTokens ?? 0;
+  return { promptTokens: pa + pb, completionTokens: ca + cb, totalTokens: ta + tb };
+}
+
 async function generateCellImage(
   apiKey: string,
   document: MapDocument,
@@ -311,13 +340,19 @@ async function generateCellImage(
   grounding: VisualGroundingBundle,
   model: string,
   extraPromptSuffix: string,
-): Promise<{ result: CellVisualizationResult | null; prompt: string; retried: boolean }> {
+): Promise<{
+  result: CellVisualizationResult | null;
+  prompt: string;
+  retried: boolean;
+  usage: { promptTokens: number; completionTokens: number; totalTokens: number } | null;
+}> {
   const basePrompt = buildCellImagePrompt(document, cell, { grounding });
   const prompt = extraPromptSuffix ? `${basePrompt}${extraPromptSuffix}` : basePrompt;
   const payload = await openRouterImageCompletion(apiKey, buildImageInputContent(prompt, grounding), model);
   const initial = visualizationFromPayload(payload, cell);
+  const usage1 = extractUsage(payload);
   if (initial) {
-    return { result: initial, prompt, retried: false };
+    return { result: initial, prompt, retried: false, usage: usage1 };
   }
 
   // One retry: model returned text-only or a degenerate placeholder. Add a
@@ -334,7 +369,8 @@ Return one valid image as the assistant message's image attachment (not as base6
     model,
   );
   const retried = visualizationFromPayload(retryPayload, cell);
-  return { result: retried, prompt, retried: true };
+  const usage2 = extractUsage(retryPayload);
+  return { result: retried, prompt, retried: true, usage: mergeUsage(usage1, usage2) };
 }
 
 export async function generateCellVisualizationWithMetrics(
@@ -371,7 +407,7 @@ export async function generateCellVisualizationWithMetrics(
 
   try {
     metrics.imageGenerationCalls = 1;
-    const { result, prompt, retried } = await generateCellImage(
+    const { result, prompt, retried, usage } = await generateCellImage(
       openRouterApiKey,
       document,
       cell,
@@ -382,6 +418,11 @@ export async function generateCellVisualizationWithMetrics(
     if (retried) {
       metrics.imageGenerationCalls = 2;
       metrics.repairAttempts = 1;
+    }
+    if (usage) {
+      metrics.promptTokens = usage.promptTokens;
+      metrics.completionTokens = usage.completionTokens;
+      metrics.totalTokens = usage.totalTokens;
     }
     metrics.wallTimeMsTotal = Date.now() - wall0;
     return { result, metrics, imageModel: model, prompt };
