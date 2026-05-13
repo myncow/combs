@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { asc, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import {
@@ -90,7 +91,29 @@ async function ensurePageSeed(
   }
 }
 
-export async function ensureEditorialContentSeeded() {
+/**
+ * Process-level memo so the seed transaction runs at most once per Node
+ * process. Editorial content is effectively static, so once the rows
+ * exist we don't need the per-render SELECT … LIMIT 1 probes. Cleared
+ * via `__resetEditorialSeedMemoForTests()` when tests truncate.
+ */
+let seedMemo: Promise<void> | null = null;
+
+export function __resetEditorialSeedMemoForTests(): void {
+  seedMemo = null;
+}
+
+export async function ensureEditorialContentSeeded(): Promise<void> {
+  if (seedMemo) return seedMemo;
+  seedMemo = runEditorialSeed().catch((error) => {
+    // Don't poison the memo on transient failures; let the next caller retry.
+    seedMemo = null;
+    throw error;
+  });
+  return seedMemo;
+}
+
+async function runEditorialSeed() {
   const db = getDb();
   await db.transaction(async (tx) => {
     const siteSettings = await tx.select({ id: siteSettingsTable.id }).from(siteSettingsTable).limit(1);
@@ -155,7 +178,9 @@ export async function ensureEditorialContentSeeded() {
   });
 }
 
-export async function getSiteSettings(): Promise<SiteSettings> {
+export const getSiteSettings = cache(_getSiteSettings);
+
+async function _getSiteSettings(): Promise<SiteSettings> {
   try {
     await ensureEditorialContentSeeded();
     const db = getDb();
@@ -185,7 +210,9 @@ export async function getSiteSettings(): Promise<SiteSettings> {
   }
 }
 
-export async function getNavigation(location: NavigationLocation): Promise<NavigationLink[]> {
+export const getNavigation = cache(_getNavigation);
+
+async function _getNavigation(location: NavigationLocation): Promise<NavigationLink[]> {
   try {
     await ensureEditorialContentSeeded();
     const db = getDb();
@@ -249,7 +276,9 @@ export async function getNavigation(location: NavigationLocation): Promise<Navig
   }
 }
 
-export async function getPageByKey(key: "home" | "gallery" | "leaderboard"): Promise<PageContent | null> {
+export const getPageByKey = cache(_getPageByKey);
+
+async function _getPageByKey(key: "home" | "gallery" | "leaderboard"): Promise<PageContent | null> {
   try {
     await ensureEditorialContentSeeded();
     const db = getDb();

@@ -534,84 +534,89 @@ function buildStoredMapDocument(row: MapRow): MapDocument {
 }
 
 async function hydrateMapDocument(db: DbLike, row: MapRow): Promise<MapDocument> {
-  const axisRows = await db
-    .select()
-    .from(mapAxesTable)
-    .where(eq(mapAxesTable.mapId, row.id))
-    .orderBy(asc(mapAxesTable.position));
+  // Phase 1: everything keyed only on mapId can fan out in parallel.
+  const [axisRows, cellRows, exampleRows, featuredRows, constraintRows, calloutRows] = await Promise.all([
+    db
+      .select()
+      .from(mapAxesTable)
+      .where(eq(mapAxesTable.mapId, row.id))
+      .orderBy(asc(mapAxesTable.position)),
+    db
+      .select()
+      .from(mapCellsTable)
+      .where(eq(mapCellsTable.mapId, row.id))
+      .orderBy(asc(mapCellsTable.sortOrder)),
+    db
+      .select()
+      .from(mapExamplesTable)
+      .where(eq(mapExamplesTable.mapId, row.id))
+      .orderBy(asc(mapExamplesTable.sortOrder)),
+    db
+      .select()
+      .from(mapFeaturedExamplesTable)
+      .where(eq(mapFeaturedExamplesTable.mapId, row.id))
+      .orderBy(asc(mapFeaturedExamplesTable.sortOrder)),
+    db
+      .select()
+      .from(mapConstraintsTable)
+      .where(eq(mapConstraintsTable.mapId, row.id))
+      .orderBy(asc(mapConstraintsTable.sortOrder)),
+    db
+      .select()
+      .from(mapCalloutsTable)
+      .where(eq(mapCalloutsTable.mapId, row.id))
+      .orderBy(asc(mapCalloutsTable.sortOrder)),
+  ]);
+
   if (!axisRows.length) {
     return buildStoredMapDocument(row);
   }
 
+  // Phase 2: lookups that depend on the ids returned by phase 1 (axes,
+  // cells, examples). All four are independent of each other.
   const axisIds = axisRows.map((axis: any) => axis.id);
-  const valueRows = axisIds.length
-    ? await db
-        .select()
-        .from(mapAxisValuesTable)
-        .where(inArray(mapAxisValuesTable.axisId, axisIds))
-        .orderBy(asc(mapAxisValuesTable.position))
-    : [];
+  const cellIds = cellRows.map((cell: any) => cell.id);
+  const exampleIds = exampleRows.map((example: any) => example.id);
+  const assetIds = cellRows
+    .map((cell: any) => cell.visualizationAssetId)
+    .filter((value: any): value is string => typeof value === "string" && value.length > 0);
+
+  const [valueRows, coordinateRows, badgeRows, referenceImageRows, assetRows] = await Promise.all([
+    axisIds.length
+      ? db
+          .select()
+          .from(mapAxisValuesTable)
+          .where(inArray(mapAxisValuesTable.axisId, axisIds))
+          .orderBy(asc(mapAxisValuesTable.position))
+      : Promise.resolve([] as any[]),
+    cellIds.length
+      ? db.select().from(mapCellCoordinatesTable).where(inArray(mapCellCoordinatesTable.cellId, cellIds))
+      : Promise.resolve([] as any[]),
+    cellIds.length
+      ? db
+          .select()
+          .from(mapCellBadgesTable)
+          .where(inArray(mapCellBadgesTable.cellId, cellIds))
+          .orderBy(asc(mapCellBadgesTable.sortOrder))
+      : Promise.resolve([] as any[]),
+    exampleIds.length
+      ? db
+          .select()
+          .from(mapExampleReferenceImagesTable)
+          .where(inArray(mapExampleReferenceImagesTable.exampleId, exampleIds))
+          .orderBy(asc(mapExampleReferenceImagesTable.sortOrder))
+      : Promise.resolve([] as any[]),
+    assetIds.length
+      ? db.select().from(mediaAssetsTable).where(inArray(mediaAssetsTable.id, assetIds))
+      : Promise.resolve([] as any[]),
+  ]);
+
   const valuesByAxisId = new Map<string, typeof valueRows>();
   for (const value of valueRows) {
     const list = valuesByAxisId.get(value.axisId) ?? [];
     list.push(value);
     valuesByAxisId.set(value.axisId, list);
   }
-
-  const cellRows = await db
-    .select()
-    .from(mapCellsTable)
-    .where(eq(mapCellsTable.mapId, row.id))
-    .orderBy(asc(mapCellsTable.sortOrder));
-  const cellIds = cellRows.map((cell: any) => cell.id);
-  const coordinateRows = cellIds.length
-    ? await db
-        .select()
-        .from(mapCellCoordinatesTable)
-        .where(inArray(mapCellCoordinatesTable.cellId, cellIds))
-    : [];
-  const badgeRows = cellIds.length
-    ? await db
-        .select()
-        .from(mapCellBadgesTable)
-        .where(inArray(mapCellBadgesTable.cellId, cellIds))
-        .orderBy(asc(mapCellBadgesTable.sortOrder))
-    : [];
-  const exampleRows = await db
-    .select()
-    .from(mapExamplesTable)
-    .where(eq(mapExamplesTable.mapId, row.id))
-    .orderBy(asc(mapExamplesTable.sortOrder));
-  const exampleIds = exampleRows.map((example: any) => example.id);
-  const referenceImageRows = exampleIds.length
-    ? await db
-        .select()
-        .from(mapExampleReferenceImagesTable)
-        .where(inArray(mapExampleReferenceImagesTable.exampleId, exampleIds))
-        .orderBy(asc(mapExampleReferenceImagesTable.sortOrder))
-    : [];
-  const featuredRows = await db
-    .select()
-    .from(mapFeaturedExamplesTable)
-    .where(eq(mapFeaturedExamplesTable.mapId, row.id))
-    .orderBy(asc(mapFeaturedExamplesTable.sortOrder));
-  const constraintRows = await db
-    .select()
-    .from(mapConstraintsTable)
-    .where(eq(mapConstraintsTable.mapId, row.id))
-    .orderBy(asc(mapConstraintsTable.sortOrder));
-  const calloutRows = await db
-    .select()
-    .from(mapCalloutsTable)
-    .where(eq(mapCalloutsTable.mapId, row.id))
-    .orderBy(asc(mapCalloutsTable.sortOrder));
-
-  const assetIds = cellRows
-    .map((cell: any) => cell.visualizationAssetId)
-    .filter((value: any): value is string => typeof value === "string" && value.length > 0);
-  const assetRows = assetIds.length
-    ? await db.select().from(mediaAssetsTable).where(inArray(mediaAssetsTable.id, assetIds))
-    : [];
   const assetById = new Map<string, any>(assetRows.map((asset: any) => [asset.id, asset]));
 
   const axisById = new Map<string, any>(axisRows.map((axis: any) => [axis.id, axis]));
@@ -1290,55 +1295,115 @@ export async function listMaps({
 
     const whereClause = conditions.length ? and(...conditions) : undefined;
 
-    // `top` ordering: float maps that have leaderboard entries to the top,
-    // ranked by the summed score of those entries (publishedAt breaks ties).
-    // Implemented with a correlated subquery so we don't need a schema
-    // migration.
-    const topScoreExpr = sql<number>`COALESCE((
-      SELECT SUM(${spotlightsTable.score})
-      FROM ${spotlightsTable}
-      WHERE ${spotlightsTable.mapId} = ${mapsTable.id}
-    ), 0)`;
+    // `top` ordering: float maps with leaderboard entries to the top,
+    // ranked by the summed score of those entries (publishedAt breaks
+    // ties). A pre-aggregated subquery on `spotlights` joined once is
+    // dramatically cheaper than a per-row correlated SUM (no N+1).
+    const topScoreSub = db
+      .select({
+        mapId: spotlightsTable.mapId,
+        topScore: sql<number>`SUM(${spotlightsTable.score})`.as("top_score"),
+      })
+      .from(spotlightsTable)
+      .groupBy(spotlightsTable.mapId)
+      .as("ts");
+
+    const topScoreExpr = sql<number>`COALESCE(${topScoreSub.topScore}, 0)`;
+
     const orderBy =
       sort === "top"
         ? [desc(topScoreExpr), desc(mapsTable.publishedAt)]
         : [desc(mapsTable.publishedAt)];
 
-    const rows = await db
-      .select()
+    // count(*) OVER () folds the total into the same roundtrip as the
+    // page rows instead of a second SELECT count(*).
+    const rowsRaw = await db
+      .select({
+        row: mapsTable,
+        total: sql<number>`count(*) OVER ()`,
+      })
       .from(mapsTable)
+      .leftJoin(topScoreSub, eq(topScoreSub.mapId, mapsTable.id))
       .where(whereClause)
       .orderBy(...orderBy)
       .limit(pageSize)
       .offset((page - 1) * pageSize);
 
-    const [{ count }] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(mapsTable)
-      .where(whereClause);
+    const rows = rowsRaw.map((r: any) => r.row as MapRow);
+    const total = rowsRaw[0]?.total ?? 0;
 
-    const creatorNames = await resolveCreatorNames(
-      db,
-      rows.map((row: any) => row.createdByNeonUserId),
+    if (!rows.length) {
+      return { items: [], total: Number(total) };
+    }
+
+    const mapIds = rows.map((row) => row.id);
+
+    // Parameterized id list for the two thumbnail subqueries below.
+    const mapIdList = sql.join(
+      mapIds.map((id) => sql`${id}`),
+      sql`, `,
     );
 
-    const items: SavedMap[] = [];
-    for (const row of rows) {
-      try {
-        const typedRow = row as unknown as MapRow;
-        const creator = typedRow.createdByNeonUserId
-          ? creatorNames.get(typedRow.createdByNeonUserId) ?? null
-          : null;
-        items.push(await hydrateSavedMap(db, typedRow, creator));
-      } catch (err) {
-        console.error("[listMaps] skipping unreadable map row:", (row as { slug?: string })?.slug, err);
+    // Resolve thumbnails (cell visualization > example reference image)
+    // and creator display names in parallel — no per-row hydration.
+    const [cellThumbRows, exampleThumbRows, creatorNames] = await Promise.all([
+      db.execute(sql`
+        SELECT DISTINCT ON (mc.map_id) mc.map_id AS map_id, ma.public_url AS url
+        FROM map_cells mc
+        JOIN media_assets ma ON ma.id = mc.visualization_asset_id
+        WHERE mc.map_id IN (${mapIdList})
+        ORDER BY mc.map_id, mc.sort_order ASC
+      `) as unknown as Promise<Array<{ map_id: string; url: string }>>,
+      db.execute(sql`
+        SELECT DISTINCT ON (me.map_id) me.map_id AS map_id,
+          COALESCE(eri.thumbnail, eri.link) AS url
+        FROM map_examples me
+        JOIN map_example_reference_images eri ON eri.example_id = me.id
+        WHERE me.map_id IN (${mapIdList})
+        ORDER BY me.map_id, me.sort_order ASC, eri.sort_order ASC
+      `) as unknown as Promise<Array<{ map_id: string; url: string | null }>>,
+      resolveCreatorNames(
+        db,
+        rows.map((row) => row.createdByNeonUserId),
+      ),
+    ]);
+
+    const thumbnailByMapId = new Map<string, string>();
+    for (const row of cellThumbRows) {
+      if (row.url) thumbnailByMapId.set(row.map_id, row.url);
+    }
+    for (const row of exampleThumbRows) {
+      if (!thumbnailByMapId.has(row.map_id) && row.url) {
+        thumbnailByMapId.set(row.map_id, row.url);
       }
     }
 
-    return {
-      items,
-      total: Number(count),
-    };
+    const items: SavedMap[] = rows.map((row) => {
+      const creator = row.createdByNeonUserId
+        ? creatorNames.get(row.createdByNeonUserId) ?? null
+        : null;
+      return {
+        id: row.id,
+        slug: row.slug,
+        title: row.title,
+        domain: row.domain,
+        topicFamily: row.topicFamily,
+        status: row.status,
+        publishedAt: row.publishedAt ? coerceIsoString(row.publishedAt) : null,
+        createdAt: coerceIsoString(row.createdAt),
+        updatedAt: coerceIsoString(row.updatedAt),
+        summary: row.summary,
+        promptSummary: row.promptSummary,
+        document: buildStoredMapDocument(row),
+        revision: row.revision ?? 0,
+        isPublic: row.isPublic ?? false,
+        createdByNeonUserId: row.createdByNeonUserId ?? null,
+        createdByDisplayName: creator,
+        thumbnailUrl: thumbnailByMapId.get(row.id) ?? null,
+      };
+    });
+
+    return { items, total: Number(total) };
   } catch (error) {
     logReadFallback("listMaps", error);
     return {

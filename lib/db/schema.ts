@@ -57,11 +57,7 @@ export const mapsTable = pgTable(
     publishedAt: timestamp("published_at", { withTimezone: true }),
   },
   (table) => [
-    index("maps_published_idx").on(table.publishedAt),
-    index("maps_topic_family_idx").on(table.topicFamily),
-    index("maps_status_idx").on(table.status),
     index("maps_created_by_idx").on(table.createdByNeonUserId),
-    index("maps_is_public_idx").on(table.isPublic),
   ],
 );
 
@@ -81,10 +77,7 @@ export const mediaAssetsTable = pgTable(
     createdByNeonUserId: varchar("created_by_neon_user_id", { length: 160 }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [
-    uniqueIndex("media_assets_public_url_idx").on(table.publicUrl),
-    index("media_assets_byte_hash_idx").on(table.byteHash),
-  ],
+  (table) => [uniqueIndex("media_assets_public_url_idx").on(table.publicUrl)],
 );
 
 export const mapAxesTable = pgTable(
@@ -269,18 +262,24 @@ export const mapCalloutsTable = pgTable(
   (table) => [uniqueIndex("map_callouts_map_kind_sort_idx").on(table.mapId, table.kind, table.sortOrder)],
 );
 
-export const mapGenerationRunsTable = pgTable("map_generation_runs", {
-  id: varchar("id", { length: 64 }).primaryKey(),
-  mapId: varchar("map_id", { length: 64 }).references(() => mapsTable.id, { onDelete: "set null" }),
-  status: varchar("status", { length: 20 }).notNull(),
-  model: varchar("model", { length: 120 }).notNull(),
-  fallbackModel: varchar("fallback_model", { length: 120 }),
-  normalizedBrief: jsonb("normalized_brief"),
-  inputBrief: jsonb("input_brief").notNull(),
-  error: text("error"),
-  metrics: jsonb("metrics"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
+export const mapGenerationRunsTable = pgTable(
+  "map_generation_runs",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    mapId: varchar("map_id", { length: 64 }).references(() => mapsTable.id, { onDelete: "set null" }),
+    status: varchar("status", { length: 20 }).notNull(),
+    model: varchar("model", { length: 120 }).notNull(),
+    fallbackModel: varchar("fallback_model", { length: 120 }),
+    normalizedBrief: jsonb("normalized_brief"),
+    inputBrief: jsonb("input_brief").notNull(),
+    error: text("error"),
+    metrics: jsonb("metrics"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("map_generation_runs_map_created_idx").on(table.mapId, table.createdAt.desc()),
+  ],
+);
 
 export const cellVisualizationRunsTable = pgTable(
   "cell_visualization_runs",
@@ -330,9 +329,8 @@ export const spotlightsTable = pgTable(
     publishedAt: timestamp("published_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    index("spotlights_score_idx").on(table.score),
-    index("spotlights_published_idx").on(table.publishedAt),
-    index("spotlights_topic_family_idx").on(table.topicFamilySnapshot),
+    index("spotlights_map_id_idx").on(table.mapId),
+    index("spotlights_score_published_idx").on(table.score.desc(), table.publishedAt.desc()),
     uniqueIndex("spotlights_map_cell_idx").on(table.mapId, table.cellId),
   ],
 );
@@ -399,7 +397,6 @@ export const pagesTable = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
     publishedAt: timestamp("published_at", { withTimezone: true }),
   },
-  (table) => [index("pages_status_idx").on(table.status)],
 );
 
 export const pageRevisionsTable = pgTable(
