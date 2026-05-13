@@ -7,11 +7,23 @@ import { MapRenderer } from "@/components/map-renderer";
 import { MapVisibilityControl } from "@/components/map-visibility-control";
 import { dispatchLibraryRefresh } from "@/lib/client-events";
 import type { GenerationTraceEvent } from "@/lib/generation-stream";
+import { ENRICHMENT_WINDOW_MS } from "@/components/map-card";
 import { revealTransition } from "@/lib/motion";
 import type { MapDocument, SavedMap } from "@/lib/types";
 import { cn, simplifyMapDisplayTitle } from "@/lib/utils";
 
 type LiveStatus = "generating" | "published" | "failed";
+
+/**
+ * Was this map published recently enough that the server-side SerpAPI
+ * enrichment is probably still landing patches?
+ */
+function isWithinEnrichmentWindow(publishedAt?: string | null): boolean {
+  if (!publishedAt) return false;
+  const ts = new Date(publishedAt).getTime();
+  if (Number.isNaN(ts)) return false;
+  return Date.now() - ts < ENRICHMENT_WINDOW_MS;
+}
 
 export function LiveMapShell({
   initial,
@@ -36,8 +48,13 @@ export function LiveMapShell({
   const [status, setStatus] = useState<LiveStatus>(initialLive);
   // While the server keeps streaming snapshots after publish (SerpApi
   // enrichment), `enriching` stays true. It flips off on the explicit
-  // `complete` event from the SSE endpoint.
-  const [enriching, setEnriching] = useState<boolean>(initialLive === "generating");
+  // `complete` event from the SSE endpoint. Initialize to true also when
+  // the map landed on a static "published" page within the enrichment
+  // window — otherwise SSE never opens and the UI silently stops updating.
+  const [enriching, setEnriching] = useState<boolean>(
+    initialLive === "generating" ||
+      (initialLive === "published" && isWithinEnrichmentWindow(initial.publishedAt)),
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(
     initial.status === "failed" ? initial.summary || "Generation failed." : null,
   );
@@ -92,10 +109,14 @@ export function LiveMapShell({
     };
   }, [slug, status, enriching]);
 
-  // When status flips to published, ask the server component to re-render
-  // so subsequent navigations see the static map (and we drop the live shell).
+  // When status flips to published *during this session* (i.e. we caught the
+  // transition over SSE), ask the server component to re-render so the next
+  // navigation sees the static map. Skip on initial mount when we already
+  // started in the published+enriching state — otherwise we'd kick off a
+  // server round-trip every time someone opens an existing published map.
+  const initialStatusRef = useRef<LiveStatus>(initialLive);
   useEffect(() => {
-    if (status === "published") {
+    if (status === "published" && initialStatusRef.current !== "published") {
       dispatchLibraryRefresh();
       router.refresh();
     }

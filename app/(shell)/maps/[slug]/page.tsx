@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { LiveMapShell } from "@/components/live-map-shell";
+import { isMapEnriching } from "@/components/map-card";
 import { MapRenderer } from "@/components/map-renderer";
 import { ShellPage } from "@/components/raster-shell";
 import { MapVisibilityControl } from "@/components/map-visibility-control";
@@ -50,7 +51,12 @@ export default async function MapPage({
     notFound();
   }
 
-  const isLive = map.status === "generating" || map.status === "failed";
+  // Route through `LiveMapShell` whenever the page might still be receiving
+  // server-driven updates: generation in flight, recently failed, OR within
+  // the SerpAPI enrichment window after publish (the SSE endpoint keeps
+  // streaming for ~200s after publish to land reference images / anchors).
+  const isLive =
+    map.status === "generating" || map.status === "failed" || isMapEnriching(map);
   const adminOverrideLabel =
     isAdmin && map.createdByNeonUserId !== user?.id ? "Admin override" : undefined;
 

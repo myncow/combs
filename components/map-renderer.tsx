@@ -1101,22 +1101,38 @@ function CellTile({
   const isUnnamedStatus = cell.status === "gap" || cell.status === "impossible";
   const primaryTitle = specimen?.name ?? (isUnnamedStatus ? null : cell.label);
 
+  // When the tile has a real preview image we layer photo-style overlays
+  // (gradients + drop-shadowed text) so labels stay legible. When it doesn't,
+  // we drop those overlays entirely — there's no image to fight with — and
+  // render only a small status code + label in the muted token. This is the
+  // "calmer empty cell" state.
+  const showPhotoOverlays = !!previewImage;
+  const showTitleInTile = !!previewImage && !!primaryTitle;
+
   return (
     <div
       id={`map-cell-${cell.id}`}
       style={{ ...style, ...statusColorStyle(cell.status) }}
       className={cn(
         "group relative isolate flex aspect-[5/6] flex-col overflow-hidden border-0 p-0 text-left text-foreground outline-none md:h-full md:aspect-auto",
-        canGenerate
-          ? "bg-[color:color-mix(in_srgb,var(--status-color)_38%,var(--card))]"
-          : "bg-[color:color-mix(in_srgb,var(--status-color)_11%,var(--card))]",
+        // Empty (no preview image) tiles get a much quieter background so
+        // they read as "space waiting to be filled" rather than competing
+        // with the filled tiles. The status color is reserved for the left
+        // rail accent below.
+        previewImage
+          ? canGenerate
+            ? "bg-[color:color-mix(in_srgb,var(--status-color)_28%,var(--card))]"
+            : "bg-[color:color-mix(in_srgb,var(--status-color)_11%,var(--card))]"
+          : "bg-card",
         "transition-[background-color,box-shadow] duration-150 ease-out",
         "before:pointer-events-none before:absolute before:left-0 before:top-0 before:h-full before:content-['']",
         canGenerate ? "before:w-[3px]" : "before:w-[2px]",
         "before:bg-[var(--status-color)]",
-        canGenerate
-          ? "outline-none cursor-pointer hover:bg-[color:color-mix(in_srgb,var(--status-color)_50%,var(--card))]"
-          : "outline-none cursor-pointer hover:bg-[color:color-mix(in_srgb,var(--status-color)_17%,var(--card))]",
+        previewImage
+          ? canGenerate
+            ? "outline-none cursor-pointer hover:bg-[color:color-mix(in_srgb,var(--status-color)_38%,var(--card))]"
+            : "outline-none cursor-pointer hover:bg-[color:color-mix(in_srgb,var(--status-color)_17%,var(--card))]"
+          : "outline-none cursor-pointer hover:bg-[color:color-mix(in_srgb,var(--status-color)_8%,var(--card))]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         active && "[box-shadow:inset_0_0_0_1px_var(--status-color)]",
       )}
@@ -1144,22 +1160,44 @@ function CellTile({
             <EmptyCellBody />
           )}
 
-          <div className="image-overlay-top pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 px-3 pb-6 pt-2.5 md:px-2 md:pt-2">
-            <span className="image-overlay-text font-mono text-[10px] uppercase tracking-[0.22em] md:text-[10px]">
-              {code}
-            </span>
-          </div>
+          {/* Top-left code: gradient + shadowed text only when there's an
+              image behind it. Empty tiles use a plain muted label. */}
+          {showPhotoOverlays ? (
+            <div className="image-overlay-top pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 px-3 pb-6 pt-2.5 md:px-2 md:pt-2">
+              <span className="image-overlay-text font-mono text-[10px] uppercase tracking-[0.22em] md:text-[10px]">
+                {code}
+              </span>
+            </div>
+          ) : (
+            <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 px-3 pt-2.5 md:px-2 md:pt-2">
+              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground/70">
+                {code}
+              </span>
+            </div>
+          )}
 
-          <div className="image-overlay-bottom pointer-events-none absolute inset-x-0 bottom-0 px-3 pb-2.5 pt-8 md:px-2 md:pb-2">
-            <p className="image-overlay-text image-overlay-text--muted font-mono text-[10px] uppercase tracking-[0.18em]">
-              {display.label}
-            </p>
-            {primaryTitle ? (
-              <h3 className="image-overlay-text mt-1 line-clamp-2 font-sans text-[15px] font-semibold leading-[1.12] tracking-[-0.01em] md:text-[14px]">
-                {primaryTitle}
-              </h3>
-            ) : null}
-          </div>
+          {/* Bottom label: same idea — keep the photo gradient when there's
+              an image, otherwise just one small line at the bottom-left. */}
+          {showPhotoOverlays ? (
+            <div className="image-overlay-bottom pointer-events-none absolute inset-x-0 bottom-0 px-3 pb-2.5 pt-8 md:px-2 md:pb-2">
+              <p className="image-overlay-text image-overlay-text--muted font-mono text-[10px] uppercase tracking-[0.18em]">
+                {display.label}
+              </p>
+              {showTitleInTile ? (
+                <h3 className="image-overlay-text mt-1 line-clamp-2 font-sans text-[15px] font-semibold leading-[1.12] tracking-[-0.01em] md:text-[14px]">
+                  {primaryTitle}
+                </h3>
+              ) : null}
+            </div>
+          ) : (
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 px-3 pb-2 md:px-2">
+              <p
+                className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:color-mix(in_srgb,var(--status-color)_85%,var(--muted-foreground))]"
+              >
+                {display.label}
+              </p>
+            </div>
+          )}
         </div>
       </button>
 
@@ -1281,13 +1319,26 @@ function CellPreviewImage({ image }: { image: { url: string; alt: string } }) {
 }
 
 function EmptyCellBody() {
+  // Quiet empty body: a barely-there dot grid in the foreground token so the
+  // tile reads as "blank canvas waiting" without injecting another saturated
+  // status-color wash on top of the already status-tinted left rail.
   return (
     <div
       className={cn(
         TILE_VISUAL_FRAME_CLASS,
-        "flex items-center justify-center bg-[color:color-mix(in_srgb,var(--status-color)_14%,var(--card))]",
+        "flex items-center justify-center bg-card",
       )}
-    />
+      aria-hidden
+    >
+      <div
+        className="h-full w-full opacity-[0.18]"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--foreground) 55%, transparent) 0.6px, transparent 1.4px)",
+          backgroundSize: "10px 10px",
+        }}
+      />
+    </div>
   );
 }
 
