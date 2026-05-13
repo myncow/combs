@@ -305,64 +305,69 @@ describe("cell image prompting", () => {
     expect(series.label).toBe("Natural History Plate");
   });
 
-  it("builds prompts around a shared series style and grounded frontier evidence", () => {
-    const prompt = buildCellImagePrompt(groundedBirdDocument, birdCell, false);
-    expect(prompt).toContain("Natural History Plate");
+  it("builds a compact prompt anchored on subject, coordinates, and shared style", () => {
+    const prompt = buildCellImagePrompt(groundedBirdDocument, birdCell);
+
+    expect(prompt).toContain("Generate one square image for this map cell");
+    expect(prompt).toContain("## Subject");
+    expect(prompt).toContain('Render a Birds subject for "Wetland waders"');
+    expect(prompt).toContain("Habitat = Wetland; Behavior = Wading");
+    expect(prompt).toContain("Frontier cell");
+
+    expect(prompt).toContain("## Coordinate coverage");
+    expect(prompt).toContain("Every coordinate above must be visible");
+
+    // Series style block (shared across cells).
     expect(prompt).toContain("same natural history plate series");
-    expect(prompt).toContain("Photorealism mandate");
     expect(prompt).toContain("Photorealistic field-guide specimen photography");
-    expect(prompt).toContain("## Exact subject lock");
-    expect(prompt).toContain("The image must be a Birds subject");
-    expect(prompt).toContain("The primary subject should fill roughly 60-80% of the frame.");
-    expect(prompt).toContain("Favor a strong silhouette");
-    expect(prompt).toContain("strong image when reduced to a small tile");
-    expect(prompt).toContain("Avoid sterile studio-backdrop language and retail presentation tropes.");
-    expect(prompt).toContain("Do not illustrate absence, impossibility, tension");
-    expect(prompt).toContain("Unrelated output is a failure");
-    expect(prompt).toContain("Use other visual examples as the main source of truth");
-    expect(prompt).toContain("## Plausibility construction");
-    expect(prompt).toContain("Persisted visual references available to you");
-    // Gap cells fold their `cell.examples` into ambient reference imagery
-    // rather than direct anchors — these examples come from post-hoc visual
-    // probing, not from documented evidence.
-    expect(prompt).toContain('Ref 1: Ambient search candidate for "Wetland waders"');
-    expect(prompt).toContain("Red-winged blackbird");
+    expect(prompt).toContain("One primary subject filling roughly 60-80% of the square frame");
     expect(prompt).toContain("#0f766e");
-    expect(prompt).toContain("Generate a single square image for this map cell");
-    expect(prompt).toContain("## Composition hint");
+
+    // References section uses attached image grounding once, not duplicate notes.
+    expect(prompt).toContain("## References");
+    expect(prompt).toContain("anatomy, materials, texture, lighting, and context only");
+
+    // Avoid block — frontier-specific avoid line for gap cells.
+    expect(prompt).toContain("## Avoid");
+    expect(prompt).toContain("No text, labels, callouts, diagrams");
+    expect(prompt).toContain("Do not illustrate absence, impossibility, tension");
+
+    // Removed verbose sections should no longer appear.
+    expect(prompt).not.toContain("Use other visual examples as the main source of truth");
+    expect(prompt).not.toContain("## Plausibility construction");
+    expect(prompt).not.toContain("Persisted visual references available to you");
+    expect(prompt).not.toContain("## Composition hint");
+    expect(prompt).not.toContain("## Map context");
+    expect(prompt).not.toContain("## Exact subject lock");
+    expect(prompt).not.toContain("Reference notes:");
   });
 
   it("switches prompt behavior by frontier status", () => {
     const tensionPrompt = buildCellImagePrompt(
       groundedBirdDocument,
       { ...birdCell, status: "tension", label: "Wetland friction birds" },
-      false,
     );
     const impossiblePrompt = buildCellImagePrompt(
       groundedBirdDocument,
       { ...birdCell, status: "impossible", label: "Wetland impossible birds" },
-      false,
     );
 
-    expect(tensionPrompt).toContain("hard-but-viable edge case");
+    expect(tensionPrompt).toContain("Hard-but-viable edge case");
     expect(tensionPrompt).toContain("do not dramatize tension");
-    expect(impossiblePrompt).toContain("stay in-domain");
+    expect(impossiblePrompt).toContain("Stay in-domain");
     expect(impossiblePrompt).toContain("minimum visible assumptions");
-    expect(impossiblePrompt).toContain("Silently choose one or two visible assumptions");
-    expect(impossiblePrompt).toContain("without changing the subject category");
     expect(impossiblePrompt).toContain("Do not show impossibility, tension, failure");
   });
 
   it("requires every coordinate carrier for composite subjects", () => {
-    const prompt = buildCellImagePrompt(eggHamDocument, eggHamCell, false);
+    const prompt = buildCellImagePrompt(eggHamDocument, eggHamCell);
 
     expect(prompt).toContain("Composite subjects must remain complete");
     expect(prompt).toContain("an eggs-and-ham cell must show the egg/yolk and the ham/meat");
-    expect(prompt).toContain("## Coordinate coverage checklist");
+    expect(prompt).toContain("## Coordinate coverage");
     expect(prompt).toContain('Yolk chroma = Sunset Orange: the visible carrier of "Yolk chroma" must appear');
     expect(prompt).toContain('Meat pigmentation = Mahogany: the visible carrier of "Meat pigmentation" must appear');
-    expect(prompt).toContain("Do not crop out, hide, imply, substitute, or leave off any coordinate carrier");
-    expect(prompt).toContain("Show every coordinate-bearing object, ingredient, part, or material");
+    expect(prompt).toContain("do not crop out, hide, imply, or substitute any coordinate carrier");
   });
 
   it("builds a grounding bundle from direct examples, neighboring anchors, and reference images", () => {
@@ -398,8 +403,8 @@ describe("cell image prompting", () => {
 
   it("reuses the persisted visual style spec across regenerations", () => {
     const attached = attachVisualSeries(groundedBirdDocument);
-    const first = buildCellImagePrompt(attached, birdCell, false);
-    const second = buildCellImagePrompt(attached, birdCell, false);
+    const first = buildCellImagePrompt(attached, birdCell);
+    const second = buildCellImagePrompt(attached, birdCell);
 
     expect(attached.visualSeries?.styleSpec).toBeDefined();
     expect(first).toContain(attached.visualSeries?.styleSpec.medium ?? "");
