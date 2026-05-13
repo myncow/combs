@@ -508,6 +508,8 @@ type MapRow = {
   createdAt: Date | string;
   updatedAt: Date | string;
   publishedAt: Date | string | null;
+  posterUrl?: string | null;
+  posterGeneratedAt?: Date | string | null;
 };
 
 function buildStoredMapDocument(row: MapRow): MapDocument {
@@ -763,6 +765,10 @@ async function hydrateSavedMap(
     isPublic: row.isPublic ?? false,
     createdByNeonUserId: row.createdByNeonUserId ?? null,
     createdByDisplayName: creatorName,
+    posterUrl: row.posterUrl ?? null,
+    posterGeneratedAt: row.posterGeneratedAt
+      ? coerceIsoString(row.posterGeneratedAt)
+      : null,
   });
 }
 
@@ -902,6 +908,7 @@ export async function listLeaderboardEntries({
   pageSize = 12,
   requesterId,
   ownerId,
+  query,
 }: {
   topicFamily?: string;
   sort?: LeaderboardSort;
@@ -915,9 +922,18 @@ export async function listLeaderboardEntries({
    * `maps.created_by_neon_user_id` instead, so no migration is required.
    */
   ownerId?: string;
+  /**
+   * Free-text needle. Matched (case-insensitive) against the entry's
+   * story title, the topic family snapshot, and the source map title
+   * snapshot. Trimmed/empty values are ignored so callers can forward
+   * URL params without branching.
+   */
+  query?: string;
 }) {
   try {
     const db = getDb();
+    const trimmedQuery = (query ?? "").trim();
+    const likePattern = trimmedQuery ? `%${trimmedQuery.replace(/[%_]/g, "\\$&")}%` : null;
     const filters = [
       topicFamily && topicFamily !== "All"
         ? eq(spotlightsTable.topicFamilySnapshot, topicFamily)
@@ -930,6 +946,13 @@ export async function listLeaderboardEntries({
               .from(mapsTable)
               .where(eq(mapsTable.createdByNeonUserId, ownerId)),
           )
+        : undefined,
+      likePattern
+        ? sql`(
+            ${spotlightsTable.storyTitle} ILIKE ${likePattern}
+            OR ${spotlightsTable.topicFamilySnapshot} ILIKE ${likePattern}
+            OR ${spotlightsTable.mapTitleSnapshot} ILIKE ${likePattern}
+          )`
         : undefined,
     ].filter(Boolean);
     const whereClause = filters.length ? and(...filters as any) : undefined;
@@ -1956,6 +1979,46 @@ export async function setMapPublicState(
   });
 
   return { slug, isPublic };
+}
+
+/**
+ * Persist a freshly-generated poster image URL onto a map row.
+ *
+ * The poster lives directly on `maps` (rather than `media_assets`) because
+ * a map only ever has one current poster — replacing it overwrites the
+ * blob via the content-addressed `materializeMapPoster` pathname. The
+ * media_assets table is reserved for cell visualizations and spotlights
+ * where we need to back-reference ownership / dedupe across rows.
+ */
+export async function setMapPoster(
+  slug: string,
+  posterUrl: string,
+  updatedByNeonUserId?: string | null,
+): Promise<{ slug: string; posterUrl: string; posterGeneratedAt: string } | null> {
+  const db = getDb();
+  const existing = await db
+    .select({ id: mapsTable.id })
+    .from(mapsTable)
+    .where(eq(mapsTable.slug, slug))
+    .limit(1);
+  if (!existing.length) return null;
+
+  const generatedAt = new Date();
+  await db
+    .update(mapsTable)
+    .set({
+      posterUrl,
+      posterGeneratedAt: generatedAt,
+      updatedAt: generatedAt,
+      updatedByNeonUserId: updatedByNeonUserId ?? null,
+    })
+    .where(eq(mapsTable.id, existing[0].id));
+
+  return {
+    slug,
+    posterUrl,
+    posterGeneratedAt: generatedAt.toISOString(),
+  };
 }
 
 export async function logGenerationRun(run: GenerationRun) {

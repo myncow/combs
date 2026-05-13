@@ -151,12 +151,15 @@ export function MapCard({
           >
             <MapThumbnail url={thumbnailUrl} className="h-12 w-12" />
             <div className="min-w-0 text-left">
-              <h3 className="truncate text-[13.5px] font-semibold leading-[1.25] tracking-[-0.005em] text-foreground transition-colors duration-150 group-hover:text-primary">
+              <h3
+                title={displayTitle}
+                className="text-[13.5px] font-semibold leading-[1.25] tracking-[-0.005em] text-foreground transition-colors duration-150 group-hover:text-primary [overflow-wrap:anywhere]"
+              >
                 {displayTitle}
               </h3>
-              {map.createdByDisplayName ? (
+              {date ? (
                 <p className="mt-0.5 truncate font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                  by {map.createdByDisplayName}
+                  <time dateTime={map.createdAt}>{date}</time>
                 </p>
               ) : null}
               <AnimatePresence mode="wait" initial={false}>

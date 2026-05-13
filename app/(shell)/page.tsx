@@ -185,12 +185,14 @@ export default async function HomePage({
     view?: string;
     page?: string;
     spotlight?: string;
+    q?: string;
   }>;
 }) {
   await connection();
   const requesterId = await getVoterIdentity();
   const user = await getSessionUser();
   const params = await searchParams;
+  const query = (params.q ?? "").trim().slice(0, 160);
 
   // `sort` (legacy) still narrows top vs. latest; `scope` is the new
   // three-way toggle (top / latest / mine). When `scope` is missing we
@@ -225,6 +227,7 @@ export default async function HomePage({
       pageSize,
       requesterId,
       ownerId: scope === "mine" ? user?.id : undefined,
+      query: query || undefined,
     }),
     getPageByKey("leaderboard"),
     listMaps({
@@ -246,6 +249,7 @@ export default async function HomePage({
   const baseParams = new URLSearchParams();
   baseParams.set("scope", scope);
   baseParams.set("view", view);
+  if (query) baseParams.set("q", query);
 
   const pageHref = (nextPage: number) => {
     const next = new URLSearchParams(baseParams);
@@ -279,64 +283,106 @@ export default async function HomePage({
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <SegmentedNav<LeaderboardScope>
-              label="Filter leaderboard"
-              current={scope}
-              paramName="scope"
-              baseParams={(() => {
-                const carry = new URLSearchParams();
-                carry.set("view", view);
-                return carry;
-              })()}
-              options={[
-                { value: "top", label: SCOPE_LABEL.top, icon: SCOPE_ICON.top },
-                { value: "new", label: SCOPE_LABEL.new, icon: SCOPE_ICON.new },
-                {
-                  value: "mine",
-                  label: SCOPE_LABEL.mine,
-                  icon: SCOPE_ICON.mine,
-                  disabled: !user,
-                  disabledHint: "Sign in to filter your entries",
-                },
-              ]}
-            />
-            <SegmentedNav<LeaderboardView>
-              label="Leaderboard view"
-              current={view}
-              paramName="view"
-              baseParams={(() => {
-                const carry = new URLSearchParams();
-                carry.set("scope", scope);
-                return carry;
-              })()}
-              options={[
-                { value: "list", label: VIEW_LABEL.list, icon: VIEW_ICON.list },
-                { value: "gallery", label: VIEW_LABEL.gallery, icon: VIEW_ICON.gallery },
-              ]}
-            />
+            <form
+              action="/"
+              role="search"
+              className="flex items-center gap-1"
+            >
+              <input
+                name="q"
+                type="search"
+                defaultValue={query}
+                placeholder="Search title, category…"
+                aria-label="Search leaderboard"
+                className="h-9 w-[10rem] border border-border bg-background px-2.5 font-sans text-[12.5px] text-foreground placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:w-[14rem]"
+              />
+              <input type="hidden" name="scope" value={scope} />
+              <input type="hidden" name="view" value={view} />
+            </form>
+            {/* Filter + view toggles are signed-in-only interactions —
+                they let people slice the leaderboard by their own entries
+                and switch between dense list / spotlight gallery. For
+                signed-out visitors we keep the page focused on the
+                content + the "New map" CTA below. Search stays visible
+                because it works for anyone. */}
+            {user ? (
+              <>
+                <SegmentedNav<LeaderboardScope>
+                  label="Filter leaderboard"
+                  current={scope}
+                  paramName="scope"
+                  baseParams={(() => {
+                    const carry = new URLSearchParams();
+                    carry.set("view", view);
+                    return carry;
+                  })()}
+                  options={[
+                    { value: "top", label: SCOPE_LABEL.top, icon: SCOPE_ICON.top },
+                    { value: "new", label: SCOPE_LABEL.new, icon: SCOPE_ICON.new },
+                    {
+                      value: "mine",
+                      label: SCOPE_LABEL.mine,
+                      icon: SCOPE_ICON.mine,
+                    },
+                  ]}
+                />
+                <SegmentedNav<LeaderboardView>
+                  label="Leaderboard view"
+                  current={view}
+                  paramName="view"
+                  baseParams={(() => {
+                    const carry = new URLSearchParams();
+                    carry.set("scope", scope);
+                    return carry;
+                  })()}
+                  options={[
+                    { value: "list", label: VIEW_LABEL.list, icon: VIEW_ICON.list },
+                    { value: "gallery", label: VIEW_LABEL.gallery, icon: VIEW_ICON.gallery },
+                  ]}
+                />
+              </>
+            ) : null}
           </div>
         </div>
       </div>
 
       {entries.items.length ? (
-        <LeaderboardGallery entries={entries.items} view={view} />
+        <LeaderboardGallery
+          entries={entries.items}
+          view={view}
+          isSignedIn={Boolean(user)}
+        />
       ) : (
         <EmptyStatePanel
-          kicker={scope === "mine" ? "Nothing published yet" : pageContent.emptyStateTitle}
+          kicker={
+            query
+              ? "No matches"
+              : scope === "mine"
+                ? "Nothing published yet"
+                : pageContent.emptyStateTitle
+          }
           body={
-            scope === "mine"
-              ? "Publish to the leaderboard from any of your maps to see them here."
-              : pageContent.emptyStateBody
+            query
+              ? `Nothing on the leaderboard matches "${query}". Try a different search or clear it.`
+              : scope === "mine"
+                ? "Publish to the leaderboard from any of your maps to see them here."
+                : pageContent.emptyStateBody
           }
           actions={
-            <>
-              <Button asChild>
-                <Link href="/create">New map</Link>
-              </Button>
+            query ? (
               <Button asChild variant="outline">
-                <Link href="/gallery">Maps</Link>
+                <Link href={`/?scope=${scope}&view=${view}`}>Clear search</Link>
               </Button>
-            </>
+            ) : (
+              <>
+                <Button asChild>
+                  <Link href="/create">New map</Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href="/gallery">Maps</Link>
+                </Button>
+              </>
+            )
           }
         />
       )}

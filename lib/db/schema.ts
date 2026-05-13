@@ -55,6 +55,14 @@ export const mapsTable = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
     publishedAt: timestamp("published_at", { withTimezone: true }),
+    /**
+     * Public URL of the most recent generated poster image for this map.
+     * Persisted so the export dialog can show the existing artwork on
+     * subsequent visits without re-running the (expensive) image model.
+     * `null` until the owner first triggers a poster generation.
+     */
+    posterUrl: text("poster_url"),
+    posterGeneratedAt: timestamp("poster_generated_at", { withTimezone: true }),
   },
   (table) => [
     index("maps_created_by_idx").on(table.createdByNeonUserId),

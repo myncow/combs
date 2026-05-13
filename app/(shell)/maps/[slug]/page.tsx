@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { LiveMapShell } from "@/components/live-map-shell";
 import { isMapEnriching } from "@/components/map-card";
+import { MapPosterExport } from "@/components/map-poster-export";
 import { MapRenderer } from "@/components/map-renderer";
 import { ShellPage } from "@/components/raster-shell";
 import { MapVisibilityControl } from "@/components/map-visibility-control";
@@ -64,7 +65,7 @@ export default async function MapPage({
     isAdmin && map.createdByNeonUserId !== user?.id ? "Admin override" : undefined;
 
   return (
-    <ShellPage size="full" className="pb-8 md:overflow-hidden md:pb-0 md:px-6 xl:px-8">
+    <ShellPage size="full" className="pb-8 md:overflow-hidden md:pb-0">
       {isLive ? (
         <LiveMapShell
           initial={map}
@@ -78,10 +79,20 @@ export default async function MapPage({
             <h1 className="font-sans text-[28px] font-semibold leading-[1.05] tracking-[-0.02em] text-foreground sm:text-[36px] lg:text-[26px]">
               {displayTitle(map.title, map.topicFamily)}
             </h1>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {canMutate && costBreakdown ? (
                 <MapCostBadge breakdown={costBreakdown} />
               ) : null}
+              {/* Anyone with read access gets the Export entry point so
+                  they can copy/download a previously generated poster.
+                  The dialog itself gates the Generate/Regenerate
+                  controls behind `canMutate`. */}
+              <MapPosterExport
+                slug={map.slug}
+                canMutate={canMutate}
+                initialPosterUrl={map.posterUrl ?? null}
+                initialPosterGeneratedAt={map.posterGeneratedAt ?? null}
+              />
               {canMutate ? (
                 <MapVisibilityControl
                   slug={map.slug}

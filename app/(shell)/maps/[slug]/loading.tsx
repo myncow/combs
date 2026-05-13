@@ -2,7 +2,7 @@ import { ShellPage, SurfacePanel } from "@/components/raster-shell";
 
 export default function MapPageLoading() {
   return (
-    <ShellPage size="full" className="pb-8 md:overflow-hidden md:px-6 xl:px-8">
+    <ShellPage size="full" className="pb-8 md:overflow-hidden">
       <div className="border-b border-border pb-6">
         <div className="flex items-baseline gap-3">
           <div className="h-3 w-8 animate-pulse bg-muted/50" />

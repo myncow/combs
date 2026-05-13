@@ -278,6 +278,15 @@ export interface SavedMap {
    * Keep optional so stored rows that pre-date this field stay compatible.
    */
   thumbnailUrl?: string | null;
+  /**
+   * Public URL of the most recently generated poster image for this map.
+   * `null` if the owner has not triggered a poster export yet. Populated
+   * by `getMapBySlug` so the export dialog can immediately preview the
+   * existing artwork.
+   */
+  posterUrl?: string | null;
+  /** ISO timestamp of the last poster generation, paired with `posterUrl`. */
+  posterGeneratedAt?: string | null;
 }
 
 export interface SiteSettings {

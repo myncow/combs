@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { ENRICHMENT_WINDOW_MS } from "@/components/map-card";
+import { MapPosterExport } from "@/components/map-poster-export";
 import { MapRenderer } from "@/components/map-renderer";
 import { MapVisibilityControl } from "@/components/map-visibility-control";
 import type { GenerationTraceEvent } from "@/lib/generation-stream";
@@ -39,6 +41,18 @@ export function LiveMapShell({
   );
   const lastRevisionRef = useRef<number>(initial.revision ?? 0);
 
+  // Track the timestamp (ms) at which the map first reached `published`,
+  // either as carried in from the server snapshot or observed live in
+  // this client. The renderer keeps its cell-level "Searching examples…"
+  // placeholders alive until ENRICHMENT_WINDOW_MS has elapsed past this,
+  // mirroring the sidebar's enrichment indicator and avoiding the
+  // jarring "loading stopped but the sidebar says we're still searching"
+  // gap the user reported.
+  const [publishedAtMs, setPublishedAtMs] = useState<number | null>(() =>
+    initial.publishedAt ? new Date(initial.publishedAt).getTime() : null,
+  );
+  const [nowMs, setNowMs] = useState<number>(() => Date.now());
+
   useEffect(() => {
     if (initialLive === "failed") return;
 
@@ -62,8 +76,10 @@ export function LiveMapShell({
             lastRevisionRef.current = parsed.revision;
             setDoc(parsed.document);
             if (parsed.status === "failed") setStatus("failed");
-            else if (parsed.status === "published") setStatus("published");
-            else setStatus("generating");
+            else if (parsed.status === "published") {
+              setStatus("published");
+              setPublishedAtMs((prev) => prev ?? Date.now());
+            } else setStatus("generating");
           }
           return;
         }
@@ -79,14 +95,17 @@ export function LiveMapShell({
             lastRevisionRef.current = parsed.revision;
           }
           if (parsed.status === "failed") setStatus("failed");
-          else if (parsed.status === "published") setStatus("published");
-          else setStatus("generating");
+          else if (parsed.status === "published") {
+            setStatus("published");
+            setPublishedAtMs((prev) => prev ?? Date.now());
+          } else setStatus("generating");
           return;
         }
         case "complete": {
           // Informational only; the connection stays open and we keep
           // listening for late patches (cell visualizations, axis tweaks).
           setStatus("published");
+          setPublishedAtMs((prev) => prev ?? Date.now());
           return;
         }
         case "failed": {
@@ -133,7 +152,39 @@ export function LiveMapShell({
     };
   }, [slug, initialLive]);
 
+  const enrichmentDeadlineMs = publishedAtMs ? publishedAtMs + ENRICHMENT_WINDOW_MS : null;
+  const withinEnrichmentWindow =
+    status === "published" &&
+    enrichmentDeadlineMs !== null &&
+    nowMs < enrichmentDeadlineMs;
+
+  // Tick a re-render every few seconds while we're inside the enrichment
+  // window so we naturally drop the cell-level placeholder at the
+  // deadline without leaving it on forever if the SerpAPI passes never
+  // land. We don't tick during pure generating — the SSE stream already
+  // re-renders us on every patch.
+  useEffect(() => {
+    if (!withinEnrichmentWindow || !enrichmentDeadlineMs) return;
+    const tickId = setInterval(() => setNowMs(Date.now()), 5_000);
+    const stopId = setTimeout(
+      () => setNowMs(Date.now()),
+      Math.max(0, enrichmentDeadlineMs - Date.now()) + 100,
+    );
+    return () => {
+      clearInterval(tickId);
+      clearTimeout(stopId);
+    };
+  }, [withinEnrichmentWindow, enrichmentDeadlineMs]);
+
+  // The top "Sketching the grid" banner only fires while the server is
+  // still building the document. The cell-level loading state stays on
+  // through both phases (generating + enrichment) so it matches the
+  // sidebar's "Searching examples…" indicator.
   const isLive = status === "generating";
+  const isLiveForCells = useMemo(
+    () => isLive || withinEnrichmentWindow,
+    [isLive, withinEnrichmentWindow],
+  );
   const showIndicator = isLive;
   const displayedTitle = simplifyMapDisplayTitle(
     doc.title || initial.title,
@@ -152,14 +203,26 @@ export function LiveMapShell({
         >
           {displayedTitle}
         </h1>
-        {canMutateMap ? (
-          <MapVisibilityControl
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Export button is visible to any viewer who can read the
+              map — non-owners can still copy/download an existing
+              poster. Generation itself is gated on `canMutate` inside
+              the dialog. */}
+          <MapPosterExport
             slug={slug}
-            initialIsPublic={Boolean(initial.isPublic)}
             canMutate={canMutateMap}
-            viewerLabel={viewerLabel}
+            initialPosterUrl={initial.posterUrl ?? null}
+            initialPosterGeneratedAt={initial.posterGeneratedAt ?? null}
           />
-        ) : null}
+          {canMutateMap ? (
+            <MapVisibilityControl
+              slug={slug}
+              initialIsPublic={Boolean(initial.isPublic)}
+              canMutate={canMutateMap}
+              viewerLabel={viewerLabel}
+            />
+          ) : null}
+        </div>
       </div>
       <AnimatePresence initial={false}>
         {showIndicator ? (
@@ -217,7 +280,7 @@ export function LiveMapShell({
       <div className="flex-1 min-h-0 flex flex-col pb-3 md:pb-2">
         <MapRenderer
           document={doc}
-          live={isLive}
+          live={isLiveForCells}
           canMutateMap={canMutateMap}
           mapIsPublic={Boolean(initial.isPublic)}
         />

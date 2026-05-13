@@ -71,7 +71,11 @@ export function SiteHeader({
 
   return (
     <header className="sticky top-0 z-50 shrink-0 border-b border-border bg-[color:color-mix(in_srgb,var(--background)_92%,transparent)] backdrop-blur-md">
-      <div className="mx-auto flex max-w-[1240px] items-center gap-5 px-5 py-2 md:px-8">
+      {/* Left-aligned with consistent px-5 / md:px-8 so the brand sits at
+          the same x-offset as every ShellPage body below. Do NOT add
+          `mx-auto max-w-*` here — that would re-introduce the indentation
+          mismatch with the page body in signed-out mode. */}
+      <div className="flex items-center gap-5 px-5 py-2 md:px-8">
         <Link
           href="/"
           aria-label={`${brandName} — home`}

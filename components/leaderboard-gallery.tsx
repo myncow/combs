@@ -11,12 +11,6 @@ import { LeaderboardVoteControls } from "@/components/leaderboard-vote-controls"
 import type { ListedLeaderboardEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-function formatCoordinates(coords: Record<string, string>) {
-  return Object.entries(coords)
-    .map(([, value]) => value)
-    .join(" · ");
-}
-
 function entryAnchorId(slug: string) {
   return `spotlight-${slug}`;
 }
@@ -24,9 +18,16 @@ function entryAnchorId(slug: string) {
 export function LeaderboardGallery({
   entries,
   view = "gallery",
+  isSignedIn = false,
 }: {
   entries: ListedLeaderboardEntry[];
   view?: "list" | "gallery";
+  /**
+   * Voting is gated by auth on the server; we hide the controls entirely
+   * for signed-out users so we don't dangle a button that only ever
+   * errors. A compact score-only readout is shown in their place.
+   */
+  isSignedIn?: boolean;
 }) {
   const searchParams = useSearchParams();
   // Backward compat: existing share links still use `?spotlight=<slug>`.
@@ -61,19 +62,7 @@ export function LeaderboardGallery({
             id={entryAnchorId(entry.slug)}
             className="scroll-mt-6 transition-colors duration-300 data-[focused=true]:bg-[color:color-mix(in_srgb,var(--primary)_8%,var(--card))]"
           >
-            <div className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 px-4 py-3 md:grid-cols-[56px_72px_minmax(0,1fr)_auto_auto] md:gap-5 md:px-5">
-              <div
-                aria-label={`Score: ${entry.score}`}
-                className="hidden flex-col items-center justify-center border border-border bg-card px-2 py-2 leading-none md:flex"
-              >
-                <span className="font-sans text-[20px] font-semibold tabular-nums tracking-[-0.01em] text-foreground">
-                  {entry.score}
-                </span>
-                <span className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.22em] text-muted-foreground">
-                  Votes
-                </span>
-              </div>
-
+            <div className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 px-4 py-3 md:grid-cols-[72px_minmax(0,1fr)_auto_auto] md:gap-5 md:px-5">
               {/* Expand link wraps the thumbnail so a single click jumps to
                   the gallery view focused on this entry. */}
               <Link
@@ -91,12 +80,7 @@ export function LeaderboardGallery({
               </Link>
 
               <div className="min-w-0">
-                <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  <span className="truncate">{entry.topicFamily}</span>
-                  <span aria-hidden>·</span>
-                  <span className="truncate">{entry.mapTitle}</span>
-                </div>
-                <h3 className="mt-1 truncate font-sans text-[15px] font-semibold leading-tight tracking-[-0.01em] text-foreground md:text-[16px]">
+                <h3 className="truncate font-sans text-[15px] font-semibold leading-tight tracking-[-0.01em] text-foreground md:text-[16px]">
                   <Link
                     href={`/?view=gallery&spotlight=${encodeURIComponent(entry.slug)}`}
                     className="transition-colors hover:text-primary"
@@ -104,27 +88,37 @@ export function LeaderboardGallery({
                     {entry.storyTitle}
                   </Link>
                 </h3>
-                <p className="mt-0.5 truncate text-[12.5px] leading-snug text-muted-foreground">
-                  {entry.storySummary}
-                </p>
-                <p className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/80">
-                  {entry.cellLabel}
-                  {Object.keys(entry.coordinatesSnapshot).length
-                    ? ` · ${formatCoordinates(entry.coordinatesSnapshot)}`
-                    : ""}
-                  {entry.createdByDisplayName ? ` · by ${entry.createdByDisplayName}` : ""}
+                <p className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  {entry.topicFamily}
+                  {entry.createdByDisplayName ? (
+                    <>
+                      <span className="mx-1.5 text-muted-foreground/50">·</span>
+                      <span className="normal-case tracking-normal">
+                        by {entry.createdByDisplayName}
+                      </span>
+                    </>
+                  ) : null}
                 </p>
               </div>
 
               <div className="hidden items-center md:flex">
-                <LeaderboardVoteControls
-                  slug={entry.slug}
-                  score={entry.score}
-                  upvotes={entry.upvotes}
-                  downvotes={entry.downvotes}
-                  viewerVote={entry.viewerVote ?? null}
-                  compact
-                />
+                {isSignedIn ? (
+                  <LeaderboardVoteControls
+                    slug={entry.slug}
+                    score={entry.score}
+                    upvotes={entry.upvotes}
+                    downvotes={entry.downvotes}
+                    viewerVote={entry.viewerVote ?? null}
+                    compact
+                  />
+                ) : (
+                  <span
+                    aria-label={`Score: ${entry.score}`}
+                    className="inline-flex h-8 min-w-[3.25rem] items-center justify-center border border-border bg-card px-3 font-sans text-[15px] font-semibold tabular-nums leading-none text-foreground"
+                  >
+                    {entry.score}
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center gap-1.5">
@@ -169,7 +163,14 @@ export function LeaderboardGallery({
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <Badge variant="accent">{entry.topicFamily}</Badge>
-                  <Badge variant="muted">{entry.mapTitle}</Badge>
+                  {entry.createdByDisplayName ? (
+                    <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                      by{" "}
+                      <span className="normal-case tracking-normal text-foreground">
+                        {entry.createdByDisplayName}
+                      </span>
+                    </span>
+                  ) : null}
                 </div>
                 <div
                   aria-label={`Score: ${entry.score}`}
@@ -186,27 +187,16 @@ export function LeaderboardGallery({
               <h2 className="font-sans text-[22px] font-semibold leading-tight tracking-[-0.02em] text-foreground md:text-[26px]">
                 {entry.storyTitle}
               </h2>
-              <p className="text-[15px] leading-[1.6] text-muted-foreground">{entry.storySummary}</p>
-              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                {entry.cellLabel}
-                {Object.keys(entry.coordinatesSnapshot).length
-                  ? ` · ${formatCoordinates(entry.coordinatesSnapshot)}`
-                  : ""}
-                {entry.createdByDisplayName ? (
-                  <>
-                    <span className="mx-1.5 text-muted-foreground/60">·</span>
-                    by {entry.createdByDisplayName}
-                  </>
-                ) : null}
-              </p>
-              <LeaderboardVoteControls
-                slug={entry.slug}
-                score={entry.score}
-                upvotes={entry.upvotes}
-                downvotes={entry.downvotes}
-                viewerVote={entry.viewerVote ?? null}
-                compact
-              />
+              {isSignedIn ? (
+                <LeaderboardVoteControls
+                  slug={entry.slug}
+                  score={entry.score}
+                  upvotes={entry.upvotes}
+                  downvotes={entry.downvotes}
+                  viewerVote={entry.viewerVote ?? null}
+                  compact
+                />
+              ) : null}
               <LeaderboardShareActions
                 slug={entry.slug}
                 title={entry.storyTitle}
