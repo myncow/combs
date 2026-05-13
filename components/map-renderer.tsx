@@ -26,7 +26,7 @@ import {
 } from "@/lib/motion";
 import { type MapCell, type MapCellStatus, type MapDocument, type MapExample } from "@/lib/types";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Search } from "lucide-react";
+import { ImageOff, Search } from "lucide-react";
 import {
   Fragment,
   createContext,
@@ -1251,11 +1251,15 @@ function CellTile({
                   href={googleImagesSearchUrl(firstSearchableQuery)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label={`Search Google Images for ${firstSearchableQuery}`}
-                  title={`Search "${firstSearchableQuery}" on Google Images`}
-                  className={tileEmptyActionClass}
+                  aria-label={`No reference image found — search Google Images for ${firstSearchableQuery}`}
+                  title={`No reference image — search "${firstSearchableQuery}" on Google Images`}
+                  className={cn(
+                    tileEmptyActionClass,
+                    "w-auto gap-1.5 px-2.5 font-mono text-[10px] uppercase tracking-[0.16em]",
+                  )}
                 >
-                  <ImageIcon className="h-3.5 w-3.5" aria-hidden strokeWidth={2.15} />
+                  <ImageOff className="h-3.5 w-3.5" aria-hidden strokeWidth={2.15} />
+                  <span>Search</span>
                 </a>
               ) : null}
               {canUseGeneration ? (

@@ -77,26 +77,6 @@ export function SignedOutHome({
         </Panel>
 
         <Panel
-          title="Axis pair examples"
-          icon={<Grid3X3 className="h-3.5 w-3.5 text-primary" aria-hidden />}
-        >
-          <ul className="divide-y divide-border">
-            {AXIS_EXAMPLES.map(([topic, x, y]) => (
-              <li key={topic} className="px-3 py-2.5">
-                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  {topic}
-                </p>
-                <p className="mt-1 text-[13.5px] font-semibold leading-snug text-foreground">
-                  {x}
-                  <span className="mx-1.5 text-muted-foreground">×</span>
-                  {y}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </Panel>
-
-        <Panel
           title="Top leaderboard entries"
           icon={<Trophy className="h-3.5 w-3.5 text-primary" aria-hidden />}
           actionHref={leaderboardHref}

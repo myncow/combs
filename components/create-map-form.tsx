@@ -17,53 +17,11 @@ import { buildAuthRedirectHref } from "@/lib/auth/redirect";
 import type { SuggestAxisPairInput } from "@/lib/schema";
 import { readAllModelPreferences } from "@/lib/model-preference";
 
-/** Short, single-noun categories. Picturable taxonomies where visual traits matter. */
-const ROTATING_PLACEHOLDERS = [
-  "Apples",
-  "Aliens",
-  "Dogs",
-  "Mushrooms",
-  "Beetles",
-  "Cacti",
-  "Frogs",
-  "Spiders",
-  "Lizards",
-  "Coral",
-  "Tomatoes",
-  "Citrus",
-  "Squashes",
-  "Octopuses",
-  "Bird beaks",
-  "Moths",
-];
-
-/** Shown while the topic field is empty and focused. */
-const TOPIC_FOCUS_PLACEHOLDER = "Type a category. Anything you can picture.";
+/** Single static placeholder. The animated rotating pre-fill was removed
+ * because it visually competed with the input value and felt off-brand. */
+const TOPIC_PLACEHOLDER = "A visual category — apples, beetles, bird beaks…";
 
 const SUGGEST_DEBOUNCE_MS = 420;
-
-/** Per-letter delay spreads (ms), Algolia-style, for a natural typing rhythm. */
-const PLACEHOLDER_TYPE_MS_MIN = 50;
-const PLACEHOLDER_TYPE_MS_MAX = 90;
-const PLACEHOLDER_DELETE_MS_MIN = 28;
-const PLACEHOLDER_DELETE_MS_MAX = 52;
-const PLACEHOLDER_PAUSE_MS_MIN = 2200;
-const PLACEHOLDER_PAUSE_MS_MAX = 3200;
-
-function randomIntInclusive(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function pickNextPhraseIdx(exclude: number, len: number): number {
-  if (len <= 1) {
-    return 0;
-  }
-  let next = exclude;
-  while (next === exclude) {
-    next = Math.floor(Math.random() * len);
-  }
-  return next;
-}
 
 function buildSuggestCacheKey(topicTrim: string): string {
   return topicTrim.trim().toLowerCase();
@@ -145,8 +103,6 @@ function buildDraftUrl(currentUrl: URL, draft: Pick<DraftFromUrl, "topic" | "loc
 export function CreateMapForm() {
   const { data: session, isPending: authPending } = authClient.useSession();
   const [topic, setTopic] = useState("");
-  const [topicFocused, setTopicFocused] = useState(false);
-  const [animatedPlaceholder, setAnimatedPlaceholder] = useState("");
   const [pairs, setPairs] = useState<SuggestAxisPairInput[]>([]);
   const [lockedPair, setLockedPair] = useState<SuggestAxisPairInput | null>(null);
   const [requestedLockedPairKey, setRequestedLockedPairKey] = useState<string | null>(null);
@@ -235,67 +191,6 @@ export function CreateMapForm() {
       suggestAbortRef.current?.abort();
     };
   }, []);
-
-  useEffect(() => {
-    if (topic !== "" || topicFocused) {
-      return;
-    }
-
-    let cancelled = false;
-    let rafId = 0;
-    const phrases = ROTATING_PLACEHOLDERS;
-    let phraseIdx = Math.floor(Math.random() * phrases.length);
-    let charIdx = 0;
-    let mode: "type" | "pause" | "delete" = "type";
-    let pauseUntil = 0;
-    let nextStepAt = performance.now() + randomIntInclusive(PLACEHOLDER_TYPE_MS_MIN, PLACEHOLDER_TYPE_MS_MAX);
-
-    const tick = () => {
-      if (cancelled) {
-        return;
-      }
-      const now = performance.now();
-      const full = phrases[phraseIdx] ?? "";
-
-      if (mode === "type") {
-        if (now >= nextStepAt) {
-          if (charIdx < full.length) {
-            charIdx += 1;
-            setAnimatedPlaceholder(full.slice(0, charIdx));
-            nextStepAt = now + randomIntInclusive(PLACEHOLDER_TYPE_MS_MIN, PLACEHOLDER_TYPE_MS_MAX);
-          } else {
-            mode = "pause";
-            pauseUntil = now + randomIntInclusive(PLACEHOLDER_PAUSE_MS_MIN, PLACEHOLDER_PAUSE_MS_MAX);
-          }
-        }
-      } else if (mode === "pause") {
-        if (now >= pauseUntil) {
-          mode = "delete";
-          nextStepAt = now + randomIntInclusive(PLACEHOLDER_DELETE_MS_MIN, PLACEHOLDER_DELETE_MS_MAX);
-        }
-      } else if (mode === "delete") {
-        if (now >= nextStepAt) {
-          if (charIdx > 0) {
-            charIdx -= 1;
-            setAnimatedPlaceholder(full.slice(0, charIdx));
-            nextStepAt = now + randomIntInclusive(PLACEHOLDER_DELETE_MS_MIN, PLACEHOLDER_DELETE_MS_MAX);
-          } else {
-            phraseIdx = pickNextPhraseIdx(phraseIdx, phrases.length);
-            mode = "type";
-            nextStepAt = now + randomIntInclusive(PLACEHOLDER_TYPE_MS_MIN, PLACEHOLDER_TYPE_MS_MAX);
-          }
-        }
-      }
-
-      rafId = requestAnimationFrame(tick);
-    };
-
-    rafId = requestAnimationFrame(tick);
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(rafId);
-    };
-  }, [topic, topicFocused]);
 
   const executeSuggestFetch = useCallback(async (force: boolean) => {
     if (authPending || !isSignedIn) {
@@ -507,8 +402,6 @@ export function CreateMapForm() {
   const lockedPairShownInSuggestions =
     lockedPair !== null &&
     visiblePairs.some((p) => axisPairKey(p) === axisPairKey(lockedPair));
-  const topicPlaceholder =
-    topic !== "" ? "" : topicFocused ? TOPIC_FOCUS_PLACEHOLDER : animatedPlaceholder;
 
   const suggestLiveMessage =
     authPending
@@ -528,8 +421,8 @@ export function CreateMapForm() {
   return (
     <form onSubmit={onSubmit} className="flex min-w-0 flex-col">
       <section className="flex min-w-0 flex-col">
-        <div className="flex flex-col gap-6 py-1 md:py-2">
-          <div className="space-y-3 border-b border-border pb-6">
+        <div className="flex flex-col gap-4 py-1">
+          <div className="space-y-2 border-b border-border pb-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
                 What are you mapping?
@@ -546,8 +439,6 @@ export function CreateMapForm() {
               spellCheck={false}
               aria-label="Topic"
               value={topic}
-              onFocus={() => setTopicFocused(true)}
-              onBlur={() => setTopicFocused(false)}
               onChange={(e) => {
                 const v = e.target.value;
                 const nextTrim = v.trim();
@@ -567,12 +458,12 @@ export function CreateMapForm() {
                   setSuggestLoading(false);
                 }
               }}
-              placeholder={topicPlaceholder}
+              placeholder={TOPIC_PLACEHOLDER}
               className={
-                "shrink-0 min-h-[3.35rem] border-0 bg-transparent rounded-none px-0 py-1 pb-0 font-semibold leading-[1.2] tracking-[-0.035em] text-foreground focus-visible:ring-0 " +
+                "shrink-0 min-h-[2.75rem] border-0 bg-transparent rounded-none px-0 py-0.5 font-semibold leading-[1.2] tracking-[-0.03em] text-foreground focus-visible:ring-0 " +
                 "placeholder-shown:font-medium placeholder-shown:tracking-[-0.022em] " +
-                "placeholder:font-normal placeholder:italic placeholder:tracking-[-0.02em] placeholder:text-muted-foreground/48 " +
-                "text-[clamp(1.3rem,4vw,1.75rem)] md:min-h-[3.75rem] md:text-[clamp(1.45rem,3.4vw,1.95rem)]"
+                "placeholder:font-normal placeholder:tracking-[-0.02em] placeholder:text-muted-foreground/48 " +
+                "text-[clamp(1.15rem,3.2vw,1.5rem)] md:min-h-[3rem]"
               }
             />
           </div>
@@ -582,7 +473,7 @@ export function CreateMapForm() {
             <div
               aria-live="polite"
               aria-busy={suggestLoading}
-              className="min-h-[12.5rem] space-y-3 border-b border-border pb-6"
+              className="space-y-3 border-b border-border pb-4"
             >
               <p className="sr-only" role="status">
                 {suggestLiveMessage}
@@ -626,7 +517,7 @@ export function CreateMapForm() {
               ) : pairs.length === 0 ? (
                 <p className="text-[13px] text-muted-foreground">Keep typing.</p>
               ) : (
-                <ul className="grid auto-rows-fr gap-2 md:grid-cols-2">
+                <ul className="grid auto-rows-fr gap-2 sm:grid-cols-2 lg:grid-cols-4">
                   {visiblePairs.map((pair) => {
                     const selected = lockedPair !== null && axisPairKey(lockedPair) === axisPairKey(pair);
                     return (
@@ -635,6 +526,7 @@ export function CreateMapForm() {
                           pair={pair}
                           selected={selected}
                           onSelect={() => togglePair(pair)}
+                          compact
                         />
                       </li>
                     );

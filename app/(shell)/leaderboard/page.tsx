@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Clock, LayoutGrid, List as ListIcon, Trophy, User } from "lucide-react";
+import { Flame, LayoutGrid, List as ListIcon, Sparkles, User } from "lucide-react";
 import { getSessionUser } from "@/lib/auth/admin";
 import { getVoterIdentity } from "@/lib/guards";
 import { Button } from "@/components/ui/button";
@@ -22,9 +22,9 @@ const SCOPE_LABEL: Record<LeaderboardScope, string> = {
   mine: "Mine",
 };
 
-const SCOPE_ICON: Record<LeaderboardScope, typeof Trophy> = {
-  top: Trophy,
-  new: Clock,
+const SCOPE_ICON: Record<LeaderboardScope, typeof Flame> = {
+  top: Flame,
+  new: Sparkles,
   mine: User,
 };
 
@@ -58,7 +58,7 @@ function SegmentedNav<T extends string>({
   options: Array<{
     value: T;
     label: string;
-    icon: typeof Trophy;
+    icon: typeof Flame;
     disabled?: boolean;
     disabledHint?: string;
   }>;
@@ -81,9 +81,10 @@ function SegmentedNav<T extends string>({
               aria-disabled="true"
               aria-label={option.label}
               title={option.disabledHint ?? option.label}
-              className="inline-flex h-9 w-9 items-center justify-center text-muted-foreground/40"
+              className="inline-flex h-9 items-center justify-center gap-1.5 px-3 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground/40"
             >
-              <Icon className="h-4 w-4" aria-hidden strokeWidth={1.75} />
+              <Icon className="h-3.5 w-3.5" aria-hidden strokeWidth={1.75} />
+              <span>{option.label}</span>
             </span>
           );
         }
@@ -100,13 +101,14 @@ function SegmentedNav<T extends string>({
             aria-label={option.label}
             title={option.label}
             className={cn(
-              "inline-flex h-9 w-9 items-center justify-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              "inline-flex h-9 items-center justify-center gap-1.5 px-3 font-mono text-[11px] uppercase tracking-[0.18em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               active
                 ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
-            <Icon className="h-4 w-4" aria-hidden strokeWidth={1.75} />
+            <Icon className="h-3.5 w-3.5" aria-hidden strokeWidth={1.75} />
+            <span>{option.label}</span>
           </Link>
         );
       })}

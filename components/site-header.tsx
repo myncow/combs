@@ -70,7 +70,7 @@ export function SiteHeader({
   }
 
   return (
-    <header className="sticky top-0 z-20 shrink-0 border-b border-border bg-[color:color-mix(in_srgb,var(--background)_92%,transparent)] backdrop-blur-md">
+    <header className="sticky top-0 z-50 shrink-0 border-b border-border bg-[color:color-mix(in_srgb,var(--background)_92%,transparent)] backdrop-blur-md">
       <div className="mx-auto flex max-w-[1240px] items-center gap-5 px-5 py-2 md:px-8">
         <Link
           href="/"

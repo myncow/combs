@@ -100,20 +100,11 @@ export function LeaderboardVoteControls({
     }
   }
 
-  const helperId = `vote-helper-${slug}`;
-  const helperText =
-    state.viewerVote === "up"
-      ? "Your vote: up · click down to switch · click up to clear"
-      : state.viewerVote === "down"
-        ? "Your vote: down · click up to switch · click down to clear"
-        : "One vote per entry — pick up or down";
-
   return (
     <div className="space-y-2">
       <div
         role="radiogroup"
         aria-label="Vote on this entry"
-        aria-describedby={helperId}
         className="inline-flex items-stretch border border-border bg-background"
       >
         <button
@@ -134,11 +125,21 @@ export function LeaderboardVoteControls({
         >
           <ArrowBigUp className={compact ? "h-4 w-4" : "h-5 w-5"} aria-hidden />
         </button>
-        <div className="min-w-[4.5rem] border-x border-border bg-card px-3 py-1 text-center">
-          <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+        <div
+          className={cn(
+            "flex flex-col items-center justify-center border-x border-border bg-card px-3 py-1 text-center",
+            compact ? "h-8 min-w-[3.75rem]" : "h-10 min-w-[4.5rem]",
+          )}
+        >
+          <div className="font-mono text-[9px] uppercase tracking-[0.22em] text-muted-foreground/80">
             Score
           </div>
-          <div className={cn("font-sans font-semibold text-foreground", compact ? "text-lg" : "text-2xl")}>
+          <div
+            className={cn(
+              "font-sans font-semibold tabular-nums leading-none text-foreground",
+              compact ? "text-[15px]" : "text-[20px]",
+            )}
+          >
             {state.score}
           </div>
         </div>
@@ -161,12 +162,6 @@ export function LeaderboardVoteControls({
           <ArrowBigDown className={compact ? "h-4 w-4" : "h-5 w-5"} aria-hidden />
         </button>
       </div>
-      <p
-        id={helperId}
-        className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground"
-      >
-        {state.upvotes} up · {state.downvotes} down · <span className="normal-case tracking-normal">{helperText}</span>
-      </p>
       {error ? (
         <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-destructive">{error}</p>
       ) : null}
