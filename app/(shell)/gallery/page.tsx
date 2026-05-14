@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Flame, Sparkles, User } from "lucide-react";
+import { Sparkles, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -15,18 +15,16 @@ import { mapFiltersSchema } from "@/lib/schema";
 import { getPageByKey, listMaps } from "@/lib/store";
 import { cn, pickMapThumbnail, simplifyMapDisplayTitle } from "@/lib/utils";
 
-type MapsScope = "top" | "new" | "mine";
+type MapsScope = "new" | "mine";
 
-const SCOPE_VALUES = new Set<MapsScope>(["top", "new", "mine"]);
+const SCOPE_VALUES = new Set<MapsScope>(["new", "mine"]);
 
 const SCOPE_LABEL: Record<MapsScope, string> = {
-  top: "Top",
   new: "Latest",
   mine: "Mine",
 };
 
-const SCOPE_ICON: Record<MapsScope, typeof Flame> = {
-  top: Flame,
+const SCOPE_ICON: Record<MapsScope, typeof Sparkles> = {
   new: Sparkles,
   mine: User,
 };
@@ -54,7 +52,7 @@ function SegmentedNav<T extends string>({
   options: Array<{
     value: T;
     label: string;
-    icon: typeof Flame;
+    icon: typeof Sparkles;
     disabled?: boolean;
     disabledHint?: string;
   }>;
@@ -131,8 +129,8 @@ export default async function GalleryPage({
   }
 
   // Map the URL-level scope onto the existing `mapFiltersSchema` `sort`
-  // and the store-level `ownerId` filter.
-  const scopeSort = scope === "top" ? "top" : "recent";
+  // and the store-level `ownerId` filter. Gallery only ever lists by recency.
+  const scopeSort = "recent" as const;
 
   const parsed = mapFiltersSchema.safeParse({
     topicFamily: topicFamilyRaw || undefined,
@@ -191,7 +189,7 @@ export default async function GalleryPage({
   const eyebrowLabel = `${total} ${total === 1 ? "map" : "maps"}`;
 
   return (
-    <ShellPage size="wide" className="gap-5">
+    <ShellPage size="wide" className="gap-3 overflow-hidden">
       <StickyToolbar>
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div className="flex min-w-0 items-baseline gap-3">
@@ -223,7 +221,6 @@ export default async function GalleryPage({
               paramName="scope"
               baseParams={scopeCarry}
               options={[
-                { value: "top", label: SCOPE_LABEL.top, icon: SCOPE_ICON.top },
                 { value: "new", label: SCOPE_LABEL.new, icon: SCOPE_ICON.new },
                 {
                   value: "mine",
@@ -238,7 +235,7 @@ export default async function GalleryPage({
         </div>
       </StickyToolbar>
 
-      <div className="grid gap-5">
+      <div className="-mx-5 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-5 md:-mx-8 md:px-8">
         {items.length === 0 ? (
           <EmptyStatePanel
             kicker={
@@ -299,7 +296,7 @@ export default async function GalleryPage({
                         <Link
                           href={`/maps/${map.slug}`}
                           aria-label={map.title}
-                          className="block aspect-square h-12 w-12 shrink-0 overflow-hidden border border-border bg-muted"
+                          className="block aspect-square h-10 w-10 shrink-0 overflow-hidden border border-border bg-muted"
                           tabIndex={-1}
                         >
                           {thumbnailUrl ? (
@@ -359,36 +356,36 @@ export default async function GalleryPage({
             </Table>
           </div>
         )}
-
-        {pageCount > 1 ? (
-          <nav
-            aria-label="Pagination"
-            className="flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground"
-          >
-            {filters.page <= 1 ? (
-              <span aria-disabled="true" className="opacity-50">
-                ← Prev
-              </span>
-            ) : (
-              <Link href={pageHref(filters.page - 1)} className="hover:text-foreground">
-                ← Prev
-              </Link>
-            )}
-            <span>
-              Page {filters.page} of {pageCount}
-            </span>
-            {filters.page >= pageCount ? (
-              <span aria-disabled="true" className="opacity-50">
-                Next →
-              </span>
-            ) : (
-              <Link href={pageHref(filters.page + 1)} className="hover:text-foreground">
-                Next →
-              </Link>
-            )}
-          </nav>
-        ) : null}
       </div>
+
+      {pageCount > 1 ? (
+        <nav
+          aria-label="Pagination"
+          className="flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground"
+        >
+          {filters.page <= 1 ? (
+            <span aria-disabled="true" className="opacity-50">
+              ← Prev
+            </span>
+          ) : (
+            <Link href={pageHref(filters.page - 1)} className="hover:text-foreground">
+              ← Prev
+            </Link>
+          )}
+          <span>
+            Page {filters.page} of {pageCount}
+          </span>
+          {filters.page >= pageCount ? (
+            <span aria-disabled="true" className="opacity-50">
+              Next →
+            </span>
+          ) : (
+            <Link href={pageHref(filters.page + 1)} className="hover:text-foreground">
+              Next →
+            </Link>
+          )}
+        </nav>
+      ) : null}
     </ShellPage>
   );
 }

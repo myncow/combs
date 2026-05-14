@@ -199,11 +199,11 @@ export default async function HomePage({
       : `${entries.total} ${entries.total === 1 ? "entry" : "entries"}`;
 
   return (
-    <ShellPage size="wide" className="gap-5">
-      {/* Sticky toolbar — pinned to the top of the scrollable shell so
-          filter chrome stays accessible while the user scans entries.
-          `StickyToolbar` pulls itself flush with the bottom of the site
-          header so no scrolling content peeks through the join. */}
+    <ShellPage size="wide" className="gap-3 overflow-hidden">
+      {/* Toolbar + pagination are pinned siblings; only the middle list
+          region scrolls. ShellPage's default overflow-y-auto is
+          overridden above so the page itself never scrolls — the user
+          can always see filters and pagination without hunting. */}
       <StickyToolbar>
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div className="flex min-w-0 items-baseline gap-3">
@@ -278,6 +278,7 @@ export default async function HomePage({
         </div>
       </StickyToolbar>
 
+      <div className="-mx-5 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-5 md:-mx-8 md:px-8">
       {entries.items.length ? (
         <LeaderboardGallery
           entries={entries.items}
@@ -320,6 +321,7 @@ export default async function HomePage({
           }
         />
       )}
+      </div>
 
       {pageCount > 1 ? (
         <nav
