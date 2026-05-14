@@ -164,39 +164,33 @@ function PosterDialog({
         aria-labelledby={titleId}
         aria-busy={busy}
         onClick={(event) => event.stopPropagation()}
-        className="w-full max-w-3xl border border-border bg-background shadow-[var(--shadow-overlay)]"
+        className="w-full max-w-md border border-border bg-background shadow-[var(--shadow-overlay)]"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+        <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
           <div className="min-w-0">
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-primary">Poster</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-primary">Poster</p>
             <h3
               id={titleId}
-              className="mt-1.5 font-sans text-xl font-semibold leading-tight tracking-[-0.02em] text-foreground"
+              className="mt-1 font-sans text-[15px] font-semibold leading-tight tracking-[-0.01em] text-foreground"
             >
-              Export this map as a poster
+              Export poster
             </h3>
-            <p className="mt-1.5 text-[13px] leading-snug text-muted-foreground">
-              A single composite image of every cell, laid out as a printable poster.{" "}
-              {canMutate
-                ? "Generation takes ~30–90 seconds. The result is saved on the map so you can share or re-download it later."
-                : "Only the map's owner can generate a new poster — but you can copy or download the existing one."}
-            </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             disabled={busy}
-            className="inline-flex h-9 w-9 items-center justify-center border border-border bg-card text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-7 w-7 items-center justify-center border border-border bg-card text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
             aria-label="Close"
           >
-            <X className="h-4 w-4" aria-hidden />
+            <X className="h-3.5 w-3.5" aria-hidden />
           </button>
         </div>
 
-        <div className="px-5 py-5">
+        <div className="px-4 py-4">
           <div
             className={cn(
-              "relative flex aspect-[4/5] w-full items-center justify-center overflow-hidden border border-border bg-muted",
+              "relative flex aspect-square w-full items-center justify-center overflow-hidden border border-border bg-muted",
               !state.posterUrl && "bg-card",
             )}
           >
@@ -218,26 +212,25 @@ function PosterDialog({
                 ) : null}
               </>
             ) : busy ? (
-              <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
-                <Spinner size="lg" className="text-primary" />
-                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-foreground">
-                  Generating poster…
+              <div className="flex flex-col items-center gap-2 px-5 py-6 text-center">
+                <Spinner size="md" className="text-primary" />
+                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-foreground">
+                  Generating…
                 </p>
-                <p className="max-w-md text-[12.5px] leading-snug text-muted-foreground">
-                  The model is composing your grid into a single artwork. Hang tight — this
-                  typically takes about a minute.
+                <p className="max-w-[18rem] text-[11.5px] leading-snug text-muted-foreground">
+                  Composing your grid into a single artwork. This typically takes about a minute.
                 </p>
               </div>
             ) : (
-              <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
-                <FileImage className="h-8 w-8 text-muted-foreground" aria-hidden strokeWidth={1.5} />
-                <p className="font-sans text-[15px] font-semibold leading-snug text-foreground">
+              <div className="flex flex-col items-center gap-2 px-5 py-6 text-center">
+                <FileImage className="h-6 w-6 text-muted-foreground" aria-hidden strokeWidth={1.5} />
+                <p className="font-sans text-[13.5px] font-semibold leading-snug text-foreground">
                   No poster yet
                 </p>
-                <p className="max-w-md text-[12.5px] leading-snug text-muted-foreground">
+                <p className="max-w-[18rem] text-[11.5px] leading-snug text-muted-foreground">
                   {canMutate
-                    ? "Press “Generate poster” to compose every cell into a single shareable image."
-                    : "The map's owner hasn't generated a poster for this map yet."}
+                    ? "Generate a single shareable image from every cell."
+                    : "The owner hasn't generated a poster yet."}
                 </p>
               </div>
             )}
@@ -246,19 +239,19 @@ function PosterDialog({
           {error ? (
             <p
               role="alert"
-              className="mt-3 font-mono text-[11px] uppercase tracking-[0.18em] text-[color:var(--destructive)]"
+              className="mt-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--destructive)]"
             >
               {error}
             </p>
           ) : null}
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
               {state.posterUrl
                 ? generatedLabel
-                  ? `Generated ${generatedLabel}`
-                  : "Saved on this map"
-                : "Not generated yet"}
+                  ? generatedLabel
+                  : "Saved"
+                : "Not yet generated"}
             </p>
             <div className="flex flex-wrap items-center gap-2">
               {state.posterUrl ? (

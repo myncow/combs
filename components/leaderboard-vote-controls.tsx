@@ -2,7 +2,9 @@
 
 import { startTransition, useState } from "react";
 import { ArrowBigDown, ArrowBigUp } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { dispatchLibraryRefresh } from "@/lib/client-events";
+import { buildAuthRedirectHref } from "@/lib/auth/redirect";
 import { cn } from "@/lib/utils";
 import type { LeaderboardVoteDirection } from "@/lib/types";
 
@@ -41,6 +43,7 @@ export function LeaderboardVoteControls({
   downvotes,
   viewerVote,
   compact = false,
+  isSignedIn = true,
 }: {
   slug: string;
   score: number;
@@ -48,7 +51,11 @@ export function LeaderboardVoteControls({
   downvotes: number;
   viewerVote?: LeaderboardVoteDirection | null;
   compact?: boolean;
+  isSignedIn?: boolean;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [state, setState] = useState<VoteState>({
     score,
     upvotes,
@@ -60,6 +67,15 @@ export function LeaderboardVoteControls({
 
   async function submitVote(direction: LeaderboardVoteDirection) {
     if (busy) return;
+    if (!isSignedIn) {
+      const href = buildAuthRedirectHref(
+        "/auth/sign-in",
+        pathname,
+        searchParams?.toString() ?? "",
+      );
+      router.push(href);
+      return;
+    }
 
     const nextDirection = state.viewerVote === direction ? null : direction;
     const previous = state;

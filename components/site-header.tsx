@@ -4,7 +4,7 @@ import { HeaderAuth } from "@/components/header-auth";
 import { SettingsMenu } from "@/components/settings-menu";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Flame } from "lucide-react";
+import { Flame, LayoutGrid } from "lucide-react";
 import type { MouseEvent } from "react";
 import type { NavigationLink } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -120,6 +120,18 @@ export function SiteHeader({
             )}
           >
             <Flame className="h-4 w-4" aria-hidden strokeWidth={1.75} />
+          </Link>
+          <Link
+            href="/gallery"
+            aria-label="Maps"
+            title="Maps"
+            aria-current={pathname?.startsWith("/gallery") ? "page" : undefined}
+            className={cn(
+              "inline-flex h-9 w-9 shrink-0 items-center justify-center border border-border bg-background text-muted-foreground transition-colors duration-150 hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              pathname?.startsWith("/gallery") && "border-foreground/40 text-foreground",
+            )}
+          >
+            <LayoutGrid className="h-4 w-4" aria-hidden strokeWidth={1.75} />
           </Link>
           <SettingsMenu isAdmin={isAdmin} />
           <HeaderAuth />

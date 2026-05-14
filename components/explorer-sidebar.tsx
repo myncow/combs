@@ -3,7 +3,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ChevronsLeft, ChevronsRight, Plus } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MapCard } from "@/components/map-card";
 import { LIBRARY_REFRESH_EVENT } from "@/lib/client-events";
@@ -42,10 +42,17 @@ export function ExplorerSidebar({
   initialHydrationError,
 }: ExplorerSidebarProps) {
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const topicFamily = searchParams.get("topicFamily") ?? undefined;
   const reduceMotion = useReducedMotion() ?? false;
 
-  const [collapsed, setCollapsed] = useState(false);
+  // Default to collapsed on the leaderboard landing page (and for any
+  // signed-out visitor) so the home screen focuses on the leaderboard
+  // and the rail doesn't compete with the main content for attention.
+  // The user can still expand it from the chevron at any time.
+  const [collapsed, setCollapsed] = useState<boolean>(
+    () => pathname === "/" || !isSignedIn,
+  );
   const [maps, setMaps] = useState<SavedMap[]>(() => initialMaps?.items ?? []);
   const [loadErr, setLoadErr] = useState<string | null>(() => initialHydrationError ?? null);
 
@@ -302,6 +309,18 @@ export function ExplorerSidebar({
                 ))}
               </AnimatePresence>
             </ul>
+          ) : !isSignedIn ? (
+            <div className="flex flex-col items-stretch gap-3 px-3 py-6">
+              <p className="text-center font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                Sign in to start mapping
+              </p>
+              <Link
+                href="/auth/sign-in"
+                className="inline-flex items-center justify-center border border-border bg-card px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-foreground transition-colors hover:border-foreground/40"
+              >
+                Sign in
+              </Link>
+            </div>
           ) : (
             <p className="px-3 py-6 text-center font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
               No maps yet.

@@ -102,23 +102,15 @@ export function LeaderboardGallery({
               </div>
 
               <div className="hidden items-center md:flex">
-                {isSignedIn ? (
-                  <LeaderboardVoteControls
-                    slug={entry.slug}
-                    score={entry.score}
-                    upvotes={entry.upvotes}
-                    downvotes={entry.downvotes}
-                    viewerVote={entry.viewerVote ?? null}
-                    compact
-                  />
-                ) : (
-                  <span
-                    aria-label={`Score: ${entry.score}`}
-                    className="inline-flex h-8 min-w-[3.25rem] items-center justify-center border border-border bg-card px-3 font-sans text-[15px] font-semibold tabular-nums leading-none text-foreground"
-                  >
-                    {entry.score}
-                  </span>
-                )}
+                <LeaderboardVoteControls
+                  slug={entry.slug}
+                  score={entry.score}
+                  upvotes={entry.upvotes}
+                  downvotes={entry.downvotes}
+                  viewerVote={entry.viewerVote ?? null}
+                  compact
+                  isSignedIn={isSignedIn}
+                />
               </div>
 
               <div className="flex items-center gap-1.5">
@@ -187,16 +179,15 @@ export function LeaderboardGallery({
               <h2 className="font-sans text-[22px] font-semibold leading-tight tracking-[-0.02em] text-foreground md:text-[26px]">
                 {entry.storyTitle}
               </h2>
-              {isSignedIn ? (
-                <LeaderboardVoteControls
-                  slug={entry.slug}
-                  score={entry.score}
-                  upvotes={entry.upvotes}
-                  downvotes={entry.downvotes}
-                  viewerVote={entry.viewerVote ?? null}
-                  compact
-                />
-              ) : null}
+              <LeaderboardVoteControls
+                slug={entry.slug}
+                score={entry.score}
+                upvotes={entry.upvotes}
+                downvotes={entry.downvotes}
+                viewerVote={entry.viewerVote ?? null}
+                compact
+                isSignedIn={isSignedIn}
+              />
               <LeaderboardShareActions
                 slug={entry.slug}
                 title={entry.storyTitle}

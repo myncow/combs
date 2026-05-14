@@ -3,7 +3,10 @@ import { render, screen } from "@testing-library/react";
 import { ExplorerSidebar } from "@/components/explorer-sidebar";
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/",
+  // Use a non-home path so the rail renders expanded by default.
+  // On `/` the sidebar starts collapsed to keep the landing focused on
+  // the leaderboard.
+  usePathname: () => "/maps",
   useSearchParams: () => new URLSearchParams(),
 }));
 

@@ -5,10 +5,10 @@ import { getSessionUser } from "@/lib/auth/admin";
 import { getVoterIdentity } from "@/lib/guards";
 import { Button } from "@/components/ui/button";
 import { EmptyStatePanel, ShellPage } from "@/components/raster-shell";
-import { getPageByKey, listLeaderboardEntries, listMaps } from "@/lib/store";
+import { getPageByKey, listLeaderboardEntries } from "@/lib/store";
 import { LeaderboardGallery } from "@/components/leaderboard-gallery";
-import type { LeaderboardSort, SavedMap } from "@/lib/types";
-import { cn, pickMapThumbnail, simplifyMapDisplayTitle } from "@/lib/utils";
+import type { LeaderboardSort } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +42,6 @@ const VIEW_ICON: Record<LeaderboardView, typeof LayoutGrid> = {
 
 const GALLERY_PAGE_SIZE = 24;
 const LIST_PAGE_SIZE = 48;
-const PUBLIC_MAPS_STRIP_SIZE = 8;
 
 function buildHref(params: URLSearchParams) {
   const qs = params.toString();
@@ -119,63 +118,6 @@ function SegmentedNav<T extends string>({
   );
 }
 
-function PublicMapsStrip({ maps }: { maps: SavedMap[] }) {
-  if (!maps.length) return null;
-  return (
-    <section
-      aria-label="Recent public maps"
-      className="shrink-0 border border-border bg-background/40"
-    >
-      <header className="flex items-center justify-between border-b border-border px-3 py-2">
-        <h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-          Recent public maps
-        </h2>
-        <Link
-          href="/gallery"
-          className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-primary"
-        >
-          See all →
-        </Link>
-      </header>
-      <ul className="flex gap-px overflow-x-auto bg-border [scrollbar-width:thin]">
-        {maps.map((map) => {
-          const thumb = map.thumbnailUrl ?? pickMapThumbnail(map.document);
-          const title = simplifyMapDisplayTitle(map.title, map.topicFamily);
-          return (
-            <li key={map.id} className="shrink-0 bg-background">
-              <Link
-                href={`/maps/${map.slug}`}
-                aria-label={`Open map ${map.title}`}
-                className="group flex items-center gap-2 px-3 py-2 transition-colors hover:bg-foreground/[0.04]"
-              >
-                <span className="block h-9 w-9 shrink-0 overflow-hidden border border-border bg-muted">
-                  {thumb ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={thumb}
-                      alt=""
-                      referrerPolicy="no-referrer"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : null}
-                </span>
-                <span className="flex min-w-0 max-w-[12rem] flex-col leading-tight">
-                  <span className="truncate text-[12.5px] font-semibold text-foreground transition-colors group-hover:text-primary">
-                    {title}
-                  </span>
-                  <span className="truncate font-mono text-[9.5px] uppercase tracking-[0.18em] text-muted-foreground">
-                    {map.topicFamily}
-                  </span>
-                </span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
-  );
-}
-
 export default async function HomePage({
   searchParams,
 }: {
@@ -220,7 +162,7 @@ export default async function HomePage({
 
   const storeSort: LeaderboardSort = scope === "top" ? "top" : "new";
 
-  const [entries, pageContent, recentMaps] = await Promise.all([
+  const [entries, pageContent] = await Promise.all([
     listLeaderboardEntries({
       sort: storeSort,
       page,
@@ -230,12 +172,6 @@ export default async function HomePage({
       query: query || undefined,
     }),
     getPageByKey("leaderboard"),
-    listMaps({
-      pageSize: PUBLIC_MAPS_STRIP_SIZE,
-      page: 1,
-      status: "live",
-      publicOnly: true,
-    }),
   ]);
 
   if (pageContent?.key !== "leaderboard") {
@@ -264,8 +200,6 @@ export default async function HomePage({
 
   return (
     <ShellPage size="wide" className="gap-5 py-4 md:py-5">
-      <PublicMapsStrip maps={recentMaps.items} />
-
       {/* Sticky toolbar: title + filter chrome stay pinned to the top of
           the scrollable shell so the user can scroll through entries
           without losing the controls. `top: 0` resolves against the

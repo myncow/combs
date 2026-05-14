@@ -9,9 +9,12 @@ export const dynamic = "force-dynamic";
 
 async function ExplorerSidebarLoader() {
   const user = await getSessionUser();
-  if (!user) return null;
-  // Personal library only — `includePublic` removed so the rail no longer
-  // mixes in seed/system maps. The public catalog lives at /gallery.
+  if (!user) {
+    // The rail is still rendered for signed-out visitors so the layout
+    // stays consistent across auth states; it just shows a sign-in CTA
+    // instead of the personal map list.
+    return <ExplorerSidebar isSignedIn={false} />;
+  }
   const mapsResult = await listMaps({
     pageSize: 48,
     status: "library",
@@ -28,27 +31,23 @@ async function ExplorerSidebarLoader() {
 }
 
 export default async function ShellLayout({ children }: { children: React.ReactNode }) {
-  const [footerSettings, footerLinks, sessionUser] = await Promise.all([
+  const [footerSettings, footerLinks] = await Promise.all([
     getSiteSettings(),
     getNavigation("footer_primary"),
-    getSessionUser(),
   ]);
-  const isSignedIn = Boolean(sessionUser);
 
   return (
     <>
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        {isSignedIn ? (
-          <div className="order-2 flex md:order-1 md:min-h-0">
-            <Suspense
-              fallback={
-                <aside className="hidden w-[min(320px,30vw)] shrink-0 border-r border-border md:block md:h-full" />
-              }
-            >
-              <ExplorerSidebarLoader />
-            </Suspense>
-          </div>
-        ) : null}
+        <div className="order-2 flex md:order-1 md:min-h-0">
+          <Suspense
+            fallback={
+              <aside className="hidden w-12 shrink-0 border-r border-border md:block md:h-full" />
+            }
+          >
+            <ExplorerSidebarLoader />
+          </Suspense>
+        </div>
         <div className="order-1 flex min-h-0 min-w-0 flex-1 flex-col md:order-2">{children}</div>
       </div>
       <ShellFooter settings={footerSettings} links={footerLinks} />
