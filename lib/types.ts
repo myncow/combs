@@ -163,6 +163,8 @@ export interface LeaderboardEntry {
   mapOwnerId?: string | null;
   /** Cached count of comments attached to this entry. */
   commentCount?: number;
+  /** Image-generation model used for the entry's visualization, when known. */
+  imageModel?: string | null;
 }
 
 export interface ListedLeaderboardEntry extends LeaderboardEntry {

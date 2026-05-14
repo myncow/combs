@@ -865,6 +865,33 @@ async function hydrateSpotlightRows(
       )) as any[]).map(toLeaderboardVote);
   }
 
+  // Batched join spotlight → cell for visualizationImageModel; missing on legacy rows is fine.
+  const cellIds = Array.from(
+    new Set(
+      rows
+        .map((row) => row.cellId)
+        .filter((value): value is string => typeof value === "string" && value.length > 0),
+    ),
+  );
+  let imageModelByCellId = new Map<string, string | null>();
+  if (cellIds.length) {
+    try {
+      const modelRows = (await db
+        .select({
+          id: mapCellsTable.id,
+          imageModel: mapCellsTable.visualizationImageModel,
+        })
+        .from(mapCellsTable)
+        .where(inArray(mapCellsTable.id, cellIds))) as Array<{
+        id: string;
+        imageModel: string | null;
+      }>;
+      imageModelByCellId = new Map(modelRows.map((r) => [r.id, r.imageModel] as const));
+    } catch (error) {
+      logReadFallback("hydrateSpotlightRows.imageModel", error);
+    }
+  }
+
   // Batched comment-count lookup so the leaderboard list can render
   // "Comments (n)" without an N+1. Failures fall back silently to 0.
   let commentCounts = new Map<string, number>();
@@ -915,6 +942,7 @@ async function hydrateSpotlightRows(
       createdByDisplayName: ownerId ? (creatorNames.get(ownerId) ?? null) : null,
       mapOwnerId: ownerId,
       commentCount: commentCounts.get(row.id) ?? 0,
+      imageModel: imageModelByCellId.get(row.cellId) ?? null,
     });
   });
 
