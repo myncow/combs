@@ -116,23 +116,37 @@ export async function ensureEditorialContentSeeded(): Promise<void> {
 async function runEditorialSeed() {
   const db = getDb();
   await db.transaction(async (tx) => {
-    const siteSettings = await tx.select({ id: siteSettingsTable.id }).from(siteSettingsTable).limit(1);
-    if (!siteSettings.length) {
-      await tx.insert(siteSettingsTable).values({
-        id: SEEDED_SITE_SETTINGS.id,
-        appName: SEEDED_SITE_SETTINGS.appName,
-        defaultSeoTitle: SEEDED_SITE_SETTINGS.defaultSeoTitle,
-        defaultSeoDescription: SEEDED_SITE_SETTINGS.defaultSeoDescription,
-        metadataTitleTemplate: SEEDED_SITE_SETTINGS.metadataTitleTemplate,
-        openGraphTitle: SEEDED_SITE_SETTINGS.openGraphTitle,
-        openGraphDescription: SEEDED_SITE_SETTINGS.openGraphDescription,
-        footerCopy: SEEDED_SITE_SETTINGS.footerCopy,
-        supportEmail: SEEDED_SITE_SETTINGS.supportEmail,
-        contactUrl: SEEDED_SITE_SETTINGS.contactUrl,
-        updatedAt: new Date(),
-        publishedAt: null,
+    // site_settings has no admin UI; upsert so brand changes in the seed propagate without manual DB intervention.
+    const seedValues = {
+      id: SEEDED_SITE_SETTINGS.id,
+      appName: SEEDED_SITE_SETTINGS.appName,
+      defaultSeoTitle: SEEDED_SITE_SETTINGS.defaultSeoTitle,
+      defaultSeoDescription: SEEDED_SITE_SETTINGS.defaultSeoDescription,
+      metadataTitleTemplate: SEEDED_SITE_SETTINGS.metadataTitleTemplate,
+      openGraphTitle: SEEDED_SITE_SETTINGS.openGraphTitle,
+      openGraphDescription: SEEDED_SITE_SETTINGS.openGraphDescription,
+      footerCopy: SEEDED_SITE_SETTINGS.footerCopy,
+      supportEmail: SEEDED_SITE_SETTINGS.supportEmail,
+      contactUrl: SEEDED_SITE_SETTINGS.contactUrl,
+      updatedAt: new Date(),
+      publishedAt: null as Date | null,
+    };
+    await tx
+      .insert(siteSettingsTable)
+      .values(seedValues)
+      .onConflictDoUpdate({
+        target: siteSettingsTable.id,
+        set: {
+          appName: seedValues.appName,
+          defaultSeoTitle: seedValues.defaultSeoTitle,
+          defaultSeoDescription: seedValues.defaultSeoDescription,
+          metadataTitleTemplate: seedValues.metadataTitleTemplate,
+          openGraphTitle: seedValues.openGraphTitle,
+          openGraphDescription: seedValues.openGraphDescription,
+          footerCopy: seedValues.footerCopy,
+          updatedAt: seedValues.updatedAt,
+        },
       });
-    }
 
     const navLinks = await tx.select({ id: navigationLinksTable.id }).from(navigationLinksTable).limit(1);
     if (!navLinks.length) {

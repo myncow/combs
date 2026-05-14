@@ -2,6 +2,7 @@
 
 import { HeaderAuth } from "@/components/header-auth";
 import { SettingsMenu } from "@/components/settings-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Flame, LayoutGrid } from "lucide-react";
@@ -33,7 +34,7 @@ function LogoMark({ className = "" }: { className?: string }) {
 }
 
 export function SiteHeader({
-  brandName = "Raster",
+  brandName = "Lelet",
   primaryLinks = [],
   isAdmin = false,
 }: {
@@ -76,17 +77,35 @@ export function SiteHeader({
           `mx-auto max-w-*` here — that would re-introduce the indentation
           mismatch with the page body in signed-out mode. */}
       <div className="flex items-center gap-5 px-5 py-2 md:px-8">
-        <Link
-          href="/"
-          aria-label={`${brandName} — home`}
-          onClick={handleHomeClick}
-          className="flex shrink-0 items-center gap-2.5 rounded-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        >
-          <LogoMark className="text-foreground" />
-          <span className="font-sans text-[15px] font-semibold uppercase leading-none tracking-[0.08em]">
-            {brandName}
-          </span>
-        </Link>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              href="/"
+              aria-label={`${brandName} — home`}
+              onClick={handleHomeClick}
+              className="flex shrink-0 items-center gap-2.5 rounded-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <LogoMark className="text-foreground" />
+              <span className="font-sans text-[15px] font-semibold uppercase leading-none tracking-[0.08em]">
+                {brandName}
+              </span>
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent
+            side="bottom"
+            align="start"
+            className="max-w-[18rem] px-3 py-2 font-sans text-[11px] normal-case tracking-normal leading-snug"
+          >
+            <div className="flex items-baseline gap-1.5">
+              <span className="italic">lelet</span>
+              <span className="font-mono text-[10px] opacity-60">/ˈlɛlɛt/</span>
+              <span className="italic opacity-70">n.</span>
+            </div>
+            <div className="mt-1 opacity-90">
+              Hungarian: a find; something uncovered through search.
+            </div>
+          </TooltipContent>
+        </Tooltip>
         <nav aria-label="Primary" className="flex items-center">
           {primaryLinks.map((link) => {
             const isActive =
