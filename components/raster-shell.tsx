@@ -22,7 +22,7 @@ export function ShellPage({
   return (
     <main
       className={cn(
-        "mx-auto flex min-h-0 w-full flex-1 flex-col overflow-y-auto overscroll-contain px-5 py-6 md:px-8 md:py-8",
+        "mx-auto flex min-h-0 w-full flex-1 flex-col overflow-y-auto overscroll-contain px-5 py-4 md:px-8 md:py-5",
         shellPageWidths[size],
         className,
       )}

@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(npx tsc *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(git push origin main:*)"
     ]
   }
 }
