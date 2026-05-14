@@ -41,7 +41,9 @@ const VIEW_ICON: Record<LeaderboardView, typeof LayoutGrid> = {
 };
 
 const GALLERY_PAGE_SIZE = 6;
-const LIST_PAGE_SIZE = 10;
+// One fewer than what fits the viewport at common heights — keeps the
+// list-view column from spawning its own inner scrollbar.
+const LIST_PAGE_SIZE = 9;
 
 function buildHref(params: URLSearchParams) {
   const qs = params.toString();
