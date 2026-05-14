@@ -11,9 +11,9 @@ import {
   useSyncExternalStore,
 } from "react";
 import {
-  applyThemePreference,
-  persistThemeCookie,
+  persistThemePreference,
   readStoredThemePreference,
+  THEME_CHANGE_EVENT,
   THEME_STORAGE_KEY,
   type ThemePreference,
 } from "@/lib/theme-preference";
@@ -51,15 +51,20 @@ const THEME_OPTIONS: ReadonlyArray<{
 ];
 
 function subscribeToTheme(onChange: () => void) {
+  // 1. Same-tab updates: a custom event fired by `persistThemePreference`.
+  //    Required because `localStorage.setItem` does NOT trigger the
+  //    `storage` event in the writing tab, and a MutationObserver on
+  //    `<html>` misses no-op transitions like Light → Auto when the OS
+  //    is already light.
+  window.addEventListener(THEME_CHANGE_EVENT, onChange);
+  // 2. Cross-tab updates: another tab wrote to localStorage.
   const onStorage = (e: StorageEvent) => {
     if (e.key === THEME_STORAGE_KEY) onChange();
   };
   window.addEventListener("storage", onStorage);
-  const obs = new MutationObserver(onChange);
-  obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
   return () => {
+    window.removeEventListener(THEME_CHANGE_EVENT, onChange);
     window.removeEventListener("storage", onStorage);
-    obs.disconnect();
   };
 }
 
@@ -237,13 +242,7 @@ export function SettingsMenu({ isAdmin = false }: { isAdmin?: boolean }) {
   }, [open]);
 
   const setTheme = useCallback((next: ThemePreference) => {
-    try {
-      localStorage.setItem(THEME_STORAGE_KEY, next);
-    } catch {
-      /* private mode */
-    }
-    persistThemeCookie(next);
-    applyThemePreference(next);
+    persistThemePreference(next);
   }, []);
 
   return (
@@ -271,7 +270,10 @@ export function SettingsMenu({ isAdmin = false }: { isAdmin?: boolean }) {
           aria-labelledby={triggerId}
           className="absolute right-0 top-full z-30 mt-1.5 w-[min(260px,92vw)] origin-top-right p-2"
         >
-          {/* Theme */}
+          {/* Theme — three radio cells. The selected one inverts colors
+              AND shows a checked dot in the corner so the picker reads
+              clearly even at small sizes / for users who can't rely on
+              the inversion alone. */}
           <div
             role="radiogroup"
             aria-label="Theme"
@@ -290,13 +292,22 @@ export function SettingsMenu({ isAdmin = false }: { isAdmin?: boolean }) {
                   title={opt.label}
                   onClick={() => setTheme(opt.id)}
                   className={cn(
-                    "inline-flex h-9 items-center justify-center border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                    "relative inline-flex h-12 flex-col items-center justify-center gap-1 border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                     selected
-                      ? "border-foreground bg-foreground text-background"
+                      ? "border-primary bg-primary text-primary-foreground"
                       : "border-border bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground",
                   )}
                 >
                   <Icon className="h-4 w-4" aria-hidden strokeWidth={1.75} />
+                  <span className="font-mono text-[9.5px] uppercase tracking-[0.18em]">
+                    {opt.label}
+                  </span>
+                  {selected ? (
+                    <span
+                      aria-hidden
+                      className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-primary-foreground"
+                    />
+                  ) : null}
                 </button>
               );
             })}
