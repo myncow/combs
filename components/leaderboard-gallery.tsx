@@ -6,6 +6,14 @@ import { useSearchParams } from "next/navigation";
 import { ArrowUpRight, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { LeaderboardComments } from "@/components/leaderboard-comments";
 import { LeaderboardEntryEditor } from "@/components/leaderboard-entry-editor";
@@ -53,11 +61,14 @@ export function LeaderboardGallery({
   const searchParams = useSearchParams();
   // Backward compat: existing share links still use `?spotlight=<slug>`.
   const focusedSlug = searchParams.get("spotlight");
-  const containerRef = useRef<HTMLUListElement>(null);
+  const listContainerRef = useRef<HTMLTableSectionElement>(null);
+  const galleryContainerRef = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
-    if (!focusedSlug || !containerRef.current) return;
-    const target = containerRef.current.querySelector<HTMLElement>(
+    if (!focusedSlug) return;
+    const root = listContainerRef.current ?? galleryContainerRef.current;
+    if (!root) return;
+    const target = root.querySelector<HTMLElement>(
       `#${CSS.escape(entryAnchorId(focusedSlug))}`,
     );
     if (!target) return;
@@ -73,105 +84,115 @@ export function LeaderboardGallery({
 
   if (view === "list") {
     return (
-      <ul
-        ref={containerRef}
-        className="-mx-5 divide-y divide-border border-y border-border bg-card md:-mx-8"
-      >
-        {entries.map((entry) => {
-          const commentCount = entry.commentCount ?? 0;
-          const expandHref = `/?view=gallery&spotlight=${encodeURIComponent(entry.slug)}`;
-          const commentsHref = `${expandHref}#${commentsAnchorId(entry.slug)}`;
-          return (
-            <li
-              key={entry.id}
-              id={entryAnchorId(entry.slug)}
-              className="scroll-mt-6 transition-colors duration-300 data-[focused=true]:bg-[color:color-mix(in_srgb,var(--primary)_8%,var(--card))]"
-            >
-              <div className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 px-5 py-3 md:grid-cols-[72px_minmax(0,1fr)_auto_auto] md:gap-5 md:px-8">
-                <Link
-                  href={expandHref}
-                  aria-label={`Expand ${entry.storyTitle}`}
-                  className="block aspect-square h-16 w-16 overflow-hidden border border-border bg-muted md:h-[72px] md:w-[72px]"
+      <div className="-mx-5 border-y border-border bg-card md:-mx-8">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="w-[88px] md:w-[96px]">Entry</TableHead>
+              <TableHead>Title</TableHead>
+              <TableHead className="hidden w-[180px] md:table-cell">Score</TableHead>
+              <TableHead className="w-[180px] text-right md:w-[220px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody ref={listContainerRef}>
+            {entries.map((entry) => {
+              const commentCount = entry.commentCount ?? 0;
+              const expandHref = `/?view=gallery&spotlight=${encodeURIComponent(entry.slug)}`;
+              const commentsHref = `${expandHref}#${commentsAnchorId(entry.slug)}`;
+              return (
+                <TableRow
+                  key={entry.id}
+                  id={entryAnchorId(entry.slug)}
+                  className="scroll-mt-6"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={entry.imageUrl}
-                    alt=""
-                    referrerPolicy="no-referrer"
-                    className="h-full w-full object-cover"
-                  />
-                </Link>
-
-                <div className="min-w-0">
-                  <h3 className="truncate font-sans text-[15px] font-semibold leading-tight tracking-[-0.01em] text-foreground md:text-[16px]">
-                    <Link
-                      href={expandHref}
-                      className="transition-colors hover:text-primary"
-                    >
-                      {entry.storyTitle}
-                    </Link>
-                  </h3>
-                  <p className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                    {entry.topicFamily}
-                    {entry.createdByDisplayName ? (
-                      <>
-                        <span className="mx-1.5 text-muted-foreground/50">·</span>
-                        <span className="normal-case tracking-normal">
-                          by {entry.createdByDisplayName}
-                        </span>
-                      </>
-                    ) : null}
-                  </p>
-                </div>
-
-                <div className="hidden items-center md:flex">
-                  <LeaderboardVoteControls
-                    slug={entry.slug}
-                    score={entry.score}
-                    upvotes={entry.upvotes}
-                    downvotes={entry.downvotes}
-                    viewerVote={entry.viewerVote ?? null}
-                    compact
-                    isSignedIn={isSignedIn}
-                  />
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Link
-                        href={commentsHref}
-                        aria-label={`View ${commentCount} ${commentCount === 1 ? "comment" : "comments"}`}
-                        className={cn(
-                          "inline-flex h-8 items-center gap-1.5 border border-border bg-card px-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                          "hover:[&_svg]:fill-[color:color-mix(in_srgb,var(--primary)_15%,transparent)]",
-                        )}
-                      >
-                        <MessageSquare className="h-3 w-3" aria-hidden strokeWidth={1.75} />
-                        <span className="tabular-nums">{commentCount}</span>
-                      </Link>
-                    </TooltipTrigger>
-                    <TooltipContent>View comments</TooltipContent>
-                  </Tooltip>
-                  <Button asChild variant="secondary" size="sm">
+                  <TableCell>
                     <Link
                       href={expandHref}
                       aria-label={`Expand ${entry.storyTitle}`}
+                      className="block aspect-square h-16 w-16 overflow-hidden border border-border bg-muted md:h-[72px] md:w-[72px]"
                     >
-                      Expand
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={entry.imageUrl}
+                        alt=""
+                        referrerPolicy="no-referrer"
+                        className="h-full w-full object-cover"
+                      />
                     </Link>
-                  </Button>
-                </div>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+                  </TableCell>
+                  <TableCell>
+                    <div className="min-w-0">
+                      <h3 className="truncate font-sans text-[15px] font-semibold leading-tight tracking-[-0.01em] text-foreground md:text-[16px]">
+                        <Link
+                          href={expandHref}
+                          className="transition-colors hover:text-primary"
+                        >
+                          {entry.storyTitle}
+                        </Link>
+                      </h3>
+                      <p className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                        {entry.topicFamily}
+                        {entry.createdByDisplayName ? (
+                          <>
+                            <span className="mx-1.5 text-muted-foreground/50">·</span>
+                            <span className="normal-case tracking-normal">
+                              by {entry.createdByDisplayName}
+                            </span>
+                          </>
+                        ) : null}
+                      </p>
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    <LeaderboardVoteControls
+                      slug={entry.slug}
+                      score={entry.score}
+                      upvotes={entry.upvotes}
+                      downvotes={entry.downvotes}
+                      viewerVote={entry.viewerVote ?? null}
+                      compact
+                      isSignedIn={isSignedIn}
+                    />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Link
+                            href={commentsHref}
+                            aria-label={`View ${commentCount} ${commentCount === 1 ? "comment" : "comments"}`}
+                            className={cn(
+                              "inline-flex h-8 items-center gap-1.5 border border-border bg-card px-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                              "hover:[&_svg]:fill-[color:color-mix(in_srgb,var(--primary)_15%,transparent)]",
+                            )}
+                          >
+                            <MessageSquare className="h-3 w-3" aria-hidden strokeWidth={1.75} />
+                            <span className="tabular-nums">{commentCount}</span>
+                          </Link>
+                        </TooltipTrigger>
+                        <TooltipContent>View comments</TooltipContent>
+                      </Tooltip>
+                      <Button asChild variant="secondary" size="sm">
+                        <Link
+                          href={expandHref}
+                          aria-label={`Expand ${entry.storyTitle}`}
+                        >
+                          Expand
+                        </Link>
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
     );
   }
 
   return (
-    <ul ref={containerRef} className="grid gap-5">
+    <ul ref={galleryContainerRef} className="grid gap-5">
       {entries.map((entry) => {
         const canEdit = viewerCanEdit(entry, viewerId, viewerIsAdmin);
         return (

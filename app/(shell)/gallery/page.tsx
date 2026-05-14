@@ -1,12 +1,19 @@
 import Link from "next/link";
 import { Flame, Sparkles, User } from "lucide-react";
-import { MapCard } from "@/components/map-card";
 import { Button } from "@/components/ui/button";
-import { EmptyStatePanel, ShellPage, StickyToolbar, SurfacePanel } from "@/components/raster-shell";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { EmptyStatePanel, ShellPage, StickyToolbar } from "@/components/raster-shell";
 import { getSessionUser } from "@/lib/auth/admin";
 import { mapFiltersSchema } from "@/lib/schema";
 import { getPageByKey, listMaps } from "@/lib/store";
-import { cn } from "@/lib/utils";
+import { cn, pickMapThumbnail, simplifyMapDisplayTitle } from "@/lib/utils";
 
 type MapsScope = "top" | "new" | "mine";
 
@@ -261,15 +268,96 @@ export default async function GalleryPage({
             }
           />
         ) : (
-          <SurfacePanel padded={false}>
-            <ul className="divide-y divide-border px-5 md:px-6">
-              {items.map((map) => (
-                <li key={map.id}>
-                  <MapCard map={map} />
-                </li>
-              ))}
-            </ul>
-          </SurfacePanel>
+          <div className="-mx-5 border-y border-border bg-card md:-mx-8">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-[72px]">Map</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead className="hidden w-[200px] md:table-cell">Topic</TableHead>
+                  <TableHead className="hidden w-[180px] md:table-cell">Author</TableHead>
+                  <TableHead className="w-[88px] text-right">Date</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((map) => {
+                  const thumbnailUrl = map.thumbnailUrl ?? pickMapThumbnail(map.document);
+                  const displayTitle = simplifyMapDisplayTitle(map.title, map.topicFamily);
+                  const date = (() => {
+                    try {
+                      return new Date(map.createdAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      });
+                    } catch {
+                      return "";
+                    }
+                  })();
+                  return (
+                    <TableRow key={map.id} className="group">
+                      <TableCell>
+                        <Link
+                          href={`/maps/${map.slug}`}
+                          aria-label={map.title}
+                          className="block aspect-square h-12 w-12 shrink-0 overflow-hidden border border-border bg-muted"
+                          tabIndex={-1}
+                        >
+                          {thumbnailUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={thumbnailUrl}
+                              alt=""
+                              referrerPolicy="no-referrer"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : null}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          href={`/maps/${map.slug}`}
+                          className="block min-w-0 outline-none focus-visible:outline-none"
+                        >
+                          <h3 className="truncate text-[15px] font-semibold leading-tight tracking-[-0.005em] text-foreground transition-colors duration-150 group-hover:text-primary md:text-[16px]">
+                            {displayTitle}
+                          </h3>
+                          <p className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground md:hidden">
+                            {map.topicFamily}
+                            {map.createdByDisplayName ? (
+                              <>
+                                <span className="mx-1.5 text-muted-foreground/50">·</span>
+                                <span className="normal-case tracking-normal">
+                                  by {map.createdByDisplayName}
+                                </span>
+                              </>
+                            ) : null}
+                          </p>
+                        </Link>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <span className="truncate font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                          {map.topicFamily}
+                        </span>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <span className="truncate text-[13px] text-muted-foreground">
+                          {map.createdByDisplayName ?? "—"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <time
+                          dateTime={map.createdAt}
+                          className="font-mono text-[11px] tabular-nums uppercase tracking-[0.18em] text-muted-foreground"
+                        >
+                          {date}
+                        </time>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         )}
 
         {pageCount > 1 ? (
