@@ -208,7 +208,7 @@ export default async function HomePage({
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div className="flex min-w-0 items-baseline gap-3">
             <h1 className="font-sans text-[20px] font-semibold leading-none tracking-[-0.02em] text-foreground md:text-[24px]">
-              {pageContent.heading}
+              Finds
             </h1>
             <span className="hidden font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground sm:inline">
               {eyebrowLabel}
@@ -278,89 +278,127 @@ export default async function HomePage({
         </div>
       </StickyToolbar>
 
-      {!user ? (
-        <p className="font-sans text-[13px] leading-snug text-muted-foreground">
-          Each entry is a <span className="italic text-foreground">find</span> — a gap someone surfaced from a Lelet map. Upvote the strong ones, or{" "}
-          <Link href="/auth/sign-in" className="text-foreground underline-offset-4 hover:underline">
-            sign in
-          </Link>{" "}
-          to publish your own.
-        </p>
-      ) : null}
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-hidden md:grid-cols-[minmax(0,1fr)_minmax(13rem,15rem)] md:gap-8">
+        <section className="flex min-h-0 flex-col gap-3 overflow-hidden">
+          {!user ? (
+            <p className="font-sans text-[13px] leading-snug text-muted-foreground">
+              Each entry is a <span className="italic text-foreground">find</span> — a gap someone surfaced from a Lelet map. Upvote the strong ones, or{" "}
+              <Link href="/auth/sign-in" className="text-foreground underline-offset-4 hover:underline">
+                sign in
+              </Link>{" "}
+              to publish your own.
+            </p>
+          ) : null}
 
-      <div className="-mx-5 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-5 md:-mx-8 md:px-8">
-      {entries.items.length ? (
-        <LeaderboardGallery
-          entries={entries.items}
-          view={view}
-          isSignedIn={Boolean(user)}
-          viewerId={user?.id ?? null}
-          viewerIsAdmin={Boolean(user?.isAdmin)}
-        />
-      ) : (
-        <EmptyStatePanel
-          kicker={
-            query
-              ? "No matches"
-              : scope === "mine"
-                ? "Nothing published yet"
-                : pageContent.emptyStateTitle
-          }
-          body={
-            query
-              ? `Nothing on the leaderboard matches "${query}". Try a different search or clear it.`
-              : scope === "mine"
-                ? "Publish to the leaderboard from any of your maps to see them here."
-                : pageContent.emptyStateBody
-          }
-          actions={
-            query ? (
-              <Button asChild variant="outline">
-                <Link href={`/?scope=${scope}&view=${view}`}>Clear search</Link>
-              </Button>
+          <div className="-mx-5 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-5 md:mx-0 md:px-0">
+            {entries.items.length ? (
+              <LeaderboardGallery
+                entries={entries.items}
+                view={view}
+                isSignedIn={Boolean(user)}
+                viewerId={user?.id ?? null}
+                viewerIsAdmin={Boolean(user?.isAdmin)}
+                bleed={false}
+              />
             ) : (
-              <>
-                <Button asChild>
-                  <Link href="/create">New map</Link>
-                </Button>
-                <Button asChild variant="outline">
-                  <Link href="/gallery">Maps</Link>
-                </Button>
-              </>
-            )
-          }
-        />
-      )}
-      </div>
+              <EmptyStatePanel
+                kicker={
+                  query
+                    ? "No matches"
+                    : scope === "mine"
+                      ? "Nothing published yet"
+                      : pageContent.emptyStateTitle
+                }
+                body={
+                  query
+                    ? `Nothing on the wall matches "${query}". Try a different search or clear it.`
+                    : scope === "mine"
+                      ? "Publish a find from any of your maps to see them here."
+                      : pageContent.emptyStateBody
+                }
+                actions={
+                  query ? (
+                    <Button asChild variant="outline">
+                      <Link href={`/?scope=${scope}&view=${view}`}>Clear search</Link>
+                    </Button>
+                  ) : (
+                    <>
+                      <Button asChild>
+                        <Link href="/create">New map</Link>
+                      </Button>
+                      <Button asChild variant="outline">
+                        <Link href="/maps">Maps</Link>
+                      </Button>
+                    </>
+                  )
+                }
+              />
+            )}
+          </div>
 
-      {pageCount > 1 ? (
-        <nav
-          aria-label="Pagination"
-          className="flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground"
+          {pageCount > 1 ? (
+            <nav
+              aria-label="Pagination"
+              className="flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground"
+            >
+              {page <= 1 ? (
+                <span aria-disabled="true" className="opacity-50">
+                  ← Prev
+                </span>
+              ) : (
+                <Link href={pageHref(page - 1)} className="hover:text-foreground">
+                  ← Prev
+                </Link>
+              )}
+              <span>
+                Page {page} of {pageCount}
+              </span>
+              {page >= pageCount ? (
+                <span aria-disabled="true" className="opacity-50">
+                  Next →
+                </span>
+              ) : (
+                <Link href={pageHref(page + 1)} className="hover:text-foreground">
+                  Next →
+                </Link>
+              )}
+            </nav>
+          ) : null}
+        </section>
+
+        <aside
+          aria-label="About the wall"
+          className="hidden border-l border-border pl-6 pt-2 md:flex md:flex-col md:gap-4"
         >
-          {page <= 1 ? (
-            <span aria-disabled="true" className="opacity-50">
-              ← Prev
-            </span>
-          ) : (
-            <Link href={pageHref(page - 1)} className="hover:text-foreground">
-              ← Prev
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              What's this?
+            </p>
+            <p className="mt-2 font-sans text-[12.5px] leading-[1.55] text-foreground">
+              <span className="italic">Lelet</span> maps a topic across two
+              picturable traits. The cells nothing fills become finds — gaps
+              worth keeping.
+            </p>
+          </div>
+          <div className="border-t border-border pt-3">
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              The wall
+            </p>
+            <p className="mt-2 font-sans text-[12.5px] leading-[1.55] text-muted-foreground">
+              Each card below is one find, published from a map. Upvote the
+              ones that feel right.
+            </p>
+          </div>
+          <div className="mt-auto border-t border-border pt-3">
+            <Link
+              href="/about"
+              className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground"
+            >
+              More about Lelet →
             </Link>
-          )}
-          <span>
-            Page {page} of {pageCount}
-          </span>
-          {page >= pageCount ? (
-            <span aria-disabled="true" className="opacity-50">
-              Next →
-            </span>
-          ) : (
-            <Link href={pageHref(page + 1)} className="hover:text-foreground">
-              Next →
-            </Link>
-          )}
-        </nav>
-      ) : null}
+          </div>
+        </aside>
+      </div>
     </ShellPage>
   );
 }

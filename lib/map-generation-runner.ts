@@ -56,7 +56,7 @@ export type MapGenerationRunOutcome =
 
 function revalidateMapPaths(slug: string) {
   revalidatePath("/");
-  revalidatePath("/gallery");
+  revalidatePath("/maps");
   revalidatePath(`/maps/${slug}`);
 }
 

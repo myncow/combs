@@ -52,7 +52,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
   revalidatePath(`/maps/${slug}`);
-  revalidatePath("/gallery");
+  revalidatePath("/maps");
   revalidatePath("/admin/maps");
   return NextResponse.json(updated);
 }
@@ -77,7 +77,7 @@ export async function DELETE(
   }
 
   revalidatePath("/");
-  revalidatePath("/gallery");
+  revalidatePath("/maps");
   revalidatePath(`/maps/${slug}`);
   revalidatePath("/api/maps");
   revalidatePath("/admin/maps");

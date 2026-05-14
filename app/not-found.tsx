@@ -15,7 +15,7 @@ export default function NotFound() {
               <Link href="/">New map</Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href="/gallery">Maps</Link>
+              <Link href="/maps">Maps</Link>
             </Button>
           </>
         }

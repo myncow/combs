@@ -10,11 +10,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
     },
     {
-      url: `${base}/gallery`,
+      url: `${base}/maps`,
       lastModified: new Date(),
     },
     {
-      url: `${base}/leaderboard`,
+      url: `${base}/about`,
       lastModified: new Date(),
     },
   ];

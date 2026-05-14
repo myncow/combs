@@ -21,6 +21,7 @@ import {
   addLeaderboardComment,
   applyMapPatch,
   deleteLeaderboardComment,
+  deleteLeaderboardEntry,
   getMapBySlug,
   logCellVisualizationRun,
   patchMapCellVisualization,
@@ -252,7 +253,7 @@ export async function visualizeCellAction(
       // non-critical
     }
     revalidatePath(`/maps/${slug}`);
-    revalidatePath("/gallery");
+    revalidatePath("/maps");
 
     return {
       status: "success",
@@ -328,9 +329,10 @@ export async function publishGapSpotlightAction(
       ...parsed.data,
       publishedByNeonUserId: sessionUser.id ?? null,
     });
+    revalidatePath("/");
     revalidatePath("/leaderboard");
     revalidatePath(`/leaderboard/${entry.slug}`);
-    revalidatePath("/gallery");
+    revalidatePath("/maps");
     revalidatePath("/api/leaderboard");
     if (parsed.data.makePublic) {
       revalidatePath(`/maps/${parsed.data.mapSlug}`);
@@ -405,6 +407,56 @@ export async function updateSpotlightAction(
   revalidatePath("/");
   revalidatePath(`/maps/${updated.mapSlug}`);
   return { status: "success", slug: updated.slug };
+}
+
+export type UnpublishSpotlightActionState =
+  | { status: "idle" }
+  | { status: "success" }
+  | { status: "error"; message: string };
+
+/**
+ * Take a published find off the wall. Mirrors `updateSpotlightAction`'s
+ * permission gate (map owner or admin). The source map and its cells are
+ * untouched — only the spotlight row (and its cascaded votes/comments)
+ * are removed.
+ */
+export async function unpublishLeaderboardEntryAction(
+  _previousState: UnpublishSpotlightActionState,
+  formData: FormData,
+): Promise<UnpublishSpotlightActionState> {
+  const { data: session } = await getAuth().getSession();
+  if (!session?.user) {
+    return { status: "error", message: "Sign in to unpublish this entry." };
+  }
+  const sessionUser = session.user as { id?: string | null; email?: string | null };
+
+  const slug = String(formData.get("slug") ?? "").trim();
+  if (!slug) {
+    return { status: "error", message: "Missing entry slug." };
+  }
+
+  const viewer = {
+    id: sessionUser.id ?? null,
+    isAdmin: isAdminEmail(sessionUser.email),
+  };
+  const auth = await viewerCanMutateSpotlight(slug, viewer);
+  if (!auth.ok) {
+    return {
+      status: "error",
+      message: "Only the map owner or an admin can unpublish this entry.",
+    };
+  }
+
+  const removed = await deleteLeaderboardEntry(slug);
+  if (!removed) {
+    return { status: "error", message: "Entry not found." };
+  }
+  revalidatePath("/");
+  revalidatePath("/leaderboard");
+  revalidatePath(`/leaderboard/${slug}`);
+  revalidatePath(`/maps/${removed.mapSlug}`);
+  revalidatePath("/api/leaderboard");
+  return { status: "success" };
 }
 
 export type LeaderboardCommentActionState =

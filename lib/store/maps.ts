@@ -2349,6 +2349,21 @@ export async function updateSpotlightContent({
   return getLeaderboardEntryBySlug(slug);
 }
 
+/**
+ * Remove a spotlight from the leaderboard. Votes/comments cascade via the
+ * FK on `onDelete: "cascade"`. The source map row is untouched — only the
+ * published find is taken down. Caller is expected to have authorized the
+ * viewer via `viewerCanMutateSpotlight`.
+ */
+export async function deleteLeaderboardEntry(slug: string): Promise<{ mapSlug: string } | null> {
+  const db = getDb();
+  const spotlight = await getSpotlightBySlug(slug);
+  if (!spotlight) return null;
+  const mapSlug = spotlight.mapSlugSnapshot;
+  await db.delete(spotlightsTable).where(eq(spotlightsTable.id, spotlight.id));
+  return { mapSlug };
+}
+
 function toLeaderboardComment(row: any): LeaderboardComment {
   return {
     id: row.id,

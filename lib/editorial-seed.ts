@@ -34,7 +34,7 @@ export const SEEDED_HOME_PAGE: HomePageContent = {
 
 export const SEEDED_GALLERY_PAGE: ListingPageContent = {
   key: "gallery",
-  slug: "gallery",
+  slug: "maps",
   title: "Maps",
   seoTitle: "Maps · Lelet",
   seoDescription: "Browse published and live map experiments.",
@@ -47,13 +47,13 @@ export const SEEDED_GALLERY_PAGE: ListingPageContent = {
 
 export const SEEDED_LEADERBOARD_PAGE: ListingPageContent = {
   key: "leaderboard",
-  slug: "leaderboard",
-  title: "Leaderboard",
-  seoTitle: "Leaderboard · Lelet",
-  seoDescription: "Leaderboard entries published by the community.",
-  heading: "Leaderboard",
-  intro: "Leaderboard entries published by the community. Vote on the ones that feel right.",
+  slug: "finds",
+  title: "Finds",
+  seoTitle: "Finds · Lelet",
+  seoDescription: "Finds published by the community — gaps surfaced from Lelet maps.",
+  heading: "Finds",
+  intro: "Each entry is a find — a gap someone surfaced from a Lelet map. Vote on the ones that feel right.",
   helperText: "Filter",
-  emptyStateTitle: "No entries yet.",
-  emptyStateBody: "Publish to the leaderboard to seed it.",
+  emptyStateTitle: "No finds yet.",
+  emptyStateBody: "Publish a find to seed the wall.",
 };

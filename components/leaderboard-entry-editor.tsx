@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, useTransition } from "react";
-import { Check, Pencil, X } from "lucide-react";
-import { updateSpotlightAction } from "@/app/actions";
+import { Check, Pencil, Trash2, X } from "lucide-react";
+import { unpublishLeaderboardEntryAction, updateSpotlightAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useFocusTrap } from "@/lib/use-focus-trap";
@@ -34,6 +34,7 @@ export function LeaderboardEntryEditor({
   const [summary, setSummary] = useState(storySummary);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [unpublishing, startUnpublish] = useTransition();
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const titleId = useId();
@@ -88,22 +89,57 @@ export function LeaderboardEntryEditor({
     });
   }
 
+  function handleUnpublish() {
+    if (unpublishing) return;
+    const ok = window.confirm(
+      `Take "${storyTitle}" off the wall? The source map stays — only the published find is removed.`,
+    );
+    if (!ok) return;
+    startUnpublish(async () => {
+      const fd = new FormData();
+      fd.set("slug", slug);
+      const result = await unpublishLeaderboardEntryAction({ status: "idle" }, fd);
+      if (result.status === "error") {
+        window.alert(result.message);
+        return;
+      }
+      window.location.reload();
+    });
+  }
+
   if (mode === "view") {
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={() => setMode("editing")}
-            aria-label="Edit entry"
-            className="inline-flex h-7 items-center gap-1.5 border border-border bg-card px-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground hover:[&_svg]:fill-[color:color-mix(in_srgb,var(--primary)_15%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <Pencil className="h-3 w-3" aria-hidden strokeWidth={1.75} />
-            <span>Edit</span>
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>Edit entry</TooltipContent>
-      </Tooltip>
+      <div className="flex items-center gap-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => setMode("editing")}
+              aria-label="Edit entry"
+              className="inline-flex h-7 items-center gap-1.5 border border-border bg-card px-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground hover:[&_svg]:fill-[color:color-mix(in_srgb,var(--primary)_15%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Pencil className="h-3 w-3" aria-hidden strokeWidth={1.75} />
+              <span>Edit</span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Edit entry</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={handleUnpublish}
+              aria-label="Unpublish entry"
+              disabled={unpublishing}
+              className="inline-flex h-7 items-center gap-1.5 border border-border bg-card px-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-[color:var(--destructive)]/50 hover:text-[color:var(--destructive)] disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Trash2 className="h-3 w-3" aria-hidden strokeWidth={1.75} />
+              <span>{unpublishing ? "Removing…" : "Unpublish"}</span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Remove from the wall (map is kept)</TooltipContent>
+        </Tooltip>
+      </div>
     );
   }
 

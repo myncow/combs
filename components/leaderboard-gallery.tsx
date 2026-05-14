@@ -58,6 +58,7 @@ export function LeaderboardGallery({
   isSignedIn = false,
   viewerId = null,
   viewerIsAdmin = false,
+  bleed = true,
 }: {
   entries: ListedLeaderboardEntry[];
   view?: "list" | "gallery";
@@ -69,6 +70,12 @@ export function LeaderboardGallery({
   /** Neon user id of the current viewer (drives "can edit" gating). */
   viewerId?: string | null;
   viewerIsAdmin?: boolean;
+  /**
+   * When true (default) the list view's table bleeds to the page's
+   * `px-8` gutter. Pass false when the gallery is rendered inside a
+   * column with a sibling sidebar so it doesn't overflow into it.
+   */
+  bleed?: boolean;
 }) {
   const searchParams = useSearchParams();
   // Backward compat: existing share links still use `?spotlight=<slug>`.
@@ -103,7 +110,12 @@ export function LeaderboardGallery({
 
   if (view === "list") {
     return (
-      <div className="-mx-5 border-y border-border bg-card md:-mx-8">
+      <div
+        className={cn(
+          "-mx-5 border-y border-border bg-card",
+          bleed ? "md:-mx-8" : "md:mx-0",
+        )}
+      >
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
