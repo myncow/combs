@@ -16,6 +16,7 @@ type SerpImageRow = {
   title?: string;
   link?: string;
   thumbnail?: string;
+  original?: string;
   source?: string;
 };
 
@@ -89,10 +90,17 @@ export async function fetchGoogleImageExampleResults(query: string, options?: { 
     if (!row.link) {
       continue;
     }
+    // SerpApi sometimes omits `thumbnail` (CORS/CDN scrape failure) while still
+    // returning `original` (the full image URL). Coalesce so the row remains
+    // renderable instead of silently dropping out of the downstream filter.
+    const thumbnail = row.thumbnail ?? row.original;
+    if (!thumbnail) {
+      continue;
+    }
     results.push({
       title: row.title,
       link: row.link,
-      thumbnail: row.thumbnail,
+      thumbnail,
       source: row.source,
     });
     if (results.length >= CAP) {

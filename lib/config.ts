@@ -88,9 +88,9 @@ export const appConfig = {
      * Override with `LATTICE_SERP_REFERENCE_MAX_CALLS` to control cost.
      */
     serpReferenceMaxCalls: (() => {
-      const raw = Number(process.env.LATTICE_SERP_REFERENCE_MAX_CALLS ?? 8);
-      const n = Number.isFinite(raw) ? Math.floor(raw) : 8;
-      return Math.min(64, Math.max(0, n));
+      const raw = Number(process.env.LATTICE_SERP_REFERENCE_MAX_CALLS ?? 64);
+      const n = Number.isFinite(raw) ? Math.floor(raw) : 64;
+      return Math.min(256, Math.max(0, n));
     })(),
     visualCandidateCount: (() => {
       const raw = Number(process.env.LATTICE_VISUAL_CANDIDATE_COUNT ?? 3);

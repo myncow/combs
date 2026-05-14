@@ -4,6 +4,7 @@ import { AdminOwnerCell } from "@/components/admin-owner-cell";
 import { DeleteMapButton } from "@/components/delete-map-button";
 import { MapVisibilityControl } from "@/components/map-visibility-control";
 import { PageHeader, ShellPage, SurfacePanel } from "@/components/raster-shell";
+import { RefillReferencesButton } from "@/components/refill-references-button";
 import { Button } from "@/components/ui/button";
 import { getSessionUser } from "@/lib/auth/admin";
 import { listMaps } from "@/lib/store";
@@ -226,10 +227,11 @@ export default async function AdminMapsPage({
                         {formatDate(map.updatedAt)}
                       </td>
                       <td className="px-3 py-2.5">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Button asChild variant="secondary" size="sm">
                             <Link href={`/maps/${map.slug}`}>Inspect</Link>
                           </Button>
+                          <RefillReferencesButton slug={map.slug} />
                           <DeleteMapButton
                             slug={map.slug}
                             title={map.title}

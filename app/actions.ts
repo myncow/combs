@@ -19,6 +19,7 @@ import {
 } from "@/lib/schema";
 import {
   addLeaderboardComment,
+  applyMapPatch,
   deleteLeaderboardComment,
   getMapBySlug,
   logCellVisualizationRun,
@@ -27,6 +28,7 @@ import {
   updateSpotlightContent,
   viewerCanMutateSpotlight,
 } from "@/lib/store";
+import { enrichMapDocumentReferenceImages } from "@/lib/map-reference-images";
 import {
   buildDiversificationSuffix,
   findHashCollisionAgainstOthers,
@@ -494,4 +496,63 @@ export async function deleteLeaderboardCommentAction(
   }
   revalidatePath("/");
   return { status: "success" };
+}
+
+export type RefillReferenceImagesState =
+  | { status: "idle" }
+  | { status: "success"; filled: number }
+  | { status: "error"; message: string };
+
+// Admin-only: re-run SerpApi reference enrichment against an existing map.
+// `enrichMapDocumentReferenceImages` skips examples that already carry refs,
+// so this only fills gaps left by an earlier budget-exhausted or
+// circuit-broken generation.
+export async function refillMapReferenceImagesAction(
+  _prev: RefillReferenceImagesState,
+  formData: FormData,
+): Promise<RefillReferenceImagesState> {
+  const { data: session } = await getAuth().getSession();
+  const sessionUser = session?.user as
+    | { id?: string | null; email?: string | null }
+    | undefined;
+  if (!sessionUser || !isAdminEmail(sessionUser.email)) {
+    return { status: "error", message: "Admin only." };
+  }
+  const slug = String(formData.get("slug") ?? "").trim();
+  if (!slug) {
+    return { status: "error", message: "Missing map slug." };
+  }
+  const saved = await getMapBySlug(slug);
+  if (!saved) {
+    return { status: "error", message: "Map not found." };
+  }
+  const before = countExamplesWithRefs(saved.document);
+  const enriched = await enrichMapDocumentReferenceImages(saved.document);
+  const after = countExamplesWithRefs(enriched);
+  const patch = await applyMapPatch({
+    mapId: saved.id,
+    mutate: (current) => ({ ...enriched, slug: current.slug }),
+  });
+  if (!patch) {
+    return { status: "error", message: "Could not persist." };
+  }
+  revalidatePath(`/maps/${slug}`);
+  revalidatePath("/admin/maps");
+  return { status: "success", filled: Math.max(0, after - before) };
+}
+
+function countExamplesWithRefs(doc: {
+  featuredExamples?: Array<{ referenceImages?: unknown[] }>;
+  cells?: Array<{ examples?: Array<{ referenceImages?: unknown[] }> }>;
+}): number {
+  let n = 0;
+  for (const ex of doc.featuredExamples ?? []) {
+    if ((ex.referenceImages?.length ?? 0) > 0) n++;
+  }
+  for (const cell of doc.cells ?? []) {
+    for (const ex of cell.examples ?? []) {
+      if ((ex.referenceImages?.length ?? 0) > 0) n++;
+    }
+  }
+  return n;
 }

@@ -185,7 +185,17 @@ export async function enrichMapDocumentReferenceImages(
     if (!q || !moderateText(q).safe) {
       return;
     }
-    const hits = await resolveQuery(q);
+    let hits = await resolveQuery(q);
+    // Brand+name+year is often too specific for abstract / generated names;
+    // retry on name alone before giving up. Costs at most one extra call per
+    // miss and only fires when the first attempt was empty.
+    if (!hits.length) {
+      const fallbackRaw = (ex.name ?? "").trim();
+      const fallback = normalizeExampleImageQuery(fallbackRaw);
+      if (fallback && fallback !== q && moderateText(fallback).safe) {
+        hits = await resolveQuery(fallback);
+      }
+    }
     if (hits.length) {
       hitsByKey.set(key, hits);
       if (onExampleEnriched) {
