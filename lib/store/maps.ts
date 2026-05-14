@@ -1220,6 +1220,13 @@ export async function publishGapSpotlight({
   return (await getLeaderboardEntryBySlug(existing?.slug ?? slug))!;
 }
 
+export class SelfVoteError extends Error {
+  constructor() {
+    super("Cannot vote on your own creation.");
+    this.name = "SelfVoteError";
+  }
+}
+
 export async function castLeaderboardVote({
   slug,
   requesterId,
@@ -1237,6 +1244,22 @@ export async function castLeaderboardVote({
     .limit(1);
   if (!rows.length) return null;
   const spotlight = rows[0]!;
+
+  // Block self-votes: requesterId is `user:<id>` for authed callers; bare for anon.
+  if (requesterId.startsWith("user:")) {
+    const voterId = requesterId.slice("user:".length);
+    if (voterId) {
+      const ownerRows = (await db
+        .select({ ownerId: mapsTable.createdByNeonUserId })
+        .from(mapsTable)
+        .where(eq(mapsTable.id, spotlight.mapId))
+        .limit(1)) as Array<{ ownerId: string | null }>;
+      const ownerId = ownerRows[0]?.ownerId ?? null;
+      if (ownerId && ownerId === voterId) {
+        throw new SelfVoteError();
+      }
+    }
+  }
 
   const updatedEntry = await db.transaction(async (tx) => {
     const existingRows = (await tx

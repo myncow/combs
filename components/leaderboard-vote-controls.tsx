@@ -45,6 +45,7 @@ export function LeaderboardVoteControls({
   viewerVote,
   compact = false,
   isSignedIn = true,
+  disabledReason,
 }: {
   slug: string;
   score: number;
@@ -53,6 +54,8 @@ export function LeaderboardVoteControls({
   viewerVote?: LeaderboardVoteDirection | null;
   compact?: boolean;
   isSignedIn?: boolean;
+  /** When set, both buttons are disabled and the tooltip explains why (e.g. "You can't vote on your own creation"). */
+  disabledReason?: string | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -68,6 +71,7 @@ export function LeaderboardVoteControls({
 
   async function submitVote(direction: LeaderboardVoteDirection) {
     if (busy) return;
+    if (disabledReason) return;
     if (!isSignedIn) {
       const href = buildAuthRedirectHref(
         "/auth/sign-in",
@@ -130,10 +134,10 @@ export function LeaderboardVoteControls({
               type="button"
               role="radio"
               aria-checked={state.viewerVote === "up"}
-              disabled={busy}
+              disabled={busy || Boolean(disabledReason)}
               onClick={() => void submitVote("up")}
               className={cn(
-                "inline-flex items-center justify-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50",
+                "inline-flex items-center justify-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed",
                 compact ? "h-8 w-8" : "h-10 w-10",
                 state.viewerVote === "up"
                   ? "bg-foreground text-background"
@@ -145,7 +149,11 @@ export function LeaderboardVoteControls({
             </button>
           </TooltipTrigger>
           <TooltipContent>
-            {state.viewerVote === "up" ? "Click again to clear your vote" : "Upvote"}
+            {disabledReason
+              ? disabledReason
+              : state.viewerVote === "up"
+                ? "Click again to clear your vote"
+                : "Upvote"}
           </TooltipContent>
         </Tooltip>
         <div
@@ -170,10 +178,10 @@ export function LeaderboardVoteControls({
               type="button"
               role="radio"
               aria-checked={state.viewerVote === "down"}
-              disabled={busy}
+              disabled={busy || Boolean(disabledReason)}
               onClick={() => void submitVote("down")}
               className={cn(
-                "inline-flex items-center justify-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50",
+                "inline-flex items-center justify-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed",
                 compact ? "h-8 w-8" : "h-10 w-10",
                 state.viewerVote === "down"
                   ? "bg-primary text-primary-foreground"
@@ -185,7 +193,11 @@ export function LeaderboardVoteControls({
             </button>
           </TooltipTrigger>
           <TooltipContent>
-            {state.viewerVote === "down" ? "Click again to clear your vote" : "Downvote"}
+            {disabledReason
+              ? disabledReason
+              : state.viewerVote === "down"
+                ? "Click again to clear your vote"
+                : "Downvote"}
           </TooltipContent>
         </Tooltip>
       </div>

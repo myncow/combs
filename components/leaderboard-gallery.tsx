@@ -99,6 +99,9 @@ export function LeaderboardGallery({
               const commentCount = entry.commentCount ?? 0;
               const expandHref = `/?view=gallery&spotlight=${encodeURIComponent(entry.slug)}`;
               const commentsHref = `${expandHref}#${commentsAnchorId(entry.slug)}`;
+              const ownVoteBlocked = Boolean(
+                viewerId && entry.mapOwnerId && viewerId === entry.mapOwnerId,
+              );
               return (
                 <TableRow
                   key={entry.id}
@@ -152,6 +155,9 @@ export function LeaderboardGallery({
                       viewerVote={entry.viewerVote ?? null}
                       compact
                       isSignedIn={isSignedIn}
+                      disabledReason={
+                        ownVoteBlocked ? "You can't vote on your own creation" : null
+                      }
                     />
                   </TableCell>
                   <TableCell className="text-right">
@@ -196,6 +202,9 @@ export function LeaderboardGallery({
       {entries.map((entry) => {
         const canEdit = viewerCanEdit(entry, viewerId, viewerIsAdmin);
         const sourceHref = `/maps/${entry.mapSlug}#map-cell-${entry.cellId}`;
+        const ownVoteBlocked = Boolean(
+          viewerId && entry.mapOwnerId && viewerId === entry.mapOwnerId,
+        );
         return (
           <li
             key={entry.id}
@@ -277,6 +286,9 @@ export function LeaderboardGallery({
                     viewerVote={entry.viewerVote ?? null}
                     compact
                     isSignedIn={isSignedIn}
+                    disabledReason={
+                      ownVoteBlocked ? "You can't vote on your own creation" : null
+                    }
                   />
                 </div>
                 <section

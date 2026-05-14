@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth/server";
 import { checkRateLimit } from "@/lib/guards";
 import { leaderboardVoteRequestSchema } from "@/lib/schema";
-import { castLeaderboardVote } from "@/lib/store";
+import { castLeaderboardVote, SelfVoteError } from "@/lib/store";
 
 export async function POST(
   request: Request,
@@ -33,11 +33,22 @@ export async function POST(
     );
   }
 
-  const entry = await castLeaderboardVote({
-    slug,
-    requesterId: `user:${userId}`,
-    direction: parsed.data.direction,
-  });
+  let entry;
+  try {
+    entry = await castLeaderboardVote({
+      slug,
+      requesterId: `user:${userId}`,
+      direction: parsed.data.direction,
+    });
+  } catch (error) {
+    if (error instanceof SelfVoteError) {
+      return NextResponse.json(
+        { error: "You can't vote on your own creation." },
+        { status: 403 },
+      );
+    }
+    throw error;
+  }
   if (!entry) {
     return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
