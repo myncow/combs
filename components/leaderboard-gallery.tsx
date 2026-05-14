@@ -26,6 +26,18 @@ function entryAnchorId(slug: string) {
   return `spotlight-${slug}`;
 }
 
+function findScrollableAncestor(el: HTMLElement): HTMLElement | null {
+  let node = el.parentElement;
+  while (node) {
+    const style = window.getComputedStyle(node);
+    if (/(auto|scroll)/.test(style.overflowY) && node.scrollHeight > node.clientHeight) {
+      return node;
+    }
+    node = node.parentElement;
+  }
+  return null;
+}
+
 function commentsAnchorId(slug: string) {
   return `comments-${slug}`;
 }
@@ -72,7 +84,14 @@ export function LeaderboardGallery({
       `#${CSS.escape(entryAnchorId(focusedSlug))}`,
     );
     if (!target) return;
-    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Scroll only the nearest scrollable ancestor (the list scroll region)
+    // rather than calling Element.scrollIntoView, which also walks up to the
+    // document and pulls the sticky site header offscreen when block:"start".
+    const scroller = findScrollableAncestor(target);
+    if (scroller) {
+      const targetTop = target.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
+      scroller.scrollTo({ top: Math.max(0, targetTop - 8), behavior: "smooth" });
+    }
     target.dataset.focused = "true";
     const timer = window.setTimeout(() => {
       delete target.dataset.focused;

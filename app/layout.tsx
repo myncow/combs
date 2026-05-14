@@ -76,7 +76,7 @@ export default async function RootLayout({
       lang="en"
       suppressHydrationWarning
       data-scroll-behavior="smooth"
-      className={cn(geistSans.variable, geistMono.variable, "h-full antialiased", ssrDark && "dark")}
+      className={cn(geistSans.variable, geistMono.variable, "h-full overflow-hidden antialiased", ssrDark && "dark")}
     >
       <body className="h-dvh overflow-hidden bg-background font-sans text-foreground">
         <ThemeBootstrap />
