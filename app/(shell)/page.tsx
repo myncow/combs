@@ -278,6 +278,16 @@ export default async function HomePage({
         </div>
       </StickyToolbar>
 
+      {!user ? (
+        <p className="font-sans text-[13px] leading-snug text-muted-foreground">
+          Each entry is a <span className="italic text-foreground">find</span> — a gap someone surfaced from a Lelet map. Upvote the strong ones, or{" "}
+          <Link href="/auth/sign-in" className="text-foreground underline-offset-4 hover:underline">
+            sign in
+          </Link>{" "}
+          to publish your own.
+        </p>
+      ) : null}
+
       <div className="-mx-5 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-5 md:-mx-8 md:px-8">
       {entries.items.length ? (
         <LeaderboardGallery
