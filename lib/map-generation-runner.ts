@@ -1,4 +1,5 @@
 import { revalidatePath } from "next/cache";
+import * as Sentry from "@sentry/nextjs";
 import { eq } from "drizzle-orm";
 import type { MapBriefInput } from "@/lib/schema";
 import { appConfig } from "@/lib/config";
@@ -12,7 +13,12 @@ import { buildFallbackMapDocument } from "@/lib/map-fallback-document";
 import { buildMapJob, enrichPublishedMap, type MapEngineModels } from "@/lib/map-engine";
 import { resolveRequestedChatModel } from "@/lib/chat-model-options";
 import { MAP_TOPIC, publish as publishBusEvent, type MapEvent } from "@/lib/server-event-bus";
-import { applyMapPatch, logGenerationRun, saveMap } from "@/lib/store";
+import {
+  applyMapPatch,
+  logGenerationRun,
+  saveMap,
+  sumDailyGenerationCostUsd,
+} from "@/lib/store";
 import type {
   GenerationJobResult,
   MapBrief,
@@ -135,7 +141,57 @@ export async function runMapGenerationCore(
     return { outcome: "error", message, metrics: null };
   }
 
+  // Daily spend ceiling — bail before kicking off any paid work. The ceiling
+  // sums LLM token cost across the trailing 24h of map_generation_runs.
+  // `0` disables the gate (default for dev/test).
+  if (appConfig.dailyCostCeilingUsd > 0) {
+    const trailingCost = await sumDailyGenerationCostUsd().catch(() => 0);
+    if (trailingCost >= appConfig.dailyCostCeilingUsd) {
+      const message =
+        "Daily generation budget reached; please try again tomorrow.";
+      if (reserved) await markReservedMapFailed(reserved.id, message);
+      return { outcome: "error", message, metrics: null };
+    }
+  }
+
+  // Hard wall-clock — must be < the /api/generate/start route's `maxDuration`
+  // (300s) so we can mark the reserved map failed and log a real outcome
+  // before the platform kills the function.
+  const HARD_TIMEOUT_MS = 270_000;
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      reject(new Error(`Generation timed out after ${HARD_TIMEOUT_MS / 1000}s.`));
+    }, HARD_TIMEOUT_MS);
+  });
+
   try {
+    return await Promise.race([runGeneration(), timeoutPromise]);
+  } catch (error) {
+    Sentry.captureException(error, {
+      tags: { component: "map-generation-runner", reservedSlug: reserved?.slug ?? null },
+    });
+    const message = error instanceof Error ? error.message : "Generation failed.";
+    if (reserved) await markReservedMapFailed(reserved.id, message);
+    const metrics = collector.stages.length ? collector.finalize() : null;
+    await logGenerationRun({
+      id: `run_${crypto.randomUUID()}`,
+      mapId: reserved?.id,
+      status: "failed",
+      model: appConfig.openRouter.model,
+      fallbackModel: appConfig.openRouter.fallbackModel,
+      inputBrief: briefInput as MapBrief,
+      normalizedBrief: null,
+      error: message,
+      metrics: metrics ?? null,
+      createdAt: new Date().toISOString(),
+    });
+    return { outcome: "error", message, metrics };
+  } finally {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+  }
+
+  async function runGeneration(): Promise<MapGenerationRunOutcome> {
     const mergedSink = withMetricsGenerationSink(options?.sink, collector);
     // Extract validated model overrides from the brief (already parsed by the schema).
     const briefModels = (briefInput as { models?: { mapModel?: string; researchModel?: string; suggestModel?: string } | undefined }).models;
@@ -153,6 +209,28 @@ export async function runMapGenerationCore(
 
     const metricsBase = collector.finalize();
     const inputBrief = briefInput as MapBrief;
+
+    // Defense-in-depth: `repairSkeletonCandidate` already clamps axis values
+    // so the matrix product stays ≤ maxCells, but if a future schema change
+    // skips that step we want to fail explicitly here rather than fan out
+    // hundreds of paid cell calls in `enrichPublishedMap`.
+    if (document && document.cells.length > appConfig.generation.maxCells) {
+      const message = `Generated matrix exceeded the per-run cell limit (${document.cells.length} > ${appConfig.generation.maxCells}).`;
+      if (reserved) await markReservedMapFailed(reserved.id, message);
+      await logGenerationRun({
+        id: `run_${crypto.randomUUID()}`,
+        mapId: reserved?.id,
+        status: "failed",
+        model: appConfig.openRouter.model,
+        fallbackModel: appConfig.openRouter.fallbackModel,
+        inputBrief,
+        normalizedBrief: normalizedBrief ?? null,
+        error: message,
+        metrics: metricsBase,
+        createdAt: new Date().toISOString(),
+      });
+      return { outcome: "error", message, metrics: metricsBase };
+    }
 
     if (!normalizedBrief) {
       const message =
@@ -344,22 +422,5 @@ export async function runMapGenerationCore(
       mapId: savedId,
       metrics: metricsFinal,
     };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Generation failed.";
-    if (reserved) await markReservedMapFailed(reserved.id, message);
-    const metrics = collector.stages.length ? collector.finalize() : null;
-    await logGenerationRun({
-      id: `run_${crypto.randomUUID()}`,
-      mapId: reserved?.id,
-      status: "failed",
-      model: appConfig.openRouter.model,
-      fallbackModel: appConfig.openRouter.fallbackModel,
-      inputBrief: briefInput as MapBrief,
-      normalizedBrief: null,
-      error: message,
-      metrics: metrics ?? null,
-      createdAt: new Date().toISOString(),
-    });
-    return { outcome: "error", message, metrics };
   }
 }

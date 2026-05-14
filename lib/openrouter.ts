@@ -42,6 +42,13 @@ function isAbortError(error: unknown) {
   return error instanceof Error && error.name === "AbortError";
 }
 
+const OPENROUTER_CHAT_TIMEOUT_MS = 60_000;
+
+function withTimeout(signal: AbortSignal | undefined, timeoutMs: number): AbortSignal {
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  return signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
+}
+
 async function requestJsonCompletion({
   model,
   instructions,
@@ -94,7 +101,7 @@ async function requestJsonCompletion({
         },
       },
     }),
-    signal,
+    signal: withTimeout(signal, OPENROUTER_CHAT_TIMEOUT_MS),
   });
 
   const payload = (await response.json().catch(() => null)) as ChatCompletionResponse | null;

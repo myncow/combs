@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
@@ -15,7 +16,10 @@
     "@neondatabase/auth": "0.3.0-beta",
     "@openrouter/sdk": "^0.12.18",
     "@radix-ui/react-slot": "^1.2.4",
+    "@sentry/nextjs": "^10.53.1",
+    "@vercel/analytics": "^2.0.1",
     "@vercel/blob": "^2.3.3",
+    "@vercel/speed-insights": "^2.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",

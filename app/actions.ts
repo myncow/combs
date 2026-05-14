@@ -12,10 +12,8 @@ import {
 import { generateCellVisualizationWithMetrics } from "@/lib/cell-image";
 import { getBlobReadWriteToken } from "@/lib/env";
 import { checkRateLimit, getRequesterId, moderateText } from "@/lib/guards";
-import { runMapGenerationCore } from "@/lib/map-generation-runner";
 import {
   cellVisualizationResultSchema,
-  mapBriefSchema,
   publishGapSpotlightSchema,
   type CellVisualizationResult,
 } from "@/lib/schema";
@@ -33,93 +31,6 @@ import {
   buildDiversificationSuffix,
   findHashCollisionAgainstOthers,
 } from "@/lib/visualization-diversity";
-
-export type CreateMapActionState =
-  | { status: "idle" }
-  | { status: "success"; slug: string }
-  | { status: "error"; message: string }
-  | { status: "rejected"; guidance: string[] };
-
-export async function createMapAction(
-  _previousState: CreateMapActionState,
-  formData: FormData,
-): Promise<CreateMapActionState> {
-  const { data: session } = await getAuth().getSession();
-  if (!session?.user) {
-    return {
-      status: "error",
-      message: "Sign in to build maps.",
-    };
-  }
-
-  const sessionUser = session.user as { id?: string | null; email?: string | null };
-  const requesterId = sessionUser.id || (await getRequesterId());
-  const rateLimit = checkRateLimit(requesterId);
-  if (!rateLimit.allowed) {
-    return {
-      status: "error",
-      message: "You have reached the current generation limit. Please try again shortly.",
-    };
-  }
-
-  const rawBrief = {
-    topic: String(formData.get("topic") ?? "").slice(0, 120),
-    extraContext: String(formData.get("extraContext") ?? "").slice(0, 1500) || undefined,
-  };
-
-  const moderated = moderateText(`${rawBrief.topic} ${rawBrief.extraContext ?? ""}`);
-  if (!moderated.safe) {
-    return {
-      status: "error",
-      message: moderated.reason ?? "This prompt is blocked by moderation.",
-    };
-  }
-
-  const parsed = mapBriefSchema.safeParse(rawBrief);
-  if (!parsed.success) {
-    return {
-      status: "error",
-      message: parsed.error.issues[0]?.message ?? "Please review the brief and try again.",
-    };
-  }
-
-  try {
-    const ownerId = session.user.id ?? null;
-    const outcome = await runMapGenerationCore(parsed.data, { ownerId });
-
-    if (outcome.outcome === "rejected") {
-      return {
-        status: "rejected",
-        guidance: outcome.normalizedBrief.guidance ?? ["Try a narrower topic with clearer dimensions."],
-      };
-    }
-
-    if (outcome.outcome === "failed_publish") {
-      return {
-        status: "error",
-        message:
-          outcome.result.error ?? "Generation failed. Please tighten the topic and try again.",
-      };
-    }
-
-    if (outcome.outcome === "error") {
-      return {
-        status: "error",
-        message: outcome.message,
-      };
-    }
-
-    return {
-      status: "success",
-      slug: outcome.slug,
-    };
-  } catch (error) {
-    return {
-      status: "error",
-      message: error instanceof Error ? error.message : "Something went wrong during generation.",
-    };
-  }
-}
 
 export type VisualizeCellActionState =
   | { status: "idle" }
@@ -140,7 +51,7 @@ export async function visualizeCellAction(
 
   const sessionUser = session.user as { id?: string | null; email?: string | null };
   const requesterId = sessionUser.id || (await getRequesterId());
-  const rateLimit = checkRateLimit(requesterId);
+  const rateLimit = await checkRateLimit(requesterId);
   if (!rateLimit.allowed) {
     return {
       status: "error",

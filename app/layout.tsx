@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./theme.css";
 import "./globals.css";
 import { NeonAuthProviders } from "@/components/neon-auth-providers";
@@ -83,6 +85,8 @@ export default async function RootLayout({
             <div className="flex min-h-0 flex-1 flex-col">{children}</div>
           </div>
         </NeonAuthProviders>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

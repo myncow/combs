@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   }
 
   const requesterId = session.user.id || (await getRequesterId());
-  const rateLimit = checkRateLimit(requesterId);
+  const rateLimit = await checkRateLimit(requesterId);
   if (!rateLimit.allowed) {
     return NextResponse.json(
       { error: "You have reached the current generation limit. Please try again shortly." },
@@ -44,7 +44,12 @@ export async function POST(req: NextRequest) {
   }
 
   const ownerId = session.user.id ?? null;
-  const reserved = await reserveMap({ brief: parsed.data as MapBrief, ownerId });
+  const idempotencyKey = req.headers.get("idempotency-key")?.slice(0, 80) ?? null;
+  const reserved = await reserveMap({
+    brief: parsed.data as MapBrief,
+    ownerId,
+    idempotencyKey,
+  });
 
   // Run generation after the response ships. The map row is already in the DB
   // with status="generating"; the live SSE stream picks up the slug and

@@ -1612,14 +1612,33 @@ function repairSkeletonCandidate(response: unknown) {
   let next = response as Record<string, unknown>;
 
   if (Array.isArray(candidate.dimensions)) {
-    next = {
-      ...next,
-      dimensions: candidate.dimensions.map((dimension) =>
-        Array.isArray(dimension.values) && dimension.values.length > 8
-          ? { ...dimension, values: dimension.values.slice(0, 8) }
-          : dimension,
-      ),
-    };
+    // Per-axis cap (8 values), then a global cell-count cap. For a 2-D map,
+    // axis-values × axis-values ≤ maxCells. We balance the cap evenly when
+    // the matrix would otherwise blow past the ceiling.
+    const perAxisCap = 8;
+    const dims = candidate.dimensions.map((dimension) =>
+      Array.isArray(dimension.values) && dimension.values.length > perAxisCap
+        ? { ...dimension, values: dimension.values.slice(0, perAxisCap) }
+        : dimension,
+    );
+    const valueCounts = dims.map((d) =>
+      Array.isArray(d.values) ? d.values.length : 0,
+    );
+    const product = valueCounts.reduce((a, b) => a * b, 1);
+    const maxCells = appConfig.generation.maxCells;
+    if (valueCounts.length >= 2 && product > maxCells) {
+      const sideCap = Math.max(2, Math.floor(Math.sqrt(maxCells)));
+      next = {
+        ...next,
+        dimensions: dims.map((d) =>
+          Array.isArray(d.values) && d.values.length > sideCap
+            ? { ...d, values: d.values.slice(0, sideCap) }
+            : d,
+        ),
+      };
+    } else {
+      next = { ...next, dimensions: dims };
+    }
   }
 
   if (Array.isArray(candidate.renderingHints?.gradient) && candidate.renderingHints.gradient.length > 4) {

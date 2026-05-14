@@ -1,31 +1,7 @@
 import { headers } from "next/headers";
+import { sql } from "drizzle-orm";
 import { appConfig } from "@/lib/config";
-
-type CounterEntry = {
-  count: number;
-  windowStart: number;
-};
-
-const globalForRateLimit = globalThis as typeof globalThis & {
-  __mapStudioRateLimit?: Map<string, CounterEntry>;
-  __exampleImagesRateLimit?: Map<string, CounterEntry>;
-};
-
-function getStore() {
-  if (!globalForRateLimit.__mapStudioRateLimit) {
-    globalForRateLimit.__mapStudioRateLimit = new Map();
-  }
-
-  return globalForRateLimit.__mapStudioRateLimit;
-}
-
-function getExampleImagesStore() {
-  if (!globalForRateLimit.__exampleImagesRateLimit) {
-    globalForRateLimit.__exampleImagesRateLimit = new Map();
-  }
-
-  return globalForRateLimit.__exampleImagesRateLimit;
-}
+import { getDb } from "@/lib/db/client";
 
 export async function getRequesterId() {
   const requestHeaders = await headers();
@@ -58,51 +34,55 @@ export async function getVoterIdentity(): Promise<string> {
   return `ip:${ip}`;
 }
 
-export function checkExampleImagesRateLimit(identifier: string) {
-  const now = Date.now();
-  const store = getExampleImagesStore();
-  const windowMs = appConfig.exampleImagesRateLimit.windowMs;
-  const maxRequests = appConfig.exampleImagesRateLimit.maxRequests;
-  const current = store.get(identifier);
+type RateLimitResult = { allowed: boolean; remaining: number };
 
-  if (!current || now - current.windowStart > windowMs) {
-    store.set(identifier, { count: 1, windowStart: now });
-    return { allowed: true, remaining: maxRequests - 1 };
-  }
-
-  if (current.count >= maxRequests) {
+/**
+ * Atomic, durable per-window rate limit backed by `rate_limit_buckets`.
+ *
+ * window_start_ms = floor(now / windowMs) * windowMs — the bucket rolls every
+ * `windowMs`. INSERT … ON CONFLICT DO UPDATE returns the post-increment count
+ * in a single round-trip. The row is "allowed" iff the returned count <= max.
+ *
+ * Old rows are cleaned by the janitor or a TTL job; their presence doesn't
+ * affect correctness because identity+window_start_ms is the primary key.
+ */
+async function consumeBucket(
+  identifier: string,
+  windowMs: number,
+  maxRequests: number,
+): Promise<RateLimitResult> {
+  const db = getDb();
+  const windowStartMs = Math.floor(Date.now() / windowMs) * windowMs;
+  const rows = (await db.execute(sql`
+    INSERT INTO rate_limit_buckets (identifier, window_start_ms, count)
+    VALUES (${identifier}, ${windowStartMs}, 1)
+    ON CONFLICT (identifier, window_start_ms)
+    DO UPDATE SET count = rate_limit_buckets.count + 1
+    RETURNING count
+  `)) as unknown as Array<{ count: number }>;
+  const count = rows[0]?.count ?? 1;
+  if (count > maxRequests) {
     return { allowed: false, remaining: 0 };
   }
-
-  current.count += 1;
-  store.set(identifier, current);
-  return {
-    allowed: true,
-    remaining: maxRequests - current.count,
-  };
+  return { allowed: true, remaining: Math.max(0, maxRequests - count) };
 }
 
-export function checkRateLimit(identifier: string) {
-  const now = Date.now();
-  const store = getStore();
-  const windowMs = appConfig.rateLimit.windowMs;
-  const current = store.get(identifier);
+export async function checkExampleImagesRateLimit(
+  identifier: string,
+): Promise<RateLimitResult> {
+  return consumeBucket(
+    `ex:${identifier}`,
+    appConfig.exampleImagesRateLimit.windowMs,
+    appConfig.exampleImagesRateLimit.maxRequests,
+  );
+}
 
-  if (!current || now - current.windowStart > windowMs) {
-    store.set(identifier, { count: 1, windowStart: now });
-    return { allowed: true, remaining: appConfig.rateLimit.maxRequests - 1 };
-  }
-
-  if (current.count >= appConfig.rateLimit.maxRequests) {
-    return { allowed: false, remaining: 0 };
-  }
-
-  current.count += 1;
-  store.set(identifier, current);
-  return {
-    allowed: true,
-    remaining: appConfig.rateLimit.maxRequests - current.count,
-  };
+export async function checkRateLimit(identifier: string): Promise<RateLimitResult> {
+  return consumeBucket(
+    `gen:${identifier}`,
+    appConfig.rateLimit.windowMs,
+    appConfig.rateLimit.maxRequests,
+  );
 }
 
 export function moderateText(value: string) {

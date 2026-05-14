@@ -1120,6 +1120,18 @@ export async function publishGapSpotlight({
     throw new Error("Generate an image for this cell before publishing it to the leaderboard.");
   }
 
+  // Defense-in-depth: the action layer (app/actions.ts:publishGapSpotlightAction)
+  // already gates on viewerCanMutateMap, but enforce it at the store boundary
+  // too in case a future admin tool / server action forgets. Admin overrides
+  // stay the caller's responsibility — the store enforces owner-or-anonymous.
+  if (
+    publishedByNeonUserId &&
+    map.createdByNeonUserId &&
+    map.createdByNeonUserId !== publishedByNeonUserId
+  ) {
+    throw new Error("Only the map owner can publish this entry.");
+  }
+
   if (makePublic && !map.isPublic) {
     await db
       .update(mapsTable)
@@ -1819,20 +1831,41 @@ async function findUniqueSlug(base: string): Promise<string> {
 export async function reserveMap({
   brief,
   ownerId,
+  idempotencyKey,
 }: {
   brief: MapBrief;
   ownerId?: string | null;
+  idempotencyKey?: string | null;
 }): Promise<{
   id: string;
   slug: string;
 }> {
+  const db = getDb();
+
+  // Idempotency: a retried submit (same owner + same client-generated key)
+  // returns the existing reservation instead of kicking off a fresh paid run.
+  if (idempotencyKey && ownerId) {
+    const existing = await db
+      .select({ id: mapsTable.id, slug: mapsTable.slug })
+      .from(mapsTable)
+      .where(
+        and(
+          eq(mapsTable.createdByNeonUserId, ownerId),
+          eq(mapsTable.idempotencyKey, idempotencyKey),
+        ),
+      )
+      .limit(1);
+    if (existing[0]) {
+      return existing[0];
+    }
+  }
+
   const id = `map_${crypto.randomUUID()}`;
   const baseSlug = slugify(brief.topic);
   const slug = await findUniqueSlug(baseSlug);
   const placeholder = buildPlaceholderDocument(brief, slug);
   const title = placeholder.title;
 
-  const db = getDb();
   await db.insert(mapsTable).values({
     id,
     slug,
@@ -1852,6 +1885,7 @@ export async function reserveMap({
     createdByNeonUserId: ownerId ?? null,
     updatedByNeonUserId: ownerId ?? null,
     publishedAt: null,
+    idempotencyKey: idempotencyKey ?? null,
   });
 
   notifyList(ownerId ?? null, {
@@ -2050,6 +2084,29 @@ export async function setMapPoster(
     posterUrl,
     posterGeneratedAt: generatedAt.toISOString(),
   };
+}
+
+/**
+ * Sum of LLM token cost across all generation runs in the trailing 24h.
+ * Powers the daily cost ceiling — `appConfig.dailyCostCeilingUsd`. Iterates
+ * rows in JS because the cost lives inside the `metrics` JSONB and depends on
+ * the per-model `TOKEN_PRICES` table; the row volume is small enough (one
+ * row per attempted generation) that this is fine for the ceiling check.
+ */
+export async function sumDailyGenerationCostUsd(): Promise<number> {
+  const db = getDb();
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const rows = await db
+    .select({ metrics: mapGenerationRunsTable.metrics })
+    .from(mapGenerationRunsTable)
+    .where(sql`${mapGenerationRunsTable.createdAt} >= ${since}`);
+  let total = 0;
+  for (const row of rows) {
+    const metrics = row.metrics as GenerationMetrics | null;
+    if (!metrics?.stages) continue;
+    total += totalLlmCost(metrics.stages);
+  }
+  return total;
 }
 
 export async function logGenerationRun(run: GenerationRun) {

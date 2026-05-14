@@ -98,6 +98,31 @@ describe.skipIf(!isLeaderboardStoreTestDbConfigured)("leaderboard store", () => 
     });
   });
 
+  it("rejects publishGapSpotlight when publishedByNeonUserId does not match the map owner", async () => {
+    await truncateStoreTables();
+    await saveMap({
+      brief: briefFixture(),
+      normalizedBrief: normalizedBriefFixture(),
+      document: testBreadMapDocument,
+      status: "published",
+      ownerId: "alice",
+    });
+    await patchMapCellVisualization("bread-map", "rice-sourdough", {
+      imageUrl: "https://images.test/rice-gap.jpg",
+      updatedAt: "2026-05-04T00:00:00.000Z",
+    });
+
+    await expect(
+      publishGapSpotlight({
+        mapSlug: "bread-map",
+        cellId: "rice-sourdough",
+        storyTitle: "Title",
+        storySummary: "Summary",
+        publishedByNeonUserId: "bob",
+      }),
+    ).rejects.toThrow(/Only the map owner/i);
+  });
+
   it("publishes a denormalized gap spotlight from a visualized gap cell", async () => {
     await patchMapCellVisualization("bread-map", "rice-sourdough", {
       imageUrl: "https://images.test/rice-gap.jpg",

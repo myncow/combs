@@ -89,6 +89,22 @@ export function finalizeGenerationMetrics(partial: Omit<GenerationMetrics, "toke
 export class GenerationMetricsCollector {
   readonly stages: GenerationStageMetric[] = [];
   readonly startedAt = Date.now();
+  /**
+   * Set when SerpApi returns a hard error (429 quota exhausted, 403 auth
+   * failure) — downstream stages should skip further SerpApi calls instead
+   * of burning quota retrying. Surfaced in `metrics.stages[*].extras` via
+   * `addSerpApiOutcome` so the cost breakdown shows the circuit opened.
+   */
+  serpApiCircuitOpen = false;
+
+  noteSerpApiCircuit(reason: "quota_exceeded" | "auth_failed" | "rate_limited") {
+    this.serpApiCircuitOpen = true;
+    this.appendStage({
+      stageId: "serpapi_circuit_open",
+      durationMs: 0,
+      extras: { reason },
+    });
+  }
 
   appendStage(metric: GenerationStageMetric) {
     this.stages.push(metric);

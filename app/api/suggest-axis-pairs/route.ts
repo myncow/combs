@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
   }
 
   const requesterId = session.user.id || (await getRequesterId());
-  const rateLimit = checkRateLimit(`suggest-axis-pairs:${requesterId}`);
+  const rateLimit = await checkRateLimit(`suggest-axis-pairs:${requesterId}`);
   if (!rateLimit.allowed) {
     return NextResponse.json({ error: "Rate limit exceeded. Try again shortly." }, { status: 429 });
   }

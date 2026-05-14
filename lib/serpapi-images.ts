@@ -55,14 +55,31 @@ export async function fetchGoogleImageExampleResults(query: string, options?: { 
   }
 
   const url = buildSerpGoogleImagesUrl(query, apiKey);
-  const res = await fetch(url, { cache: "no-store", signal: options?.signal });
+  const timeoutSignal = AbortSignal.timeout(15_000);
+  const signal = options?.signal
+    ? AbortSignal.any([options.signal, timeoutSignal])
+    : timeoutSignal;
+  const res = await fetch(url, { cache: "no-store", signal });
 
   if (!res.ok) {
+    // Differentiate hard quota / auth failures from transient blips so callers
+    // can open a circuit and skip further SerpApi work for the rest of the
+    // generation instead of retrying into a depleted budget.
+    if (res.status === 429) {
+      return { results: [], upstreamError: "rate_limited" };
+    }
+    if (res.status === 403 || res.status === 401) {
+      return { results: [], upstreamError: "auth_failed" };
+    }
     return { results: [], upstreamError: `http_${res.status}` };
   }
 
   const data = (await res.json()) as SerpJson;
   if (data.error) {
+    const lowered = data.error.toLowerCase();
+    if (lowered.includes("exhausted") || lowered.includes("plan limit")) {
+      return { results: [], upstreamError: "quota_exceeded" };
+    }
     return { results: [], upstreamError: data.error };
   }
 

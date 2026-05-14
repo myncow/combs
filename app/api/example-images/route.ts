@@ -13,7 +13,7 @@ function jsonError(message: string, status: number) {
 
 export async function GET(req: NextRequest) {
   const requesterId = await getRequesterId();
-  const rate = checkExampleImagesRateLimit(`example-images:${requesterId}`);
+  const rate = await checkExampleImagesRateLimit(`example-images:${requesterId}`);
   if (!rate.allowed) {
     return jsonError("Too many image lookups. Please try again shortly.", 429);
   }
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const requesterId = await getRequesterId();
-  const rate = checkExampleImagesRateLimit(`example-images:${requesterId}`);
+  const rate = await checkExampleImagesRateLimit(`example-images:${requesterId}`);
   if (!rate.allowed) {
     return jsonError("Too many image lookups. Please try again shortly.", 429);
   }

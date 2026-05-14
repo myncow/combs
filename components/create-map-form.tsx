@@ -366,9 +366,13 @@ export function CreateMapForm() {
     setError(null);
 
     try {
+      const idempotencyKey = crypto.randomUUID();
       const res = await fetch("/api/generate/start", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey,
+        },
         body: JSON.stringify(buildGenerationPayload(topicStr)),
       });
 

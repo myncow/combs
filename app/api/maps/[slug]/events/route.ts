@@ -1,4 +1,7 @@
 import { NextRequest } from "next/server";
+import * as Sentry from "@sentry/nextjs";
+import { getSessionUser } from "@/lib/auth/admin";
+import { viewerCanReadMap } from "@/lib/auth/permissions";
 import { formatSseData, type GenerationTraceEvent } from "@/lib/generation-stream";
 import {
   MAP_TOPIC,
@@ -37,6 +40,11 @@ export async function GET(
 
   const initial = await getMapBySlug(slug);
   if (!initial) {
+    return new Response("Not found", { status: 404 });
+  }
+
+  const user = await getSessionUser();
+  if (!viewerCanReadMap(initial, user)) {
     return new Response("Not found", { status: 404 });
   }
 
@@ -149,6 +157,7 @@ export async function GET(
             lastStatus = status;
           }
         } catch (err) {
+          Sentry.captureException(err, { tags: { route: "maps-events", slug } });
           console.error(`[events/${slug}] safety poll failed:`, err);
         }
       }, SAFETY_POLL_MS);

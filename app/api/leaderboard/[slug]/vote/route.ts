@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getVoterIdentity } from "@/lib/guards";
+import { getAuth } from "@/lib/auth/server";
+import { checkRateLimit } from "@/lib/guards";
 import { leaderboardVoteRequestSchema } from "@/lib/schema";
 import { castLeaderboardVote } from "@/lib/store";
 
@@ -8,6 +9,21 @@ export async function POST(
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params;
+
+  const { data: session } = await getAuth().getSession();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Sign in to vote." }, { status: 401 });
+  }
+  const userId = session.user.id;
+
+  const rateLimit = await checkRateLimit(`vote:${userId}`);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many votes. Please try again shortly." },
+      { status: 429 },
+    );
+  }
+
   const body = await request.json().catch(() => null);
   const parsed = leaderboardVoteRequestSchema.safeParse(body);
   if (!parsed.success) {
@@ -17,10 +33,9 @@ export async function POST(
     );
   }
 
-  const requesterId = await getVoterIdentity();
   const entry = await castLeaderboardVote({
     slug,
-    requesterId,
+    requesterId: `user:${userId}`,
     direction: parsed.data.direction,
   });
   if (!entry) {

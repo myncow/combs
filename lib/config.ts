@@ -66,6 +66,17 @@ export const appConfig = {
   generation: {
     maxDimensions: 2,
     maxPromptLength: 1500,
+    /**
+     * Hard ceiling on cells per generation (axis values × axis values).
+     * Defends against runaway fanout from a manipulated brief or a future
+     * relaxation of the axis-values cap. Each cell fans out one paid LLM
+     * call plus optional SerpApi probes.
+     */
+    maxCells: (() => {
+      const raw = Number(process.env.LATTICE_MAX_CELLS ?? 36);
+      const n = Number.isFinite(raw) ? Math.floor(raw) : 36;
+      return Math.min(64, Math.max(4, n));
+    })(),
     /** Parallel LLM calls for cell matrix slices; SSE is replayed in batch order. */
     cellsBatchConcurrency: (() => {
       const raw = Number(process.env.LATTICE_CELLS_BATCH_CONCURRENCY ?? 4);
@@ -116,6 +127,17 @@ export const appConfig = {
     windowMs: 10 * 60 * 1000,
     maxRequests: 8,
   },
+  /**
+   * Trailing-24h spend ceiling for map generation, in USD. Computed by
+   * summing LLM token cost across all `map_generation_runs` rows where
+   * `created_at >= now() - 24h`. `0` disables the gate (dev/test default).
+   * Override via env to enforce in production.
+   */
+  dailyCostCeilingUsd: (() => {
+    const raw = Number(process.env.LATTICE_DAILY_COST_CEILING_USD ?? 0);
+    const n = Number.isFinite(raw) ? raw : 0;
+    return Math.max(0, n);
+  })(),
   /** SerpApi Google Images proxy: requests per IP per window (see app/api/example-images). */
   exampleImagesRateLimit: {
     windowMs: 60 * 1000,

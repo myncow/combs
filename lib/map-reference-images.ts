@@ -154,7 +154,7 @@ export async function enrichMapDocumentReferenceImages(
       return cached;
     }
 
-    if (serpCalls >= budget) {
+    if (serpCalls >= budget || collector?.serpApiCircuitOpen) {
       const empty = Promise.resolve([] as MapReferenceImage[]);
       queryMemo.set(q, empty);
       return empty;
@@ -162,7 +162,10 @@ export async function enrichMapDocumentReferenceImages(
 
     serpCalls++;
     const promise = (async () => {
-      const { results } = await fetchGoogleImageExampleResults(q);
+      const { results, upstreamError } = await fetchGoogleImageExampleResults(q);
+      if (upstreamError === "rate_limited" || upstreamError === "auth_failed" || upstreamError === "quota_exceeded") {
+        collector?.noteSerpApiCircuit(upstreamError);
+      }
       return normalizeHits(results).filter((h) => h.thumbnail && h.link);
     })();
     queryMemo.set(q, promise);

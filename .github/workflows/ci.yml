@@ -38,3 +38,5 @@ jobs:
       - run: pnpm db:migrate
       - run: pnpm test
       - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm build

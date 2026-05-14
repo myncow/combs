@@ -326,6 +326,7 @@ async function callOpenRouterPosterImage(
     method: "POST",
     headers,
     body,
+    signal: AbortSignal.timeout(90_000),
   });
   const payload = (await response.json().catch(() => null)) as ChatImageResponse | null;
   if (!response.ok) {

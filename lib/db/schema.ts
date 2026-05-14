@@ -1,4 +1,6 @@
+import { sql } from "drizzle-orm";
 import {
+  bigint,
   boolean,
   index,
   integer,
@@ -63,9 +65,18 @@ export const mapsTable = pgTable(
      */
     posterUrl: text("poster_url"),
     posterGeneratedAt: timestamp("poster_generated_at", { withTimezone: true }),
+    /**
+     * Client-supplied per-submit idempotency token. When the same owner
+     * submits the same key twice (e.g. a retried POST /api/generate/start),
+     * `reserveMap` returns the existing row instead of starting a new run.
+     */
+    idempotencyKey: varchar("idempotency_key", { length: 80 }),
   },
   (table) => [
     index("maps_created_by_idx").on(table.createdByNeonUserId),
+    uniqueIndex("maps_owner_idempotency_idx")
+      .on(table.createdByNeonUserId, table.idempotencyKey)
+      .where(sql`${table.idempotencyKey} IS NOT NULL`),
   ],
 );
 
@@ -469,3 +480,23 @@ export const listingPageRevisionsTable = pgTable("listing_page_revisions", {
   emptyStateTitle: varchar("empty_state_title", { length: 120 }).notNull(),
   emptyStateBody: text("empty_state_body").notNull(),
 });
+
+/**
+ * Atomic per-window counter. Keyed by `(identifier, window_start_ms)` where
+ * window_start_ms = floor(Date.now() / windowMs) * windowMs. INSERT … ON
+ * CONFLICT … DO UPDATE returns the post-increment count in a single round-trip.
+ * Old rows are dropped by the janitor or by a TTL job; rows do not need to
+ * live longer than the largest configured window.
+ */
+export const rateLimitBucketsTable = pgTable(
+  "rate_limit_buckets",
+  {
+    identifier: varchar("identifier", { length: 160 }).notNull(),
+    windowStartMs: bigint("window_start_ms", { mode: "number" }).notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  (table) => [
+    primaryKey({ columns: [table.identifier, table.windowStartMs] }),
+    index("rate_limit_buckets_gc_idx").on(table.windowStartMs),
+  ],
+);

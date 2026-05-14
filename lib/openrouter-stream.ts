@@ -159,6 +159,7 @@ export async function streamStructuredCompletion({
         },
       },
     }),
+    signal: AbortSignal.timeout(90_000),
   });
 
   if (!response.ok) {
