@@ -360,6 +360,27 @@ export const spotlightVotesTable = pgTable(
   ],
 );
 
+export const spotlightCommentsTable = pgTable(
+  "spotlight_comments",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    spotlightId: varchar("spotlight_id", { length: 64 })
+      .notNull()
+      .references(() => spotlightsTable.id, { onDelete: "cascade" }),
+    authorNeonUserId: varchar("author_neon_user_id", { length: 160 }).notNull(),
+    authorDisplayName: varchar("author_display_name", { length: 120 }),
+    body: varchar("body", { length: 1200 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("spotlight_comments_spotlight_created_idx").on(
+      table.spotlightId,
+      table.createdAt.desc(),
+    ),
+    index("spotlight_comments_author_idx").on(table.authorNeonUserId),
+  ],
+);
+
 export const siteSettingsTable = pgTable("site_settings", {
   id: varchar("id", { length: 32 }).primaryKey(),
   appName: varchar("app_name", { length: 120 }).notNull(),

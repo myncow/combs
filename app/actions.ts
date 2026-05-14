@@ -19,7 +19,16 @@ import {
   publishGapSpotlightSchema,
   type CellVisualizationResult,
 } from "@/lib/schema";
-import { getMapBySlug, logCellVisualizationRun, patchMapCellVisualization, publishGapSpotlight } from "@/lib/store";
+import {
+  addLeaderboardComment,
+  deleteLeaderboardComment,
+  getMapBySlug,
+  logCellVisualizationRun,
+  patchMapCellVisualization,
+  publishGapSpotlight,
+  updateSpotlightContent,
+  viewerCanMutateSpotlight,
+} from "@/lib/store";
 import {
   buildDiversificationSuffix,
   findHashCollisionAgainstOthers,
@@ -424,4 +433,154 @@ export async function publishGapSpotlightAction(
       message: error instanceof Error ? error.message : "Could not publish this entry.",
     };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Leaderboard entry editing + comments
+// ---------------------------------------------------------------------------
+
+export type UpdateSpotlightActionState =
+  | { status: "idle" }
+  | { status: "success"; slug: string }
+  | { status: "error"; message: string };
+
+/**
+ * Edit a spotlight's storyTitle / storySummary. Permission mirrors the
+ * publish flow: only the source map's owner (or an admin) can mutate.
+ */
+export async function updateSpotlightAction(
+  _previousState: UpdateSpotlightActionState,
+  formData: FormData,
+): Promise<UpdateSpotlightActionState> {
+  const { data: session } = await getAuth().getSession();
+  if (!session?.user) {
+    return { status: "error", message: "Sign in to edit this entry." };
+  }
+  const sessionUser = session.user as { id?: string | null; email?: string | null };
+
+  const slug = String(formData.get("slug") ?? "").trim();
+  const storyTitle = String(formData.get("storyTitle") ?? "").trim().slice(0, 120);
+  const storySummary = String(formData.get("storySummary") ?? "").trim().slice(0, 220);
+  if (!slug || !storyTitle || !storySummary) {
+    return { status: "error", message: "Title and summary are required." };
+  }
+
+  const moderated = moderateText(`${storyTitle} ${storySummary}`);
+  if (!moderated.safe) {
+    return {
+      status: "error",
+      message: moderated.reason ?? "This edit is blocked by moderation.",
+    };
+  }
+
+  const viewer = {
+    id: sessionUser.id ?? null,
+    isAdmin: isAdminEmail(sessionUser.email),
+  };
+  const auth = await viewerCanMutateSpotlight(slug, viewer);
+  if (!auth.ok) {
+    return {
+      status: "error",
+      message: "Only the map owner or an admin can edit this entry.",
+    };
+  }
+
+  const updated = await updateSpotlightContent({ slug, storyTitle, storySummary });
+  if (!updated) {
+    return { status: "error", message: "Entry not found." };
+  }
+  revalidatePath("/");
+  revalidatePath(`/maps/${updated.mapSlug}`);
+  return { status: "success", slug: updated.slug };
+}
+
+export type LeaderboardCommentActionState =
+  | { status: "idle" }
+  | { status: "success" }
+  | { status: "error"; message: string };
+
+/**
+ * Post a comment on a spotlight. Open to any signed-in user.
+ */
+export async function addLeaderboardCommentAction(
+  _previousState: LeaderboardCommentActionState,
+  formData: FormData,
+): Promise<LeaderboardCommentActionState> {
+  const { data: session } = await getAuth().getSession();
+  if (!session?.user) {
+    return { status: "error", message: "Sign in to leave a comment." };
+  }
+  const sessionUser = session.user as {
+    id?: string | null;
+    email?: string | null;
+    displayName?: string | null;
+  };
+  if (!sessionUser.id) {
+    return { status: "error", message: "Sign in to leave a comment." };
+  }
+
+  const slug = String(formData.get("slug") ?? "").trim();
+  const body = String(formData.get("body") ?? "").trim();
+  if (!slug || !body) {
+    return { status: "error", message: "Comment can't be empty." };
+  }
+  if (body.length > 1200) {
+    return { status: "error", message: "Comment is too long (max 1200 chars)." };
+  }
+
+  const moderated = moderateText(body);
+  if (!moderated.safe) {
+    return {
+      status: "error",
+      message: moderated.reason ?? "Comment blocked by moderation.",
+    };
+  }
+
+  const displayName =
+    sessionUser.displayName ?? (sessionUser.email ? sessionUser.email.split("@")[0] : null);
+  const result = await addLeaderboardComment({
+    slug,
+    authorId: sessionUser.id,
+    authorDisplayName: displayName,
+    body,
+  });
+  if (!result) {
+    return { status: "error", message: "Could not save comment." };
+  }
+  revalidatePath("/");
+  return { status: "success" };
+}
+
+export type DeleteCommentActionState =
+  | { status: "idle" }
+  | { status: "success" }
+  | { status: "error"; message: string };
+
+export async function deleteLeaderboardCommentAction(
+  _previousState: DeleteCommentActionState,
+  formData: FormData,
+): Promise<DeleteCommentActionState> {
+  const { data: session } = await getAuth().getSession();
+  if (!session?.user) {
+    return { status: "error", message: "Sign in required." };
+  }
+  const sessionUser = session.user as { id?: string | null; email?: string | null };
+  const slug = String(formData.get("slug") ?? "").trim();
+  const commentId = String(formData.get("commentId") ?? "").trim();
+  if (!slug || !commentId) {
+    return { status: "error", message: "Missing comment id." };
+  }
+  const result = await deleteLeaderboardComment({
+    slug,
+    commentId,
+    viewer: {
+      id: sessionUser.id ?? null,
+      isAdmin: isAdminEmail(sessionUser.email),
+    },
+  });
+  if (!result.ok) {
+    return { status: "error", message: "You can't delete this comment." };
+  }
+  revalidatePath("/");
+  return { status: "success" };
 }

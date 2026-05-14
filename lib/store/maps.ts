@@ -28,11 +28,13 @@ import {
   mediaAssetsTable,
   spotlightsTable,
   spotlightVotesTable,
+  spotlightCommentsTable,
 } from "@/lib/db/schema";
 import type { GenerationMetrics } from "@/lib/generation-metrics";
 import type {
   CellVisualizationRun,
   GenerationRun,
+  LeaderboardComment,
   LeaderboardEntry,
   LeaderboardSort,
   LeaderboardVote,
@@ -863,6 +865,33 @@ async function hydrateSpotlightRows(
       )) as any[]).map(toLeaderboardVote);
   }
 
+  // Batched comment-count lookup so the leaderboard list can render
+  // "Comments (n)" without an N+1. Failures fall back silently to 0.
+  let commentCounts = new Map<string, number>();
+  if (rows.length) {
+    try {
+      const counts = (await db
+        .select({
+          spotlightId: spotlightCommentsTable.spotlightId,
+          n: sql<number>`count(*)::int`,
+        })
+        .from(spotlightCommentsTable)
+        .where(
+          inArray(
+            spotlightCommentsTable.spotlightId,
+            rows.map((r: any) => r.id),
+          ),
+        )
+        .groupBy(spotlightCommentsTable.spotlightId)) as Array<{
+        spotlightId: string;
+        n: number;
+      }>;
+      commentCounts = new Map(counts.map((c) => [c.spotlightId, c.n] as const));
+    } catch (error) {
+      logReadFallback("hydrateSpotlightRows.commentCounts", error);
+    }
+  }
+
   const items = rows.map((row) => {
     const ownerId = ownerByMapId.get(row.mapId) ?? null;
     return serializeLeaderboardEntry({
@@ -884,6 +913,8 @@ async function hydrateSpotlightRows(
       upvotes: row.upvotes,
       downvotes: row.downvotes,
       createdByDisplayName: ownerId ? (creatorNames.get(ownerId) ?? null) : null,
+      mapOwnerId: ownerId,
+      commentCount: commentCounts.get(row.id) ?? 0,
     });
   });
 
@@ -2142,4 +2173,180 @@ export async function getMapCostBreakdown(mapId: string): Promise<MapCostBreakdo
     console.error("[store:getMapCostBreakdown]", error);
     return null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Leaderboard comments + entry edits
+// ---------------------------------------------------------------------------
+
+/**
+ * Internal: look up a spotlight by its public slug. Returns the raw row
+ * (or null) so the caller can authorize against `mapId` / `cellId` via
+ * the source-map ownership.
+ */
+async function getSpotlightBySlug(slug: string) {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(spotlightsTable)
+    .where(eq(spotlightsTable.slug, slug))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/**
+ * Return whether the given Neon user (or admin) is allowed to mutate
+ * the spotlight identified by `slug` (rename, delete a comment, etc).
+ * Mutations are gated on owning the source map — same rule as
+ * `publishGapSpotlight`.
+ */
+export async function viewerCanMutateSpotlight(
+  slug: string,
+  viewer: { id?: string | null; isAdmin?: boolean } | null,
+): Promise<{ ok: boolean; spotlightId?: string; mapId?: string }> {
+  if (!viewer?.id && !viewer?.isAdmin) return { ok: false };
+  const spotlight = await getSpotlightBySlug(slug);
+  if (!spotlight) return { ok: false };
+  if (viewer?.isAdmin) {
+    return { ok: true, spotlightId: spotlight.id, mapId: spotlight.mapId };
+  }
+  const db = getDb();
+  const owner = await db
+    .select({ ownerId: mapsTable.createdByNeonUserId })
+    .from(mapsTable)
+    .where(eq(mapsTable.id, spotlight.mapId))
+    .limit(1);
+  const ok = owner[0]?.ownerId === viewer.id;
+  return ok
+    ? { ok, spotlightId: spotlight.id, mapId: spotlight.mapId }
+    : { ok: false };
+}
+
+export async function updateSpotlightContent({
+  slug,
+  storyTitle,
+  storySummary,
+}: {
+  slug: string;
+  storyTitle: string;
+  storySummary: string;
+}) {
+  const db = getDb();
+  const spotlight = await getSpotlightBySlug(slug);
+  if (!spotlight) return null;
+  await db
+    .update(spotlightsTable)
+    .set({ storyTitle, storySummary })
+    .where(eq(spotlightsTable.id, spotlight.id));
+  return getLeaderboardEntryBySlug(slug);
+}
+
+function toLeaderboardComment(row: any): LeaderboardComment {
+  return {
+    id: row.id,
+    spotlightId: row.spotlightId,
+    authorId: row.authorNeonUserId,
+    authorDisplayName: row.authorDisplayName ?? null,
+    body: row.body,
+    createdAt: coerceIsoString(row.createdAt),
+  };
+}
+
+/**
+ * Return all comments for a spotlight, newest first. Display names are
+ * refreshed from `neon_auth.user` on each call so renames propagate.
+ */
+export async function listLeaderboardComments(slug: string): Promise<LeaderboardComment[]> {
+  try {
+    const db = getDb();
+    const spotlight = await getSpotlightBySlug(slug);
+    if (!spotlight) return [];
+    const rows = await db
+      .select()
+      .from(spotlightCommentsTable)
+      .where(eq(spotlightCommentsTable.spotlightId, spotlight.id))
+      .orderBy(desc(spotlightCommentsTable.createdAt));
+    const authorIds = Array.from(
+      new Set(
+        rows
+          .map((row: any) => row.authorNeonUserId)
+          .filter((v: any): v is string => typeof v === "string" && v.length > 0),
+      ),
+    );
+    const names = await resolveCreatorNames(db, authorIds);
+    return rows.map((row: any) => ({
+      ...toLeaderboardComment(row),
+      authorDisplayName: names.get(row.authorNeonUserId) ?? row.authorDisplayName ?? null,
+    }));
+  } catch (error) {
+    logReadFallback("listLeaderboardComments", error);
+    return [];
+  }
+}
+
+export async function addLeaderboardComment({
+  slug,
+  authorId,
+  authorDisplayName,
+  body,
+}: {
+  slug: string;
+  authorId: string;
+  authorDisplayName?: string | null;
+  body: string;
+}): Promise<LeaderboardComment | null> {
+  const db = getDb();
+  const spotlight = await getSpotlightBySlug(slug);
+  if (!spotlight) return null;
+  const trimmed = body.trim();
+  if (!trimmed) return null;
+  const id = `cmt_${crypto.randomUUID()}`;
+  await db.insert(spotlightCommentsTable).values({
+    id,
+    spotlightId: spotlight.id,
+    authorNeonUserId: authorId,
+    authorDisplayName: authorDisplayName ?? null,
+    body: trimmed.slice(0, 1200),
+  });
+  const rows = await db
+    .select()
+    .from(spotlightCommentsTable)
+    .where(eq(spotlightCommentsTable.id, id))
+    .limit(1);
+  return rows[0] ? toLeaderboardComment(rows[0]) : null;
+}
+
+/**
+ * Delete a comment. The map owner or an admin may delete any comment
+ * on entries they own; the comment's own author may always delete
+ * their own comment.
+ */
+export async function deleteLeaderboardComment({
+  slug,
+  commentId,
+  viewer,
+}: {
+  slug: string;
+  commentId: string;
+  viewer: { id?: string | null; isAdmin?: boolean } | null;
+}): Promise<{ ok: boolean }> {
+  if (!viewer?.id && !viewer?.isAdmin) return { ok: false };
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(spotlightCommentsTable)
+    .where(eq(spotlightCommentsTable.id, commentId))
+    .limit(1);
+  const comment = rows[0];
+  if (!comment) return { ok: false };
+
+  const ownsComment = !!viewer?.id && comment.authorNeonUserId === viewer.id;
+  let allowed = ownsComment || !!viewer?.isAdmin;
+  if (!allowed) {
+    const auth = await viewerCanMutateSpotlight(slug, viewer);
+    allowed = auth.ok && auth.spotlightId === comment.spotlightId;
+  }
+  if (!allowed) return { ok: false };
+  await db.delete(spotlightCommentsTable).where(eq(spotlightCommentsTable.id, commentId));
+  return { ok: true };
 }

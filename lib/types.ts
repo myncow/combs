@@ -155,10 +155,27 @@ export interface LeaderboardEntry {
    * lookup failed (legacy/seed rows, transient DB error).
    */
   createdByDisplayName?: string | null;
+  /**
+   * Neon user id of the source map's creator. Used by the UI to decide
+   * whether the current viewer is allowed to edit this entry. `null`
+   * for legacy / seeded entries with no recorded owner.
+   */
+  mapOwnerId?: string | null;
+  /** Cached count of comments attached to this entry. */
+  commentCount?: number;
 }
 
 export interface ListedLeaderboardEntry extends LeaderboardEntry {
   viewerVote?: LeaderboardVoteDirection | null;
+}
+
+export interface LeaderboardComment {
+  id: string;
+  spotlightId: string;
+  authorId: string;
+  authorDisplayName: string | null;
+  body: string;
+  createdAt: string;
 }
 
 export interface LeaderboardVote {

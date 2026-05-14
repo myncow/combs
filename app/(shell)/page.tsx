@@ -4,7 +4,7 @@ import { Flame, LayoutGrid, List as ListIcon, Sparkles, User } from "lucide-reac
 import { getSessionUser } from "@/lib/auth/admin";
 import { getVoterIdentity } from "@/lib/guards";
 import { Button } from "@/components/ui/button";
-import { EmptyStatePanel, ShellPage } from "@/components/raster-shell";
+import { EmptyStatePanel, ShellPage, StickyToolbar } from "@/components/raster-shell";
 import { getPageByKey, listLeaderboardEntries } from "@/lib/store";
 import { LeaderboardGallery } from "@/components/leaderboard-gallery";
 import type { LeaderboardSort } from "@/lib/types";
@@ -199,14 +199,12 @@ export default async function HomePage({
       : `${entries.total} ${entries.total === 1 ? "entry" : "entries"}`;
 
   return (
-    <ShellPage size="wide" className="gap-5 py-4 md:py-5">
-      {/* Sticky toolbar: title + filter chrome stay pinned to the top of
-          the scrollable shell so the user can scroll through entries
-          without losing the controls. `top: 0` resolves against the
-          ShellPage scroll container. */}
-      <div
-        className="sticky top-0 z-10 -mx-5 border-b border-border bg-[color:color-mix(in_srgb,var(--background)_94%,transparent)] px-5 py-3 backdrop-blur-md md:-mx-8 md:px-8"
-      >
+    <ShellPage size="wide" className="gap-5">
+      {/* Sticky toolbar — pinned to the top of the scrollable shell so
+          filter chrome stays accessible while the user scans entries.
+          `StickyToolbar` pulls itself flush with the bottom of the site
+          header so no scrolling content peeks through the join. */}
+      <StickyToolbar>
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div className="flex min-w-0 items-baseline gap-3">
             <h1 className="font-sans text-[20px] font-semibold leading-none tracking-[-0.02em] text-foreground md:text-[24px]">
@@ -278,13 +276,15 @@ export default async function HomePage({
             ) : null}
           </div>
         </div>
-      </div>
+      </StickyToolbar>
 
       {entries.items.length ? (
         <LeaderboardGallery
           entries={entries.items}
           view={view}
           isSignedIn={Boolean(user)}
+          viewerId={user?.id ?? null}
+          viewerIsAdmin={Boolean(user?.isAdmin)}
         />
       ) : (
         <EmptyStatePanel

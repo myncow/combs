@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { Flame, Sparkles, User } from "lucide-react";
 import { MapCard } from "@/components/map-card";
 import { Button } from "@/components/ui/button";
-import { EmptyStatePanel, PageHeader, ShellPage, SurfacePanel } from "@/components/raster-shell";
+import { EmptyStatePanel, ShellPage, StickyToolbar, SurfacePanel } from "@/components/raster-shell";
 import { getSessionUser } from "@/lib/auth/admin";
 import { mapFiltersSchema } from "@/lib/schema";
 import { getPageByKey, listMaps } from "@/lib/store";
@@ -15,6 +16,12 @@ const SCOPE_LABEL: Record<MapsScope, string> = {
   top: "Top",
   new: "Latest",
   mine: "Mine",
+};
+
+const SCOPE_ICON: Record<MapsScope, typeof Flame> = {
+  top: Flame,
+  new: Sparkles,
+  mine: User,
 };
 
 const PAGE_SIZE = 24;
@@ -37,7 +44,13 @@ function SegmentedNav<T extends string>({
 }: {
   label: string;
   current: T;
-  options: Array<{ value: T; label: string; disabled?: boolean }>;
+  options: Array<{
+    value: T;
+    label: string;
+    icon: typeof Flame;
+    disabled?: boolean;
+    disabledHint?: string;
+  }>;
   paramName: string;
   baseParams: URLSearchParams;
 }) {
@@ -48,16 +61,19 @@ function SegmentedNav<T extends string>({
       className="inline-flex items-center border border-border bg-card"
     >
       {options.map((option) => {
+        const Icon = option.icon;
         const active = option.value === current;
         if (option.disabled) {
           return (
             <span
               key={option.value}
               aria-disabled="true"
-              className="px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground/60"
-              title="Sign in to filter your maps"
+              aria-label={option.label}
+              title={option.disabledHint ?? option.label}
+              className="inline-flex h-9 items-center justify-center gap-1.5 px-3 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground/40"
             >
-              {option.label}
+              <Icon className="h-3.5 w-3.5" aria-hidden strokeWidth={1.75} />
+              <span>{option.label}</span>
             </span>
           );
         }
@@ -71,14 +87,17 @@ function SegmentedNav<T extends string>({
             scroll={false}
             role="tab"
             aria-selected={active}
+            aria-label={option.label}
+            title={option.label}
             className={cn(
-              "px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.22em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              "inline-flex h-9 items-center justify-center gap-1.5 px-3 font-mono text-[11px] uppercase tracking-[0.18em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               active
                 ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {option.label}
+            <Icon className="h-3.5 w-3.5" aria-hidden strokeWidth={1.75} />
+            <span>{option.label}</span>
           </Link>
         );
       })}
@@ -156,73 +175,63 @@ export default async function GalleryPage({
     return buildHref(next);
   };
 
-  const filterSummaryParts: string[] = [];
-  if (filters.q) filterSummaryParts.push(`Search · "${filters.q}"`);
-  if (filters.topicFamily) filterSummaryParts.push(`Family · ${filters.topicFamily}`);
-
   // Carrier params for the scope toggle so search/topic filters are
   // preserved across scope switches.
   const scopeCarry = new URLSearchParams();
   if (filters.q) scopeCarry.set("q", filters.q);
   if (filters.topicFamily) scopeCarry.set("topicFamily", filters.topicFamily);
 
+  const eyebrowLabel = `${total} ${total === 1 ? "map" : "maps"}`;
+
   return (
-    <ShellPage size="content">
-      <PageHeader
-        eyebrow={`${total} ${total === 1 ? "map" : "maps"}`}
-        title={pageContent.heading}
-        intro={pageContent.intro}
-        summary={filterSummaryParts.length ? filterSummaryParts.join(" · ") : `Page ${filters.page} of ${pageCount}`}
-        titleClassName="text-[26px] md:text-[34px]"
-        actions={
-          <SegmentedNav<MapsScope>
-            label="Filter maps"
-            current={scope}
-            paramName="scope"
-            baseParams={scopeCarry}
-            options={[
-              { value: "top", label: SCOPE_LABEL.top },
-              { value: "new", label: SCOPE_LABEL.new },
-              { value: "mine", label: SCOPE_LABEL.mine, disabled: !user },
-            ]}
-          />
-        }
-      />
-      <div className="mt-6 grid gap-5">
-        <SurfacePanel padded={false}>
-          <form
-            action="/gallery"
-            className="grid gap-3 px-5 py-4 md:px-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-end"
-          >
-            <label className="block">
-              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                Search public maps
-              </span>
+    <ShellPage size="wide" className="gap-5">
+      <StickyToolbar>
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="flex min-w-0 items-baseline gap-3">
+            <h1 className="font-sans text-[20px] font-semibold leading-none tracking-[-0.02em] text-foreground md:text-[24px]">
+              {pageContent.heading}
+            </h1>
+            <span className="hidden font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground sm:inline">
+              {eyebrowLabel}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <form action="/gallery" role="search" className="flex items-center gap-1">
               <input
                 name="q"
+                type="search"
                 defaultValue={filters.q ?? ""}
-                autoComplete="off"
-                placeholder="Title, topic, family, slug…"
-                className="mt-1 h-9 w-full border-b border-border bg-transparent text-[14px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                placeholder="Search title, topic…"
+                aria-label="Search maps"
+                className="h-9 w-[10rem] border border-border bg-background px-2.5 font-sans text-[12.5px] text-foreground placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:w-[14rem]"
               />
-            </label>
-            {filters.topicFamily ? (
-              <input type="hidden" name="topicFamily" value={filters.topicFamily} />
-            ) : null}
-            {scope !== "new" ? <input type="hidden" name="scope" value={scope} /> : null}
-            <div className="flex gap-2">
-              <Button type="submit" size="sm">
-                Search
-              </Button>
-              {filters.q || filters.topicFamily ? (
-                <Button asChild variant="secondary" size="sm">
-                  <Link href={`/gallery${scope !== "new" ? `?scope=${scope}` : ""}`}>Reset</Link>
-                </Button>
+              {filters.topicFamily ? (
+                <input type="hidden" name="topicFamily" value={filters.topicFamily} />
               ) : null}
-            </div>
-          </form>
-        </SurfacePanel>
+              {scope !== "new" ? <input type="hidden" name="scope" value={scope} /> : null}
+            </form>
+            <SegmentedNav<MapsScope>
+              label="Filter maps"
+              current={scope}
+              paramName="scope"
+              baseParams={scopeCarry}
+              options={[
+                { value: "top", label: SCOPE_LABEL.top, icon: SCOPE_ICON.top },
+                { value: "new", label: SCOPE_LABEL.new, icon: SCOPE_ICON.new },
+                {
+                  value: "mine",
+                  label: SCOPE_LABEL.mine,
+                  icon: SCOPE_ICON.mine,
+                  disabled: !user,
+                  disabledHint: "Sign in to see your maps",
+                },
+              ]}
+            />
+          </div>
+        </div>
+      </StickyToolbar>
 
+      <div className="grid gap-5">
         {items.length === 0 ? (
           <EmptyStatePanel
             kicker={
