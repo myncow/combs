@@ -188,38 +188,59 @@ export function buildPosterPrompt(document: MapDocument): PosterPromptBuild {
     return parts.length ? parts.join("\n") : "(single linear strip)";
   })();
 
-  const styleHint = visual?.styleSpec
+  const subjectTreatment = visual?.styleSpec
     ? [
-        `Medium: ${visual.styleSpec.medium}.`,
-        `Composition (per tile): ${visual.styleSpec.composition}.`,
-        `Background: ${visual.styleSpec.background}.`,
-        `Lighting: ${visual.styleSpec.lighting}.`,
-        `Palette: ${visual.styleSpec.palette}.`,
-        `Surface feel: ${visual.styleSpec.surfaceFeel}.`,
-      ].join(" ")
-    : "Editorial natural-history plate aesthetic. Calm, consistent lighting across all tiles. Restrained palette.";
+        `Medium: ${visual.styleSpec.medium}`,
+        `Per-tile composition: ${visual.styleSpec.composition}`,
+        `Per-tile background: ${visual.styleSpec.background}`,
+        `Lighting recipe: ${visual.styleSpec.lighting}`,
+        `Palette: ${visual.styleSpec.palette}`,
+        `Surface feel: ${visual.styleSpec.surfaceFeel}`,
+      ].join(". ") + "."
+    : "Photographic study of the subject with calm natural light, restrained palette, and tactile surface detail.";
 
   const sections: string[] = [
-    `Generate a single poster image that lays out a ${rows}×${cols} grid of subjects for the topic "${document.title}" (${document.domain}).`,
+    `Generate a single Lelet poster — an engineering-paper plate that lays out a ${rows}×${cols} grid of subjects for "${document.title}" (${document.domain}).`,
+    `## Site identity (binding for the poster chrome)
+Lelet posters look like one page from a technical reference book, not an editorial magazine spread.
+- Outer poster background: pale, cool neutral "engineering paper" — a single flat tone, no gradient, no paper grain, no vignette.
+- Grid lines, gutters, axis labels, and title chrome are rendered in graphite ink on paper — hairline weight, perfectly straight, 90° corners.
+- One desaturated cobalt accent is permitted, sparingly — for a small tick, a thin underline, or a single axis mark. Never as a tile background or wash.
+- No drop shadows anywhere on the poster — not on the title bar, the grid, the tiles, or the gutters. The poster reads as a flat printed plate.
+- Square corners throughout. No rounded rectangles on the poster, the tiles, or the title bar.`,
     `## Poster layout
-- The image is a single composite poster, **not** a contact sheet of separate frames. Tiles share a poster background and a thin uniform gutter.
-- Top header strip carries the title "${document.title}" in compact serif/sans display type; axes are labelled along the outside edges only.
+- A single composite poster, **not** a contact sheet of separate frames. Every tile sits on the shared engineering-paper background, separated only by hairline graphite gutters of uniform width.
+- Top header strip carries the title "${document.title}" in compact monospace small-caps with low tracking, graphite ink on paper. No serif display type, no script, no all-lowercase.
+- Axes are labelled along the outside edges only, in the same monospace small-caps treatment.
+  - ${rowsLabel} runs down the left edge, top to bottom.
+  - ${colsLabel} runs across the top edge, left to right.
 - Inner grid is exactly ${rows} rows × ${cols} columns (${rows * cols} tiles). Reading order is left-to-right, top-to-bottom.
-- ${rowsLabel} runs down the left edge; ${colsLabel} runs across the top edge. Tile order in the list below matches that reading order.
-- Each tile is a self-contained illustration of its subject — no captions inside tiles, no axis labels inside tiles.`,
+- Each tile is a self-contained illustration of its subject — no captions, axis labels, scale bars, or annotations inside tiles.`,
+    `## Tile uniformity (the most important constraint)
+The ${rows * cols} tiles must read as a single specimen sheet — same shoot, same day, same camera. The ONLY thing that varies tile-to-tile is the depicted subject.
+- Identical lighting direction, intensity, and color temperature across every tile.
+- Identical color grade and palette across every tile. No saturation pop on one tile, no warm/cool drift between tiles.
+- Identical depth of field and focal-length feel across every tile.
+- Identical crop ratio and subject-to-frame size across every tile. If one tile frames its subject at ~70% of the tile, every tile frames its subject at ~70%.
+- Identical background treatment across every tile — the same kind of habitat fragment, work surface, or study context. Not a different environment per tile.
+- Treat the grid as ONE coherent plate, not ${rows * cols} independent renders.`,
     `## Axes\n${axisBlock}`,
     `## Tiles (in reading order)\n${cellLines.join("\n")}`,
-    `## Style\n${styleHint}`,
+    `## Per-tile subject treatment\n${subjectTreatment}`,
     `## Reference image protections
 - Reference images are attached **in the order listed** above (image #1 → first tile with a reference, image #2 → next, etc.).
 - Treat each reference as a non-authoritative anchor: borrow its subject's anatomy, materials, scale, era, and posture for the tile it is paired with.
 - **Discard mismatched references.** If an attached reference does not depict the described subject — wrong species, wrong era, off-topic stock photo, a person when the cell describes an object, a UI screenshot, a chart, a watermark-heavy retail listing — ignore it entirely and synthesize that tile from the written description alone. Do **not** carry the wrong subject into the tile just because an image was attached.
-- Never copy a reference's frame, watermark, label, brand mark, or background environment verbatim.`,
+- Never copy a reference's frame, watermark, label, brand mark, or background environment verbatim.
+- Conform every reference-grounded tile to the tile-uniformity contract above (same lighting, same crop, same palette). Do not inherit a reference's lighting or grading.`,
     `## Avoid
 - No empty tiles, no placeholder "image not found" graphics, no broken-image icons.
 - No text inside any tile beyond what is part of the depicted subject in the real world.
 - No legends, captions, scale bars, charts, or matrices inside tiles.
-- Do not duplicate a tile or leave one as a black/white square — every position in the grid must show a finished illustration of its listed subject.`,
+- Do not duplicate a tile or leave one as a black/white square — every position in the grid must show a finished illustration of its listed subject.
+- No tile-to-tile drift in lighting, palette, depth of field, crop ratio, or background treatment.
+- No editorial/lifestyle/magazine grading, no cinematic vignettes, no HDR halos, no glossy catalog polish.
+- No rounded corners, no drop shadows, no decorative borders. The poster is flat reference material.`,
   ];
 
   return {
