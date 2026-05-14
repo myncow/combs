@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { Check, Pencil, X } from "lucide-react";
 import { updateSpotlightAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import { cn } from "@/lib/utils";
 
@@ -89,16 +90,20 @@ export function LeaderboardEntryEditor({
 
   if (mode === "view") {
     return (
-      <button
-        type="button"
-        onClick={() => setMode("editing")}
-        aria-label="Edit entry"
-        title="Edit"
-        className="inline-flex h-7 items-center gap-1.5 border border-border bg-card px-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <Pencil className="h-3 w-3" aria-hidden strokeWidth={1.75} />
-        <span>Edit</span>
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => setMode("editing")}
+            aria-label="Edit entry"
+            className="inline-flex h-7 items-center gap-1.5 border border-border bg-card px-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground hover:[&_svg]:fill-[color:color-mix(in_srgb,var(--primary)_15%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Pencil className="h-3 w-3" aria-hidden strokeWidth={1.75} />
+            <span>Edit</span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>Edit entry</TooltipContent>
+      </Tooltip>
     );
   }
 
@@ -151,25 +156,35 @@ export function LeaderboardEntryEditor({
           </span>
         )}
         <div className="flex items-center gap-1.5">
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={() => {
-              setMode("view");
-              setError(null);
-              setTitle(storyTitle);
-              setSummary(storySummary);
-            }}
-            disabled={pending}
-          >
-            <X className="h-3.5 w-3.5" aria-hidden />
-            Cancel
-          </Button>
-          <Button type="button" size="sm" onClick={handleSave} disabled={pending}>
-            <Check className="h-3.5 w-3.5" aria-hidden />
-            {pending ? "Saving…" : "Save"}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  setMode("view");
+                  setError(null);
+                  setTitle(storyTitle);
+                  setSummary(storySummary);
+                }}
+                disabled={pending}
+              >
+                <X className="h-3.5 w-3.5" aria-hidden />
+                Cancel
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Cancel (Esc)</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button type="button" size="sm" onClick={handleSave} disabled={pending}>
+                <Check className="h-3.5 w-3.5" aria-hidden />
+                {pending ? "Saving…" : "Save"}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Save changes</TooltipContent>
+          </Tooltip>
         </div>
       </div>
     </div>

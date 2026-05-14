@@ -3,6 +3,7 @@
 import { startTransition, useState } from "react";
 import { ArrowBigDown, ArrowBigUp } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { dispatchLibraryRefresh } from "@/lib/client-events";
 import { buildAuthRedirectHref } from "@/lib/auth/redirect";
 import { cn } from "@/lib/utils";
@@ -123,24 +124,30 @@ export function LeaderboardVoteControls({
         aria-label="Vote on this entry"
         className="inline-flex items-stretch border border-border bg-background"
       >
-        <button
-          type="button"
-          role="radio"
-          aria-checked={state.viewerVote === "up"}
-          disabled={busy}
-          onClick={() => void submitVote("up")}
-          className={cn(
-            "inline-flex items-center justify-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50",
-            compact ? "h-8 w-8" : "h-10 w-10",
-            state.viewerVote === "up"
-              ? "bg-foreground text-background"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-          title={state.viewerVote === "up" ? "Click again to clear your vote" : "Upvote"}
-          aria-label="Upvote entry"
-        >
-          <ArrowBigUp className={compact ? "h-4 w-4" : "h-5 w-5"} aria-hidden />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={state.viewerVote === "up"}
+              disabled={busy}
+              onClick={() => void submitVote("up")}
+              className={cn(
+                "inline-flex items-center justify-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50",
+                compact ? "h-8 w-8" : "h-10 w-10",
+                state.viewerVote === "up"
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground hover:[&_svg]:fill-[color:color-mix(in_srgb,var(--primary)_18%,transparent)]",
+              )}
+              aria-label="Upvote entry"
+            >
+              <ArrowBigUp className={compact ? "h-4 w-4" : "h-5 w-5"} aria-hidden />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {state.viewerVote === "up" ? "Click again to clear your vote" : "Upvote"}
+          </TooltipContent>
+        </Tooltip>
         <div
           aria-label={`Score: ${state.score}`}
           className={cn(
@@ -157,24 +164,30 @@ export function LeaderboardVoteControls({
             {state.score}
           </span>
         </div>
-        <button
-          type="button"
-          role="radio"
-          aria-checked={state.viewerVote === "down"}
-          disabled={busy}
-          onClick={() => void submitVote("down")}
-          className={cn(
-            "inline-flex items-center justify-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50",
-            compact ? "h-8 w-8" : "h-10 w-10",
-            state.viewerVote === "down"
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-          title={state.viewerVote === "down" ? "Click again to clear your vote" : "Downvote"}
-          aria-label="Downvote entry"
-        >
-          <ArrowBigDown className={compact ? "h-4 w-4" : "h-5 w-5"} aria-hidden />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={state.viewerVote === "down"}
+              disabled={busy}
+              onClick={() => void submitVote("down")}
+              className={cn(
+                "inline-flex items-center justify-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50",
+                compact ? "h-8 w-8" : "h-10 w-10",
+                state.viewerVote === "down"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:[&_svg]:fill-[color:color-mix(in_srgb,var(--primary)_18%,transparent)]",
+              )}
+              aria-label="Downvote entry"
+            >
+              <ArrowBigDown className={compact ? "h-4 w-4" : "h-5 w-5"} aria-hidden />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {state.viewerVote === "down" ? "Click again to clear your vote" : "Downvote"}
+          </TooltipContent>
+        </Tooltip>
       </div>
       {error ? (
         <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-destructive">{error}</p>

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowUpRight, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { LeaderboardComments } from "@/components/leaderboard-comments";
 import { LeaderboardEntryEditor } from "@/components/leaderboard-entry-editor";
 import { LeaderboardShareActions } from "@/components/leaderboard-share-actions";
@@ -15,6 +16,10 @@ import { cn } from "@/lib/utils";
 
 function entryAnchorId(slug: string) {
   return `spotlight-${slug}`;
+}
+
+function commentsAnchorId(slug: string) {
+  return `comments-${slug}`;
 }
 
 function viewerCanEdit(
@@ -50,14 +55,6 @@ export function LeaderboardGallery({
   const focusedSlug = searchParams.get("spotlight");
   const containerRef = useRef<HTMLUListElement>(null);
 
-  // List view: only one row's comments are expanded at a time so the
-  // layout stays scannable. The currently-focused spotlight (via
-  // `?spotlight=<slug>`) auto-expands so deep links land on a thread.
-  const [expandedSlug, setExpandedSlug] = useState<string | null>(focusedSlug);
-  useEffect(() => {
-    if (focusedSlug) setExpandedSlug(focusedSlug);
-  }, [focusedSlug]);
-
   useEffect(() => {
     if (!focusedSlug || !containerRef.current) return;
     const target = containerRef.current.querySelector<HTMLElement>(
@@ -78,21 +75,21 @@ export function LeaderboardGallery({
     return (
       <ul
         ref={containerRef}
-        className="divide-y divide-border border border-border bg-card"
+        className="-mx-5 divide-y divide-border border-y border-border bg-card md:-mx-8"
       >
         {entries.map((entry) => {
-          const canEdit = viewerCanEdit(entry, viewerId, viewerIsAdmin);
           const commentCount = entry.commentCount ?? 0;
-          const isExpanded = expandedSlug === entry.slug;
+          const expandHref = `/?view=gallery&spotlight=${encodeURIComponent(entry.slug)}`;
+          const commentsHref = `${expandHref}#${commentsAnchorId(entry.slug)}`;
           return (
             <li
               key={entry.id}
               id={entryAnchorId(entry.slug)}
               className="scroll-mt-6 transition-colors duration-300 data-[focused=true]:bg-[color:color-mix(in_srgb,var(--primary)_8%,var(--card))]"
             >
-              <div className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 px-4 py-3 md:grid-cols-[72px_minmax(0,1fr)_auto_auto] md:gap-5 md:px-5">
+              <div className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-4 px-5 py-3 md:grid-cols-[72px_minmax(0,1fr)_auto_auto] md:gap-5 md:px-8">
                 <Link
-                  href={`/?view=gallery&spotlight=${encodeURIComponent(entry.slug)}`}
+                  href={expandHref}
                   aria-label={`Expand ${entry.storyTitle}`}
                   className="block aspect-square h-16 w-16 overflow-hidden border border-border bg-muted md:h-[72px] md:w-[72px]"
                 >
@@ -108,7 +105,7 @@ export function LeaderboardGallery({
                 <div className="min-w-0">
                   <h3 className="truncate font-sans text-[15px] font-semibold leading-tight tracking-[-0.01em] text-foreground md:text-[16px]">
                     <Link
-                      href={`/?view=gallery&spotlight=${encodeURIComponent(entry.slug)}`}
+                      href={expandHref}
                       className="transition-colors hover:text-primary"
                     >
                       {entry.storyTitle}
@@ -140,28 +137,25 @@ export function LeaderboardGallery({
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setExpandedSlug((current) =>
-                        current === entry.slug ? null : entry.slug,
-                      )
-                    }
-                    aria-expanded={isExpanded}
-                    aria-controls={`comments-${entry.slug}`}
-                    className={cn(
-                      "inline-flex h-8 items-center gap-1.5 border border-border bg-card px-2.5 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      isExpanded
-                        ? "border-foreground/40 text-foreground"
-                        : "text-muted-foreground hover:border-foreground/30 hover:text-foreground",
-                    )}
-                  >
-                    <MessageSquare className="h-3 w-3" aria-hidden strokeWidth={1.75} />
-                    <span className="tabular-nums">{commentCount}</span>
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Link
+                        href={commentsHref}
+                        aria-label={`View ${commentCount} ${commentCount === 1 ? "comment" : "comments"}`}
+                        className={cn(
+                          "inline-flex h-8 items-center gap-1.5 border border-border bg-card px-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          "hover:[&_svg]:fill-[color:color-mix(in_srgb,var(--primary)_15%,transparent)]",
+                        )}
+                      >
+                        <MessageSquare className="h-3 w-3" aria-hidden strokeWidth={1.75} />
+                        <span className="tabular-nums">{commentCount}</span>
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent>View comments</TooltipContent>
+                  </Tooltip>
                   <Button asChild variant="secondary" size="sm">
                     <Link
-                      href={`/?view=gallery&spotlight=${encodeURIComponent(entry.slug)}`}
+                      href={expandHref}
                       aria-label={`Expand ${entry.storyTitle}`}
                     >
                       Expand
@@ -169,27 +163,6 @@ export function LeaderboardGallery({
                   </Button>
                 </div>
               </div>
-
-              {isExpanded ? (
-                <div id={`comments-${entry.slug}`}>
-                  {canEdit ? (
-                    <div className="border-t border-border bg-background/30 px-4 py-3 md:px-5">
-                      <LeaderboardEntryEditor
-                        slug={entry.slug}
-                        storyTitle={entry.storyTitle}
-                        storySummary={entry.storySummary}
-                      />
-                    </div>
-                  ) : null}
-                  <LeaderboardComments
-                    slug={entry.slug}
-                    initialCount={commentCount}
-                    isSignedIn={isSignedIn}
-                    viewerId={viewerId}
-                    viewerIsAdmin={viewerIsAdmin}
-                  />
-                </div>
-              ) : null}
             </li>
           );
         })}
@@ -284,13 +257,19 @@ export function LeaderboardGallery({
                 </Button>
               </div>
             </div>
-            <LeaderboardComments
-              slug={entry.slug}
-              initialCount={entry.commentCount ?? 0}
-              isSignedIn={isSignedIn}
-              viewerId={viewerId}
-              viewerIsAdmin={viewerIsAdmin}
-            />
+            <section
+              id={commentsAnchorId(entry.slug)}
+              aria-label={`Comments on ${entry.storyTitle}`}
+              className="scroll-mt-6"
+            >
+              <LeaderboardComments
+                slug={entry.slug}
+                initialCount={entry.commentCount ?? 0}
+                isSignedIn={isSignedIn}
+                viewerId={viewerId}
+                viewerIsAdmin={viewerIsAdmin}
+              />
+            </section>
           </li>
         );
       })}

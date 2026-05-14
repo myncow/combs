@@ -8,6 +8,7 @@ import "./globals.css";
 import { NeonAuthProviders } from "@/components/neon-auth-providers";
 import { SiteHeader } from "@/components/site-header";
 import { ThemeBootstrap } from "@/components/theme-bootstrap";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { getSessionUser } from "@/lib/auth/admin";
 import { getSiteUrl } from "@/lib/site-url";
 import { getNavigation, getSiteSettings } from "@/lib/store";
@@ -80,10 +81,12 @@ export default async function RootLayout({
       <body className="h-dvh overflow-hidden bg-background font-sans text-foreground">
         <ThemeBootstrap />
         <NeonAuthProviders>
-          <div className="flex h-dvh flex-col overflow-hidden">
-            <SiteHeader brandName={settings.appName} primaryLinks={headerLinks} isAdmin={isAdmin} />
-            <div className="flex min-h-0 flex-1 flex-col">{children}</div>
-          </div>
+          <TooltipProvider delayDuration={150} skipDelayDuration={300}>
+            <div className="flex h-dvh flex-col overflow-hidden">
+              <SiteHeader brandName={settings.appName} primaryLinks={headerLinks} isAdmin={isAdmin} />
+              <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+            </div>
+          </TooltipProvider>
         </NeonAuthProviders>
         <Analytics />
         <SpeedInsights />

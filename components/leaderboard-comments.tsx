@@ -10,6 +10,7 @@ import {
 } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { buildAuthRedirectHref } from "@/lib/auth/redirect";
 import type { LeaderboardComment } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -148,15 +149,18 @@ export function LeaderboardComments({
 
   return (
     <div className="border-t border-border">
-      <div className="flex items-center gap-2 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground md:px-5">
+      <div className="flex items-center gap-2 px-5 pb-2 pt-4 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground md:px-6 md:pt-5">
         <MessageSquare className="h-3.5 w-3.5" aria-hidden strokeWidth={1.75} />
         <span>
           {count} {count === 1 ? "comment" : "comments"}
         </span>
+        {loaded && comments.length === 0 ? (
+          <span className="text-muted-foreground/70">· none yet</span>
+        ) : null}
         {loading ? <Spinner size="sm" className="text-muted-foreground" /> : null}
       </div>
 
-      <div className="grid gap-3 px-4 pb-4 md:px-5">
+      <div className="grid gap-3 px-5 pb-5 md:px-6 md:pb-6">
         <form
           onSubmit={handleSubmit}
           aria-describedby={error ? `${composerId}-error` : undefined}
@@ -209,12 +213,6 @@ export function LeaderboardComments({
           </div>
         </form>
 
-        {loaded && comments.length === 0 ? (
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            No comments yet.
-          </p>
-        ) : null}
-
         {comments.length ? (
           <ul className="grid gap-2">
             {comments.map((comment) => {
@@ -223,7 +221,7 @@ export function LeaderboardComments({
               return (
                 <li
                   key={comment.id}
-                  className="border border-border bg-card/60 px-3 py-2"
+                  className="border border-border bg-background/40 px-3 py-2"
                 >
                   <div className="flex items-baseline justify-between gap-3">
                     <p className="font-sans text-[12.5px] font-semibold leading-none text-foreground">
@@ -234,16 +232,20 @@ export function LeaderboardComments({
                         {formatTimestamp(comment.createdAt)}
                       </time>
                       {canDelete ? (
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(comment.id)}
-                          disabled={pending}
-                          aria-label="Delete comment"
-                          title="Delete"
-                          className="inline-flex h-6 w-6 items-center justify-center text-muted-foreground transition-colors hover:text-[color:var(--destructive)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-                        >
-                          <Trash2 className="h-3 w-3" aria-hidden />
-                        </button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(comment.id)}
+                              disabled={pending}
+                              aria-label="Delete comment"
+                              className="inline-flex h-6 w-6 items-center justify-center text-muted-foreground transition-colors hover:text-[color:var(--destructive)] hover:[&_svg]:fill-[color:color-mix(in_srgb,var(--destructive)_18%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                            >
+                              <Trash2 className="h-3 w-3" aria-hidden />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>Delete comment</TooltipContent>
+                        </Tooltip>
                       ) : null}
                     </div>
                   </div>
