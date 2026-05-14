@@ -33,15 +33,8 @@ export function ShellPage({
 }
 
 /**
- * Sticky toolbar designed to live as the FIRST child of a `ShellPage`.
- *
- * It pulls itself up flush with the inside-top of the scroll container
- * (via negative top margin matching ShellPage's vertical padding) so
- * there is no transparent strip above it through which the scrolled
- * content can peek between the site header and the toolbar.
- *
- * The background is fully opaque so even semi-transparent site chrome
- * above renders cleanly against it.
+ * Page toolbar — sits as the first child of a `ShellPage` and scrolls
+ * with content. Bottom border anchors it visually to the content below.
  */
 export function StickyToolbar({
   children,
@@ -53,11 +46,7 @@ export function StickyToolbar({
   return (
     <div
       className={cn(
-        // Negative top margin pulls the toolbar up to cover the scroll
-        // container's own top padding. Combined with `top-0` this means
-        // the toolbar is glued to the bottom edge of the site header
-        // from the moment it's rendered — no gap appears while scrolling.
-        "sticky top-0 z-20 -mx-5 -mt-6 border-b border-border bg-background px-5 py-3 md:-mx-8 md:-mt-8 md:px-8",
+        "border-b border-border bg-background pb-3",
         className,
       )}
     >

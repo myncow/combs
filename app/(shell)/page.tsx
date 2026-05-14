@@ -40,8 +40,8 @@ const VIEW_ICON: Record<LeaderboardView, typeof LayoutGrid> = {
   gallery: LayoutGrid,
 };
 
-const GALLERY_PAGE_SIZE = 24;
-const LIST_PAGE_SIZE = 48;
+const GALLERY_PAGE_SIZE = 6;
+const LIST_PAGE_SIZE = 10;
 
 function buildHref(params: URLSearchParams) {
   const qs = params.toString();

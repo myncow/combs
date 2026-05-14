@@ -31,7 +31,7 @@ const SCOPE_ICON: Record<MapsScope, typeof Flame> = {
   mine: User,
 };
 
-const PAGE_SIZE = 24;
+const PAGE_SIZE = 10;
 
 function paramValue(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
