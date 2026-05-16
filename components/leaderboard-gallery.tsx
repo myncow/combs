@@ -157,26 +157,37 @@ export function LeaderboardGallery({
                     </Link>
                   </TableCell>
                   <TableCell>
-                    <div className="min-w-0">
-                      <h3 className="truncate font-sans text-[15px] font-semibold leading-tight tracking-[-0.01em] text-foreground md:text-[16px]">
-                        <Link
-                          href={expandHref}
-                          className="transition-colors hover:text-primary"
-                        >
-                          {entry.storyTitle}
-                        </Link>
-                      </h3>
-                      <p className="mt-1 truncate font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground md:text-[10px]">
-                        {entry.topicFamily}
-                        {entry.createdByDisplayName ? (
-                          <>
-                            <span className="mx-1.5 text-muted-foreground/50">·</span>
-                            <span className="normal-case tracking-normal">
-                              by {entry.createdByDisplayName}
-                            </span>
-                          </>
-                        ) : null}
-                      </p>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate font-sans text-[15px] font-semibold leading-tight tracking-[-0.01em] text-foreground md:text-[16px]">
+                          <Link
+                            href={expandHref}
+                            className="transition-colors hover:text-primary"
+                          >
+                            {entry.storyTitle}
+                          </Link>
+                        </h3>
+                        {/* Topic/author meta hidden on mobile — keeps the row a single
+                            scannable line; full context lives on the spotlight page. */}
+                        <p className="mt-1 hidden truncate font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground md:block md:text-[10px]">
+                          {entry.topicFamily}
+                          {entry.createdByDisplayName ? (
+                            <>
+                              <span className="mx-1.5 text-muted-foreground/50">·</span>
+                              <span className="normal-case tracking-normal">
+                                by {entry.createdByDisplayName}
+                              </span>
+                            </>
+                          ) : null}
+                        </p>
+                      </div>
+                      {/* Compact score badge — only on mobile (Score column is shown md+). */}
+                      <span
+                        aria-label={`Score ${entry.score}`}
+                        className="shrink-0 border border-border bg-background px-2 py-0.5 font-mono text-[12px] tabular-nums text-foreground md:hidden"
+                      >
+                        {entry.score > 0 ? `+${entry.score}` : entry.score}
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
@@ -195,13 +206,15 @@ export function LeaderboardGallery({
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1.5">
+                      {/* Comment chip hidden on mobile to reduce row weight; users
+                          tap Expand to reach the threaded view. */}
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Link
                             href={commentsHref}
                             aria-label={`View ${commentCount} ${commentCount === 1 ? "comment" : "comments"}`}
                             className={cn(
-                              "inline-flex h-10 items-center gap-1.5 border border-border bg-card px-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-8",
+                              "hidden h-8 items-center gap-1.5 border border-border bg-card px-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:inline-flex",
                               "hover:[&_svg]:fill-[color:color-mix(in_srgb,var(--primary)_15%,transparent)]",
                             )}
                           >
@@ -294,17 +307,19 @@ export function LeaderboardGallery({
                   <p className="font-sans text-[14px] leading-[1.55] text-muted-foreground">
                     {entry.storySummary}
                   </p>
+                  {/* On mobile we keep only the source-map link; topic + author are
+                      visible on md+ where the metadata line doesn't crowd the summary. */}
                   <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                    <span>{entry.topicFamily}</span>
+                    <span className="hidden md:inline">{entry.topicFamily}</span>
                     {entry.createdByDisplayName ? (
                       <>
-                        <span aria-hidden className="text-muted-foreground/50">·</span>
-                        <span className="normal-case tracking-normal">
+                        <span aria-hidden className="hidden text-muted-foreground/50 md:inline">·</span>
+                        <span className="hidden normal-case tracking-normal md:inline">
                           by {entry.createdByDisplayName}
                         </span>
                       </>
                     ) : null}
-                    <span aria-hidden className="text-muted-foreground/50">·</span>
+                    <span aria-hidden className="hidden text-muted-foreground/50 md:inline">·</span>
                     <Link
                       href={sourceHref}
                       className="inline-flex items-center gap-1 normal-case tracking-normal text-foreground transition-colors hover:text-primary"
@@ -326,11 +341,22 @@ export function LeaderboardGallery({
                     }
                   />
                 </div>
-                <section
+                {/* Mobile: comments collapse behind a disclosure so the gallery
+                    stays scannable. md+ shows them inline (scrollable region). */}
+                <details
                   id={commentsAnchorId(entry.slug)}
                   aria-label={`Comments on ${entry.storyTitle}`}
-                  className="scroll-mt-6 border-t border-border md:max-h-[44vh] md:overflow-y-auto"
+                  className="scroll-mt-6 border-t border-border [&[open]>summary>span[data-chev]]:rotate-180 md:max-h-[44vh] md:overflow-y-auto md:open:max-h-[44vh] md:[&]:open"
                 >
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground md:hidden">
+                    <span>
+                      Comments
+                      <span className="ml-2 tabular-nums text-foreground">
+                        {entry.commentCount ?? 0}
+                      </span>
+                    </span>
+                    <span data-chev aria-hidden className="transition-transform">▾</span>
+                  </summary>
                   <LeaderboardComments
                     slug={entry.slug}
                     initialCount={entry.commentCount ?? 0}
@@ -338,7 +364,7 @@ export function LeaderboardGallery({
                     viewerId={viewerId}
                     viewerIsAdmin={viewerIsAdmin}
                   />
-                </section>
+                </details>
               </div>
             </div>
           </li>
