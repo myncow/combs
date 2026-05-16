@@ -320,16 +320,9 @@ export default async function GalleryPage({
                           <h3 className="truncate text-[15px] font-semibold leading-tight tracking-[-0.005em] text-foreground transition-colors duration-150 group-hover:text-primary md:text-[16px]">
                             {displayTitle}
                           </h3>
+                          {/* Mobile row: just topic. Author appears in its own column md+. */}
                           <p className="mt-1 truncate font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground md:hidden">
                             {map.topicFamily}
-                            {map.createdByDisplayName ? (
-                              <>
-                                <span className="mx-1.5 text-muted-foreground/50">·</span>
-                                <span className="normal-case tracking-normal">
-                                  by {map.createdByDisplayName}
-                                </span>
-                              </>
-                            ) : null}
                           </p>
                         </Link>
                       </TableCell>

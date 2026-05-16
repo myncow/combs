@@ -269,7 +269,7 @@ export function LeaderboardGallery({
                   height={900}
                   sizes="(max-width: 768px) 100vw, 60vw"
                   referrerPolicy="no-referrer"
-                  className="block h-auto max-h-[78vh] w-full object-contain"
+                  className="block h-auto max-h-[50vh] w-full object-contain md:max-h-[78vh]"
                 />
                 {entry.imageModel ? (
                   <div
@@ -341,22 +341,13 @@ export function LeaderboardGallery({
                     }
                   />
                 </div>
-                {/* Mobile: comments collapse behind a disclosure so the gallery
-                    stays scannable. md+ shows them inline (scrollable region). */}
-                <details
+                {/* Comments section is capped on both viewports — on mobile we cap
+                    tighter so a long thread doesn't dominate the spotlight. */}
+                <section
                   id={commentsAnchorId(entry.slug)}
                   aria-label={`Comments on ${entry.storyTitle}`}
-                  className="scroll-mt-6 border-t border-border [&[open]>summary>span[data-chev]]:rotate-180 md:max-h-[44vh] md:overflow-y-auto md:open:max-h-[44vh] md:[&]:open"
+                  className="max-h-[32vh] scroll-mt-6 overflow-y-auto border-t border-border md:max-h-[44vh]"
                 >
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground md:hidden">
-                    <span>
-                      Comments
-                      <span className="ml-2 tabular-nums text-foreground">
-                        {entry.commentCount ?? 0}
-                      </span>
-                    </span>
-                    <span data-chev aria-hidden className="transition-transform">▾</span>
-                  </summary>
                   <LeaderboardComments
                     slug={entry.slug}
                     initialCount={entry.commentCount ?? 0}
@@ -364,7 +355,7 @@ export function LeaderboardGallery({
                     viewerId={viewerId}
                     viewerIsAdmin={viewerIsAdmin}
                   />
-                </details>
+                </section>
               </div>
             </div>
           </li>

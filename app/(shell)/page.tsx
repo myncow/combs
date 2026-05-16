@@ -207,75 +207,79 @@ export default async function HomePage({
           overridden above so the page itself never scrolls — the user
           can always see filters and pagination without hunting. */}
       <StickyToolbar>
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <div className="flex min-w-0 items-baseline gap-3">
-            <h1 className="font-sans text-[20px] font-semibold leading-none tracking-[-0.02em] text-foreground md:text-[24px]">
-              Finds
-            </h1>
-            <span className="hidden font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground sm:inline">
-              {eyebrowLabel}
-            </span>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <form
-              action="/"
-              role="search"
-              className="flex min-w-0 flex-1 items-center gap-1 sm:flex-none"
-            >
-              <input
-                name="q"
-                type="search"
-                defaultValue={query}
-                placeholder="Search title, category…"
-                aria-label="Search leaderboard"
-                className="h-9 w-full min-w-0 border border-border bg-background px-2.5 font-sans text-[16px] text-foreground placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:w-[12rem] md:w-[14rem] md:text-[12.5px]"
-              />
-              <input type="hidden" name="scope" value={scope} />
-              <input type="hidden" name="view" value={view} />
-            </form>
-            {/* Filter + view toggles are signed-in-only interactions —
-                they let people slice the leaderboard by their own entries
-                and switch between dense list / spotlight gallery. For
-                signed-out visitors we keep the page focused on the
-                content + the "New map" CTA below. Search stays visible
-                because it works for anyone. */}
-            {user ? (
-              <>
-                <SegmentedNav<LeaderboardScope>
-                  label="Filter leaderboard"
-                  current={scope}
-                  paramName="scope"
-                  baseParams={(() => {
-                    const carry = new URLSearchParams();
-                    carry.set("view", view);
-                    return carry;
-                  })()}
-                  options={[
-                    { value: "top", label: SCOPE_LABEL.top, icon: SCOPE_ICON.top },
-                    { value: "new", label: SCOPE_LABEL.new, icon: SCOPE_ICON.new },
-                    {
-                      value: "mine",
-                      label: SCOPE_LABEL.mine,
-                      icon: SCOPE_ICON.mine,
-                    },
-                  ]}
+        {/* Toolbar mirrors the content grid below so the controls right-align
+            with the table's ACTIONS column rather than the aside. */}
+        <div className="grid grid-cols-1 gap-x-8 md:grid-cols-[minmax(0,1fr)_minmax(13rem,15rem)]">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <div className="flex min-w-0 items-baseline gap-3">
+              <h1 className="font-sans text-[20px] font-semibold leading-none tracking-[-0.02em] text-foreground md:text-[24px]">
+                Finds
+              </h1>
+              <span className="hidden font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground sm:inline">
+                {eyebrowLabel}
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <form
+                action="/"
+                role="search"
+                className="flex min-w-0 flex-1 items-center gap-1 sm:flex-none"
+              >
+                <input
+                  name="q"
+                  type="search"
+                  defaultValue={query}
+                  placeholder="Search title, category…"
+                  aria-label="Search leaderboard"
+                  className="h-9 w-full min-w-0 border border-border bg-background px-2.5 font-sans text-[16px] text-foreground placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:w-[12rem] md:w-[14rem] md:text-[12.5px]"
                 />
-                <SegmentedNav<LeaderboardView>
-                  label="Leaderboard view"
-                  current={view}
-                  paramName="view"
-                  baseParams={(() => {
-                    const carry = new URLSearchParams();
-                    carry.set("scope", scope);
-                    return carry;
-                  })()}
-                  options={[
-                    { value: "list", label: VIEW_LABEL.list, icon: VIEW_ICON.list },
-                    { value: "gallery", label: VIEW_LABEL.gallery, icon: VIEW_ICON.gallery },
-                  ]}
-                />
-              </>
-            ) : null}
+                <input type="hidden" name="scope" value={scope} />
+                <input type="hidden" name="view" value={view} />
+              </form>
+              {/* Filter + view toggles are signed-in-only interactions —
+                  they let people slice the leaderboard by their own entries
+                  and switch between dense list / spotlight gallery. For
+                  signed-out visitors we keep the page focused on the
+                  content + the "New map" CTA below. Search stays visible
+                  because it works for anyone. */}
+              {user ? (
+                <>
+                  <SegmentedNav<LeaderboardScope>
+                    label="Filter leaderboard"
+                    current={scope}
+                    paramName="scope"
+                    baseParams={(() => {
+                      const carry = new URLSearchParams();
+                      carry.set("view", view);
+                      return carry;
+                    })()}
+                    options={[
+                      { value: "top", label: SCOPE_LABEL.top, icon: SCOPE_ICON.top },
+                      { value: "new", label: SCOPE_LABEL.new, icon: SCOPE_ICON.new },
+                      {
+                        value: "mine",
+                        label: SCOPE_LABEL.mine,
+                        icon: SCOPE_ICON.mine,
+                      },
+                    ]}
+                  />
+                  <SegmentedNav<LeaderboardView>
+                    label="Leaderboard view"
+                    current={view}
+                    paramName="view"
+                    baseParams={(() => {
+                      const carry = new URLSearchParams();
+                      carry.set("scope", scope);
+                      return carry;
+                    })()}
+                    options={[
+                      { value: "list", label: VIEW_LABEL.list, icon: VIEW_ICON.list },
+                      { value: "gallery", label: VIEW_LABEL.gallery, icon: VIEW_ICON.gallery },
+                    ]}
+                  />
+                </>
+              ) : null}
+            </div>
           </div>
         </div>
       </StickyToolbar>
