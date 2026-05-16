@@ -84,7 +84,7 @@ export default async function RootLayout({
       </head>
       <body className="h-dvh overflow-hidden bg-background font-sans text-foreground">
         <ThemeBootstrap />
-        <NeonAuthProviders>
+        <NeonAuthProviders serverKnownSignedIn={Boolean(sessionUser)}>
           <TooltipProvider delayDuration={150} skipDelayDuration={300}>
             <div className="flex h-dvh flex-col overflow-hidden">
               <SiteHeader brandName={settings.appName} primaryLinks={headerLinks} isAdmin={isAdmin} />

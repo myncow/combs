@@ -61,11 +61,7 @@ export function proxy(request: NextRequest, ...args: NeonAuthProxyRestArgs) {
     return redirect;
   }
 
-  if (request.nextUrl.pathname.startsWith("/account")) {
-    return getNeonAuthProxy()(request, ...args);
-  }
-
-  return NextResponse.next();
+  return getNeonAuthProxy()(request, ...args);
 }
 
 export const config = {

@@ -1,5 +1,7 @@
 type SearchLike = string | { toString(): string } | null | undefined;
 
+export const DEFAULT_POST_AUTH_REDIRECT = "/maps?scope=mine";
+
 export function sanitizeRedirectTo(value: unknown) {
   if (typeof value !== "string") {
     return "/";
