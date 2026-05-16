@@ -220,7 +220,7 @@ export default async function HomePage({
             <form
               action="/"
               role="search"
-              className="flex items-center gap-1"
+              className="flex min-w-0 flex-1 items-center gap-1 sm:flex-none"
             >
               <input
                 name="q"
@@ -228,7 +228,7 @@ export default async function HomePage({
                 defaultValue={query}
                 placeholder="Search title, category…"
                 aria-label="Search leaderboard"
-                className="h-9 w-[10rem] border border-border bg-background px-2.5 font-sans text-[12.5px] text-foreground placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:w-[14rem]"
+                className="h-9 w-full min-w-0 border border-border bg-background px-2.5 font-sans text-[12.5px] text-foreground placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:w-[12rem] md:w-[14rem]"
               />
               <input type="hidden" name="scope" value={scope} />
               <input type="hidden" name="view" value={view} />
@@ -291,6 +291,20 @@ export default async function HomePage({
               to publish your own.
             </p>
           ) : null}
+          {/* Mobile-only context strip — on md+ this copy lives in the
+              right aside; below md the aside is hidden, so surface a
+              one-line framing + about link here. */}
+          <div className="flex items-center justify-between gap-3 border border-border bg-card px-3 py-2 md:hidden">
+            <p className="min-w-0 font-sans text-[12px] leading-snug text-muted-foreground">
+              <span className="italic text-foreground">Lelet</span> maps a topic across two traits. The empty cells become finds.
+            </p>
+            <Link
+              href="/about"
+              className="shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground"
+            >
+              About →
+            </Link>
+          </div>
 
           <div className="-mx-5 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-5 md:mx-0 md:px-0">
             {entries.items.length ? (

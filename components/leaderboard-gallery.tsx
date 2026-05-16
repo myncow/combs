@@ -122,7 +122,7 @@ export function LeaderboardGallery({
               <TableHead className="w-[64px] md:w-[72px]">Entry</TableHead>
               <TableHead>Title</TableHead>
               <TableHead className="hidden w-[180px] md:table-cell">Score</TableHead>
-              <TableHead className="w-[180px] text-right md:w-[220px]">Actions</TableHead>
+              <TableHead className="w-auto text-right md:w-[220px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody ref={listContainerRef}>
@@ -199,7 +199,7 @@ export function LeaderboardGallery({
                             href={commentsHref}
                             aria-label={`View ${commentCount} ${commentCount === 1 ? "comment" : "comments"}`}
                             className={cn(
-                              "inline-flex h-8 items-center gap-1.5 border border-border bg-card px-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                              "inline-flex h-10 items-center gap-1.5 border border-border bg-card px-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-8",
                               "hover:[&_svg]:fill-[color:color-mix(in_srgb,var(--primary)_15%,transparent)]",
                             )}
                           >

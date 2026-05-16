@@ -201,14 +201,14 @@ export default async function GalleryPage({
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <form action="/maps" role="search" className="flex items-center gap-1">
+            <form action="/maps" role="search" className="flex min-w-0 flex-1 items-center gap-1 sm:flex-none">
               <input
                 name="q"
                 type="search"
                 defaultValue={filters.q ?? ""}
                 placeholder="Search title, topic…"
                 aria-label="Search maps"
-                className="h-9 w-[10rem] border border-border bg-background px-2.5 font-sans text-[12.5px] text-foreground placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:w-[14rem]"
+                className="h-9 w-full min-w-0 border border-border bg-background px-2.5 font-sans text-[12.5px] text-foreground placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:w-[12rem] md:w-[14rem]"
               />
               {filters.topicFamily ? (
                 <input type="hidden" name="topicFamily" value={filters.topicFamily} />
@@ -273,7 +273,7 @@ export default async function GalleryPage({
                   <TableHead>Title</TableHead>
                   <TableHead className="hidden w-[200px] md:table-cell">Topic</TableHead>
                   <TableHead className="hidden w-[180px] md:table-cell">Author</TableHead>
-                  <TableHead className="w-[88px] text-right">Date</TableHead>
+                  <TableHead className="w-[64px] text-right md:w-[88px]">Date</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

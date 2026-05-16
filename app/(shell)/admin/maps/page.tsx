@@ -167,85 +167,156 @@ export default async function AdminMapsPage({
           </form>
         </SurfacePanel>
         <SurfacePanel>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[980px] border-collapse text-left text-[13px]">
-              <thead>
-                <tr className="border-b border-border text-muted-foreground">
-                  <th className="px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em]">Title</th>
-                  <th className="px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em]">Status</th>
-                  <th className="px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em]">Visibility</th>
-                  <th className="px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em]">Owner</th>
-                  <th className="px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em]">Created</th>
-                  <th className="px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em]">Updated</th>
-                  <th className="px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em]">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={7}
-                      className="px-3 py-6 text-center font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground"
-                    >
-                      No maps in the database yet.
-                    </td>
-                  </tr>
-                ) : (
-                  items.map((map) => (
-                    <tr key={map.id} className="border-b border-border/60 hover:bg-foreground/[0.03]">
-                      <td className="px-3 py-2.5">
-                        <Link
-                          href={`/maps/${map.slug}`}
-                          className="font-semibold text-foreground underline-offset-4 hover:underline"
-                        >
+          {items.length === 0 ? (
+            <p className="px-3 py-6 text-center font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+              No maps in the database yet.
+            </p>
+          ) : (
+            <>
+              {/* Mobile card layout — below md, the wide admin table would
+                  force a 980px horizontal scroll. */}
+              <ul className="grid gap-3 md:hidden">
+                {items.map((map) => (
+                  <li
+                    key={map.id}
+                    className="border border-border bg-card p-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <Link
+                        href={`/maps/${map.slug}`}
+                        className="min-w-0 flex-1 font-semibold text-foreground underline-offset-4 hover:underline"
+                      >
+                        <span className="block truncate">
                           {simplifyMapDisplayTitle(map.title, map.topicFamily)}
-                        </Link>
-                        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                          {map.topicFamily || "—"} · {map.slug}
-                        </p>
-                      </td>
-                      <td className="px-3 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                        </span>
+                      </Link>
+                      <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                         {map.status}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <MapVisibilityControl
-                          slug={map.slug}
-                          initialIsPublic={Boolean(map.isPublic)}
-                          canMutate
-                          viewerLabel={
-                            map.createdByNeonUserId !== user.id ? "Admin override" : undefined
-                          }
-                        />
-                      </td>
-                      <td className="px-3 py-2.5 font-mono text-[11px] text-muted-foreground">
-                        <AdminOwnerCell ownerId={map.createdByNeonUserId} />
-                      </td>
-                      <td className="px-3 py-2.5 font-mono text-[11px] tabular-nums text-muted-foreground">
-                        {formatDate(map.createdAt)}
-                      </td>
-                      <td className="px-3 py-2.5 font-mono text-[11px] tabular-nums text-muted-foreground">
-                        {formatDate(map.updatedAt)}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Button asChild variant="secondary" size="sm">
-                            <Link href={`/maps/${map.slug}`}>Inspect</Link>
-                          </Button>
-                          <RefillReferencesButton slug={map.slug} />
-                          <DeleteMapButton
+                      </span>
+                    </div>
+                    <p className="mt-1 break-all font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                      {map.topicFamily || "—"} · {map.slug}
+                    </p>
+                    <dl className="mt-3 grid grid-cols-2 gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                      <div>
+                        <dt className="opacity-70">Owner</dt>
+                        <dd className="mt-0.5 normal-case tracking-normal text-foreground">
+                          <AdminOwnerCell ownerId={map.createdByNeonUserId} />
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="opacity-70">Visibility</dt>
+                        <dd className="mt-0.5">
+                          <MapVisibilityControl
                             slug={map.slug}
-                            title={map.title}
-                            variant="icon"
-                            redirectTo={`/admin/maps${baseParams.toString() ? `?${baseParams.toString()}` : ""}`}
+                            initialIsPublic={Boolean(map.isPublic)}
+                            canMutate
+                            viewerLabel={
+                              map.createdByNeonUserId !== user.id
+                                ? "Admin override"
+                                : undefined
+                            }
                           />
-                        </div>
-                      </td>
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="opacity-70">Created</dt>
+                        <dd className="mt-0.5 tabular-nums normal-case tracking-normal text-foreground">
+                          {formatDate(map.createdAt)}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="opacity-70">Updated</dt>
+                        <dd className="mt-0.5 tabular-nums normal-case tracking-normal text-foreground">
+                          {formatDate(map.updatedAt)}
+                        </dd>
+                      </div>
+                    </dl>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Button asChild variant="secondary" size="sm">
+                        <Link href={`/maps/${map.slug}`}>Inspect</Link>
+                      </Button>
+                      <RefillReferencesButton slug={map.slug} />
+                      <DeleteMapButton
+                        slug={map.slug}
+                        title={map.title}
+                        variant="icon"
+                        redirectTo={`/admin/maps${baseParams.toString() ? `?${baseParams.toString()}` : ""}`}
+                      />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full min-w-[980px] border-collapse text-left text-[13px]">
+                  <thead>
+                    <tr className="border-b border-border text-muted-foreground">
+                      <th className="px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em]">Title</th>
+                      <th className="px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em]">Status</th>
+                      <th className="px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em]">Visibility</th>
+                      <th className="px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em]">Owner</th>
+                      <th className="px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em]">Created</th>
+                      <th className="px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em]">Updated</th>
+                      <th className="px-3 py-2 font-mono text-[10px] uppercase tracking-[0.2em]">Actions</th>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody>
+                    {items.map((map) => (
+                      <tr key={map.id} className="border-b border-border/60 hover:bg-foreground/[0.03]">
+                        <td className="px-3 py-2.5">
+                          <Link
+                            href={`/maps/${map.slug}`}
+                            className="font-semibold text-foreground underline-offset-4 hover:underline"
+                          >
+                            {simplifyMapDisplayTitle(map.title, map.topicFamily)}
+                          </Link>
+                          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                            {map.topicFamily || "—"} · {map.slug}
+                          </p>
+                        </td>
+                        <td className="px-3 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                          {map.status}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <MapVisibilityControl
+                            slug={map.slug}
+                            initialIsPublic={Boolean(map.isPublic)}
+                            canMutate
+                            viewerLabel={
+                              map.createdByNeonUserId !== user.id ? "Admin override" : undefined
+                            }
+                          />
+                        </td>
+                        <td className="px-3 py-2.5 font-mono text-[11px] text-muted-foreground">
+                          <AdminOwnerCell ownerId={map.createdByNeonUserId} />
+                        </td>
+                        <td className="px-3 py-2.5 font-mono text-[11px] tabular-nums text-muted-foreground">
+                          {formatDate(map.createdAt)}
+                        </td>
+                        <td className="px-3 py-2.5 font-mono text-[11px] tabular-nums text-muted-foreground">
+                          {formatDate(map.updatedAt)}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Button asChild variant="secondary" size="sm">
+                              <Link href={`/maps/${map.slug}`}>Inspect</Link>
+                            </Button>
+                            <RefillReferencesButton slug={map.slug} />
+                            <DeleteMapButton
+                              slug={map.slug}
+                              title={map.title}
+                              variant="icon"
+                              redirectTo={`/admin/maps${baseParams.toString() ? `?${baseParams.toString()}` : ""}`}
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </SurfacePanel>
 
         {pageCount > 1 ? (

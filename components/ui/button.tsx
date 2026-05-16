@@ -38,10 +38,12 @@ const buttonVariants = cva(
           "border-transparent bg-transparent text-foreground normal-case tracking-normal font-sans text-[14px] hover:[border-bottom:1px_solid_currentColor] hover:pb-[1px]",
       },
       size: {
-        default: "h-10 px-4",
-        sm: "h-8 px-3 text-[11px]",
+        // Touch-friendly on mobile (≥44px hit area via h-11), compact on md+
+        // so dense admin/desktop layouts don't bloat.
+        default: "h-11 px-4 md:h-10",
+        sm: "h-10 px-3 text-[11px] md:h-8",
         lg: "h-11 px-5 text-[13px]",
-        icon: "h-10 w-10 px-0",
+        icon: "h-11 w-11 px-0 md:h-10 md:w-10",
       },
     },
     defaultVariants: {
