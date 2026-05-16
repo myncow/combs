@@ -10,29 +10,6 @@ import type { MouseEvent } from "react";
 import type { NavigationLink } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-function LogoMark({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="20"
-      height="20"
-      aria-hidden="true"
-      shapeRendering="crispEdges"
-      className={className}
-    >
-      <rect x="1" y="1" width="6" height="6" fill="currentColor" />
-      <rect x="9" y="1" width="6" height="6" fill="currentColor" />
-      <rect x="17" y="1" width="6" height="6" fill="currentColor" />
-      <rect x="1" y="9" width="6" height="6" fill="currentColor" />
-      <rect x="9" y="9" width="6" height="6" fill="currentColor" />
-      <rect x="17" y="9" width="6" height="6" fill="currentColor" />
-      <rect x="1" y="17" width="6" height="6" fill="currentColor" />
-      <rect x="9" y="17" width="6" height="6" fill="currentColor" />
-      <rect x="17" y="17" width="6" height="6" fill="var(--primary)" />
-    </svg>
-  );
-}
-
 export function SiteHeader({
   brandName = "Lelet",
   primaryLinks = [],
@@ -83,10 +60,9 @@ export function SiteHeader({
               href="/"
               aria-label={`${brandName} — home`}
               onClick={handleHomeClick}
-              className="flex shrink-0 items-center gap-2.5 rounded-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="flex shrink-0 items-center rounded-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
-              <LogoMark className="text-foreground" />
-              <span className="font-sans text-[15px] font-semibold uppercase leading-none tracking-[0.08em]">
+              <span className="font-brand text-[22px] font-normal lowercase leading-none">
                 {brandName}
               </span>
             </Link>

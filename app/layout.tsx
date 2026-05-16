@@ -38,10 +38,6 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     description: settings.defaultSeoDescription,
     applicationName: settings.appName,
-    icons: {
-      icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
-      shortcut: "/favicon.svg",
-    },
     openGraph: {
       title: settings.openGraphTitle,
       description: settings.openGraphDescription,
@@ -78,6 +74,14 @@ export default async function RootLayout({
       data-scroll-behavior="smooth"
       className={cn(geistSans.variable, geistMono.variable, "h-full overflow-hidden antialiased", ssrDark && "dark")}
     >
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Playwrite+AR:wght@100..400&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body className="h-dvh overflow-hidden bg-background font-sans text-foreground">
         <ThemeBootstrap />
         <NeonAuthProviders>
