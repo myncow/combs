@@ -20,12 +20,11 @@ export default async function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#EFF1ED",
-          color: "#1C1E1F",
+          background: "#1C1E1F",
+          color: "#EFF1ED",
           fontFamily: "Playwrite AR",
-          fontSize: 30,
+          fontSize: 22,
           lineHeight: 1,
-          paddingBottom: 2,
         }}
       >
         l
