@@ -1786,15 +1786,30 @@ function DrawerBody({
                   <IndeterminateLoadingBar label={visualizationCopy.pendingLabel} />
                 ) : (
                   <div className="space-y-3">
+                    {state.status === "error" ? (
+                      <div
+                        role="alert"
+                        className="border-l-2 border-[color:var(--destructive)] bg-[color:color-mix(in_srgb,var(--destructive)_6%,transparent)] px-3 py-2.5"
+                      >
+                        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--destructive)]">
+                          Generation failed
+                        </p>
+                        <p className="mt-1 text-[13px] leading-snug text-foreground">
+                          {state.message}
+                        </p>
+                      </div>
+                    ) : null}
                     <Button
                       type="submit"
                       form={vizFormId}
                       disabled={!isFormReady}
-                      aria-label={`${visualizationCopy.buttonLabel} ${cell.label}`}
+                      aria-label={`${
+                        state.status === "error" ? "Try again: " : ""
+                      }${visualizationCopy.buttonLabel} ${cell.label}`}
                       size="lg"
                     >
                       <ImageIcon className="h-4 w-4" aria-hidden />
-                      {visualizationCopy.buttonLabel}
+                      {state.status === "error" ? "Try again" : visualizationCopy.buttonLabel}
                     </Button>
                   </div>
                 )

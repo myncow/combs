@@ -82,7 +82,7 @@ export default async function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-dvh bg-background font-sans text-foreground md:h-dvh md:overflow-hidden">
+      <body className="min-h-dvh overflow-x-hidden bg-background font-sans text-foreground md:h-dvh md:overflow-hidden">
         <ThemeBootstrap />
         <NeonAuthProviders serverKnownSignedIn={Boolean(sessionUser)}>
           <TooltipProvider delayDuration={150} skipDelayDuration={300}>

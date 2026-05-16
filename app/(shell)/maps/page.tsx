@@ -266,89 +266,129 @@ export default async function GalleryPage({
           />
         ) : (
           <div className="-mx-5 border-y border-border bg-card md:-mx-8">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-[72px]">Map</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead className="hidden w-[200px] md:table-cell">Topic</TableHead>
-                  <TableHead className="hidden w-[180px] md:table-cell">Author</TableHead>
-                  <TableHead className="w-[64px] text-right md:w-[88px]">Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((map) => {
-                  const thumbnailUrl = map.thumbnailUrl ?? pickMapThumbnail(map.document);
-                  const displayTitle = simplifyMapDisplayTitle(map.title, map.topicFamily);
-                  const date = (() => {
-                    try {
-                      return new Date(map.createdAt).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      });
-                    } catch {
-                      return "";
-                    }
-                  })();
-                  return (
-                    <TableRow key={map.id} className="group">
-                      <TableCell>
-                        <Link
-                          href={`/maps/${map.slug}`}
-                          aria-label={map.title}
-                          className="block aspect-square h-10 w-10 shrink-0 overflow-hidden border border-border bg-muted"
-                          tabIndex={-1}
-                        >
-                          {thumbnailUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={thumbnailUrl}
-                              alt=""
-                              referrerPolicy="no-referrer"
-                              loading="lazy"
-                              decoding="async"
-                              className="h-full w-full object-cover"
-                            />
-                          ) : null}
-                        </Link>
-                      </TableCell>
-                      <TableCell>
-                        <Link
-                          href={`/maps/${map.slug}`}
-                          className="block min-w-0 outline-none focus-visible:outline-none"
-                        >
-                          <h3 className="truncate text-[15px] font-semibold leading-tight tracking-[-0.005em] text-foreground transition-colors duration-150 group-hover:text-primary md:text-[16px]">
-                            {displayTitle}
-                          </h3>
-                          {/* Mobile row: just topic. Author appears in its own column md+. */}
-                          <p className="mt-1 truncate font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground md:hidden">
-                            {map.topicFamily}
-                          </p>
-                        </Link>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <span className="truncate font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+            {/* Mobile: stacked rows so the layout can never push past the
+                viewport width. md+ falls back to the dense Table layout. */}
+            <ul className="md:hidden">
+              {items.map((map) => {
+                const thumbnailUrl = map.thumbnailUrl ?? pickMapThumbnail(map.document);
+                const displayTitle = simplifyMapDisplayTitle(map.title, map.topicFamily);
+                return (
+                  <li
+                    key={map.id}
+                    className="border-b border-border last:border-b-0"
+                  >
+                    <Link
+                      href={`/maps/${map.slug}`}
+                      className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-foreground/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                    >
+                      <div className="relative aspect-square h-10 w-10 shrink-0 overflow-hidden border border-border bg-muted">
+                        {thumbnailUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={thumbnailUrl}
+                            alt=""
+                            referrerPolicy="no-referrer"
+                            loading="lazy"
+                            decoding="async"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : null}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate text-[15px] font-semibold leading-tight tracking-[-0.005em] text-foreground">
+                          {displayTitle}
+                        </h3>
+                        <p className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                           {map.topicFamily}
-                        </span>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <span className="truncate text-[13px] text-muted-foreground">
-                          {map.createdByDisplayName ?? "—"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <time
-                          dateTime={map.createdAt}
-                          className="font-mono text-[11px] tabular-nums uppercase tracking-[0.18em] text-muted-foreground"
-                        >
-                          {date}
-                        </time>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                        </p>
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="w-[72px]">Map</TableHead>
+                    <TableHead>Title</TableHead>
+                    <TableHead className="w-[200px]">Topic</TableHead>
+                    <TableHead className="w-[180px]">Author</TableHead>
+                    <TableHead className="w-[88px] text-right">Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map((map) => {
+                    const thumbnailUrl = map.thumbnailUrl ?? pickMapThumbnail(map.document);
+                    const displayTitle = simplifyMapDisplayTitle(map.title, map.topicFamily);
+                    const date = (() => {
+                      try {
+                        return new Date(map.createdAt).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        });
+                      } catch {
+                        return "";
+                      }
+                    })();
+                    return (
+                      <TableRow key={map.id} className="group">
+                        <TableCell>
+                          <Link
+                            href={`/maps/${map.slug}`}
+                            aria-label={map.title}
+                            className="block aspect-square h-10 w-10 shrink-0 overflow-hidden border border-border bg-muted"
+                            tabIndex={-1}
+                          >
+                            {thumbnailUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={thumbnailUrl}
+                                alt=""
+                                referrerPolicy="no-referrer"
+                                loading="lazy"
+                                decoding="async"
+                                className="h-full w-full object-cover"
+                              />
+                            ) : null}
+                          </Link>
+                        </TableCell>
+                        <TableCell>
+                          <Link
+                            href={`/maps/${map.slug}`}
+                            className="block min-w-0 outline-none focus-visible:outline-none"
+                          >
+                            <h3 className="truncate text-[16px] font-semibold leading-tight tracking-[-0.005em] text-foreground transition-colors duration-150 group-hover:text-primary">
+                              {displayTitle}
+                            </h3>
+                          </Link>
+                        </TableCell>
+                        <TableCell>
+                          <span className="truncate font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                            {map.topicFamily}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="truncate text-[13px] text-muted-foreground">
+                            {map.createdByDisplayName ?? "—"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <time
+                            dateTime={map.createdAt}
+                            className="font-mono text-[11px] tabular-nums uppercase tracking-[0.18em] text-muted-foreground"
+                          >
+                            {date}
+                          </time>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           </div>
         )}
       </div>

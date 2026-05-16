@@ -44,47 +44,51 @@ export async function visualizeCellAction(
   _previousState: VisualizeCellActionState,
   formData: FormData,
 ): Promise<VisualizeCellActionState> {
-  const { data: session } = await getAuth().getSession();
-  if (!session?.user) {
-    return {
-      status: "error",
-      message: "Sign in to generate images.",
-    };
-  }
-
-  const sessionUser = session.user as { id?: string | null; email?: string | null };
-  const requesterId = sessionUser.id || (await getRequesterId());
-  const rateLimit = await checkRateLimit(requesterId);
-  if (!rateLimit.allowed) {
-    return {
-      status: "error",
-      message: "You have reached the current generation limit. Please try again shortly.",
-    };
-  }
-
-  if (!process.env.OPENROUTER_API_KEY) {
-    return {
-      status: "error",
-      message:
-        "Image generation is not configured: set OPENROUTER_API_KEY in the server environment to enable sketches.",
-    };
-  }
-  if (!getBlobReadWriteToken()) {
-    return {
-      status: "error",
-      message:
-        "Generated image persistence is not configured: set BLOB_READ_WRITE_TOKEN in the server environment.",
-    };
-  }
-
-  const mapSlug = String(formData.get("mapSlug") ?? "").trim();
-  const cellId = String(formData.get("cellId") ?? "").trim();
-
-  if (!mapSlug || !cellId) {
-    return { status: "error", message: "Missing map or cell id." };
-  }
-
+  // Outer try/catch: any throw here (auth, rate-limit, KV outage, etc.)
+  // becomes a returned error state. Without this, the action propagates a
+  // raw error which Next.js surfaces as the generic "An unexpected response
+  // was received from the server" — leaving the user no actionable retry.
   try {
+    const { data: session } = await getAuth().getSession();
+    if (!session?.user) {
+      return {
+        status: "error",
+        message: "Sign in to generate images.",
+      };
+    }
+
+    const sessionUser = session.user as { id?: string | null; email?: string | null };
+    const requesterId = sessionUser.id || (await getRequesterId());
+    const rateLimit = await checkRateLimit(requesterId);
+    if (!rateLimit.allowed) {
+      return {
+        status: "error",
+        message: "You have reached the current generation limit. Please try again shortly.",
+      };
+    }
+
+    if (!process.env.OPENROUTER_API_KEY) {
+      return {
+        status: "error",
+        message:
+          "Image generation is not configured: set OPENROUTER_API_KEY in the server environment to enable sketches.",
+      };
+    }
+    if (!getBlobReadWriteToken()) {
+      return {
+        status: "error",
+        message:
+          "Generated image persistence is not configured: set BLOB_READ_WRITE_TOKEN in the server environment.",
+      };
+    }
+
+    const mapSlug = String(formData.get("mapSlug") ?? "").trim();
+    const cellId = String(formData.get("cellId") ?? "").trim();
+
+    if (!mapSlug || !cellId) {
+      return { status: "error", message: "Missing map or cell id." };
+    }
+
     const documentMap = await getMapBySlug(mapSlug);
     if (!documentMap) {
       return { status: "error", message: "Map not found." };

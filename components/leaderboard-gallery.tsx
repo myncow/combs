@@ -4,8 +4,7 @@ import { useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowUpRight, MessageSquare } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowUpRight } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -14,7 +13,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { LeaderboardComments } from "@/components/leaderboard-comments";
 import { LeaderboardEntryEditor } from "@/components/leaderboard-entry-editor";
 import { LeaderboardShareActions } from "@/components/leaderboard-share-actions";
@@ -81,7 +79,7 @@ export function LeaderboardGallery({
   const searchParams = useSearchParams();
   // Backward compat: existing share links still use `?spotlight=<slug>`.
   const focusedSlug = searchParams.get("spotlight");
-  const listContainerRef = useRef<HTMLTableSectionElement>(null);
+  const listContainerRef = useRef<HTMLUListElement>(null);
   const galleryContainerRef = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
@@ -117,59 +115,97 @@ export function LeaderboardGallery({
           bleed ? "md:-mx-8" : "md:mx-0",
         )}
       >
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="w-[64px] md:w-[72px]">Entry</TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead className="hidden w-[180px] md:table-cell">Score</TableHead>
-              <TableHead className="w-auto text-right md:w-[220px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody ref={listContainerRef}>
-            {entries.map((entry) => {
-              const commentCount = entry.commentCount ?? 0;
-              const expandHref = `/?view=gallery&spotlight=${encodeURIComponent(entry.slug)}`;
-              const commentsHref = `${expandHref}#${commentsAnchorId(entry.slug)}`;
-              const ownVoteBlocked = Boolean(
-                viewerId && entry.mapOwnerId && viewerId === entry.mapOwnerId,
-              );
-              return (
-                <TableRow
-                  key={entry.id}
-                  id={entryAnchorId(entry.slug)}
-                  className="scroll-mt-6"
+        {/* Mobile: stacked rows. A <table> wrapped in `overflow-x-auto` lets
+            phone-width content scroll sideways — the most common cause of the
+            "rows overflow horizontally" complaint. A single flex row per item
+            can never exceed its container, so we use that on <md. */}
+        <ul ref={listContainerRef} className="md:hidden">
+          {entries.map((entry) => {
+            const expandHref = `/?view=gallery&spotlight=${encodeURIComponent(entry.slug)}`;
+            return (
+              <li
+                key={entry.id}
+                id={entryAnchorId(entry.slug)}
+                className="scroll-mt-6 border-b border-border last:border-b-0"
+              >
+                <Link
+                  href={expandHref}
+                  aria-label={`Expand ${entry.storyTitle}`}
+                  className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-foreground/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                 >
-                  <TableCell>
-                    <Link
-                      href={expandHref}
-                      aria-label={`Expand ${entry.storyTitle}`}
-                      className="relative block aspect-square h-12 w-12 overflow-hidden border border-border bg-muted md:h-14 md:w-14"
-                    >
-                      <Image
-                        src={entry.imageUrl}
-                        alt=""
-                        fill
-                        sizes="56px"
-                        referrerPolicy="no-referrer"
-                        className="object-cover"
-                      />
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex min-w-0 items-center gap-2">
-                      <div className="min-w-0 flex-1">
-                        <h3 className="truncate font-sans text-[15px] font-semibold leading-tight tracking-[-0.01em] text-foreground md:text-[16px]">
+                  <div className="relative aspect-square h-12 w-12 shrink-0 overflow-hidden border border-border bg-muted">
+                    <Image
+                      src={entry.imageUrl}
+                      alt=""
+                      fill
+                      sizes="48px"
+                      referrerPolicy="no-referrer"
+                      className="object-cover"
+                    />
+                  </div>
+                  <h3 className="min-w-0 flex-1 truncate font-sans text-[15px] font-semibold leading-tight tracking-[-0.01em] text-foreground">
+                    {entry.storyTitle}
+                  </h3>
+                  <span
+                    aria-label={`Score ${entry.score}`}
+                    className="shrink-0 border border-border bg-background px-2 py-0.5 font-mono text-[12px] tabular-nums text-foreground"
+                  >
+                    {entry.score > 0 ? `+${entry.score}` : entry.score}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+
+        <div className="hidden md:block">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-[72px]">Entry</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead className="w-[180px]">Score</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {entries.map((entry) => {
+                const expandHref = `/?view=gallery&spotlight=${encodeURIComponent(entry.slug)}`;
+                const ownVoteBlocked = Boolean(
+                  viewerId && entry.mapOwnerId && viewerId === entry.mapOwnerId,
+                );
+                return (
+                  <TableRow
+                    key={entry.id}
+                    id={`${entryAnchorId(entry.slug)}-md`}
+                    className="relative scroll-mt-6 transition-colors hover:bg-muted/30"
+                  >
+                    <TableCell>
+                      <Link
+                        href={expandHref}
+                        aria-label={`Expand ${entry.storyTitle}`}
+                        className="relative z-10 block aspect-square h-14 w-14 overflow-hidden border border-border bg-muted"
+                      >
+                        <Image
+                          src={entry.imageUrl}
+                          alt=""
+                          fill
+                          sizes="56px"
+                          referrerPolicy="no-referrer"
+                          className="object-cover"
+                        />
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <div className="min-w-0">
+                        <h3 className="relative truncate font-sans text-[16px] font-semibold leading-tight tracking-[-0.01em] text-foreground">
                           <Link
                             href={expandHref}
-                            className="transition-colors hover:text-primary"
+                            className="transition-colors after:absolute after:inset-0 after:content-[''] hover:text-primary"
                           >
                             {entry.storyTitle}
                           </Link>
                         </h3>
-                        {/* Topic/author meta hidden on mobile — keeps the row a single
-                            scannable line; full context lives on the spotlight page. */}
-                        <p className="mt-1 hidden truncate font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground md:block md:text-[10px]">
+                        <p className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                           {entry.topicFamily}
                           {entry.createdByDisplayName ? (
                             <>
@@ -181,64 +217,27 @@ export function LeaderboardGallery({
                           ) : null}
                         </p>
                       </div>
-                      {/* Compact score badge — only on mobile (Score column is shown md+). */}
-                      <span
-                        aria-label={`Score ${entry.score}`}
-                        className="shrink-0 border border-border bg-background px-2 py-0.5 font-mono text-[12px] tabular-nums text-foreground md:hidden"
-                      >
-                        {entry.score > 0 ? `+${entry.score}` : entry.score}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <LeaderboardVoteControls
-                      slug={entry.slug}
-                      score={entry.score}
-                      upvotes={entry.upvotes}
-                      downvotes={entry.downvotes}
-                      viewerVote={entry.viewerVote ?? null}
-                      compact
-                      isSignedIn={isSignedIn}
-                      disabledReason={
-                        ownVoteBlocked ? "You can't vote on your own creation" : null
-                      }
-                    />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      {/* Comment chip hidden on mobile to reduce row weight; users
-                          tap Expand to reach the threaded view. */}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Link
-                            href={commentsHref}
-                            aria-label={`View ${commentCount} ${commentCount === 1 ? "comment" : "comments"}`}
-                            className={cn(
-                              "hidden h-8 items-center gap-1.5 border border-border bg-card px-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:inline-flex",
-                              "hover:[&_svg]:fill-[color:color-mix(in_srgb,var(--primary)_15%,transparent)]",
-                            )}
-                          >
-                            <MessageSquare className="h-3 w-3" aria-hidden strokeWidth={1.75} />
-                            <span className="tabular-nums">{commentCount}</span>
-                          </Link>
-                        </TooltipTrigger>
-                        <TooltipContent>View comments</TooltipContent>
-                      </Tooltip>
-                      <Button asChild variant="secondary" size="sm">
-                        <Link
-                          href={expandHref}
-                          aria-label={`Expand ${entry.storyTitle}`}
-                        >
-                          Expand
-                        </Link>
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                    </TableCell>
+                    <TableCell className="relative z-10">
+                      <LeaderboardVoteControls
+                        slug={entry.slug}
+                        score={entry.score}
+                        upvotes={entry.upvotes}
+                        downvotes={entry.downvotes}
+                        viewerVote={entry.viewerVote ?? null}
+                        compact
+                        isSignedIn={isSignedIn}
+                        disabledReason={
+                          ownVoteBlocked ? "You can't vote on your own creation" : null
+                        }
+                      />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     );
   }
