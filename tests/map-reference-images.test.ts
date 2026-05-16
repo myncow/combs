@@ -204,8 +204,9 @@ describe("enrichMapDocumentReferenceImages", () => {
       ],
       featuredExamples: [
         {
-          name: "SecondToken",
-          brand: "FirstToken",
+          // name has >2 words so the builder drops brand entirely → query is just the name.
+          name: "Shared Query Tokens",
+          brand: "BrandOne",
           description: "y".repeat(50),
           coordinates: { ax: "0", ay: "0" },
           status: "existing" as const,
@@ -218,7 +219,10 @@ describe("enrichMapDocumentReferenceImages", () => {
           ...cellBase,
           examples: [
             {
-              name: "FirstToken SecondToken",
+              // Same name (so same assembled query) but different brand identity
+              // — the memo on normalized query string should still dedupe.
+              name: "Shared Query Tokens",
+              brand: "BrandTwo",
               description: "y".repeat(50),
               coordinates: { ax: "0", ay: "0" },
               status: "existing" as const,

@@ -10,7 +10,7 @@ export type ExampleImageHit = {
 
 const QUERY_MIN = 2;
 export const EXAMPLE_IMAGE_QUERY_MAX = 200;
-const CAP = 8;
+const CAP = 5;
 
 type SerpImageRow = {
   title?: string;

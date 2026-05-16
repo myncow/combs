@@ -1282,14 +1282,20 @@ function CellPreviewImage({ image }: { image: { url: string; alt: string } }) {
         "flex items-center justify-center bg-[color:color-mix(in_srgb,var(--foreground)_6%,var(--background))]",
       )}
     >
-      <Image
+      {/* Native <img>: previewImage.url may be either a Vercel Blob viz
+          URL or a SERP `ref.thumbnail` from an arbitrary host. next/image
+          rejects unconfigured hostnames at render time, which corrupts
+          the server-action RSC payload when visualizeCellAction calls
+          revalidatePath. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         key={image.url}
         src={image.url}
         alt={image.alt}
         width={640}
         height={480}
-        sizes="(max-width: 768px) 25vw, 200px"
         loading="lazy"
+        decoding="async"
         referrerPolicy="no-referrer"
         className="live-image-reveal h-full w-full object-cover [transform:translateZ(0)]"
       />

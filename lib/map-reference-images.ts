@@ -6,8 +6,8 @@ import { fetchGoogleImageExampleResults, getSerpApiKey, normalizeExampleImageQue
 import type { MapDocument, MapExample, MapReferenceImage } from "@/lib/types";
 import { exampleImageSearchQuery } from "@/lib/utils";
 
-/** Stored hits per example; capped for persistence (4–8 range). */
-export const REFERENCE_IMAGES_PER_EXAMPLE = 6;
+/** Stored hits per example; matches the 4-tile display cap in PersistedReferenceThumbnails. */
+export const REFERENCE_IMAGES_PER_EXAMPLE = 4;
 
 /** Max in-flight SerpApi requests during reference enrichment (ordered queue; featured-first). */
 export const REFERENCE_ENRICHMENT_MAX_CONCURRENCY = 4;
@@ -185,17 +185,7 @@ export async function enrichMapDocumentReferenceImages(
     if (!q || !moderateText(q).safe) {
       return;
     }
-    let hits = await resolveQuery(q);
-    // Brand+name+year is often too specific for abstract / generated names;
-    // retry on name alone before giving up. Costs at most one extra call per
-    // miss and only fires when the first attempt was empty.
-    if (!hits.length) {
-      const fallbackRaw = (ex.name ?? "").trim();
-      const fallback = normalizeExampleImageQuery(fallbackRaw);
-      if (fallback && fallback !== q && moderateText(fallback).safe) {
-        hits = await resolveQuery(fallback);
-      }
-    }
+    const hits = await resolveQuery(q);
     if (hits.length) {
       hitsByKey.set(key, hits);
       if (onExampleEnriched) {
