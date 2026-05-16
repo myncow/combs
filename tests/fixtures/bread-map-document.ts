@@ -31,7 +31,7 @@ function buildCells(): MapDocument["cells"] {
                   "Named bakery reference long enough to satisfy example policy in unit tests.",
                 coordinates: { grain, fermentation },
                 status: "existing",
-                brand: "Test Bench Bakery",
+                attribution: "Test Bench Bakery",
                 evidenceNote: "Recorded benchmark loaf used only for automated checks.",
               },
             ],
@@ -71,7 +71,7 @@ export const testBreadMapDocument: MapDocument = {
         "Canonical wheat yeast loaf with crackling crust — fixture anchor for image enrichment tests.",
       coordinates: { grain: "Wheat", fermentation: "Yeast" },
       status: "existing",
-      brand: "Paris Bench",
+      attribution: "Paris Bench",
     },
     {
       name: "Injera",
@@ -79,7 +79,7 @@ export const testBreadMapDocument: MapDocument = {
         "Teff sourdough flatbread with spongy face — second fixture anchor for dedupe tests.",
       coordinates: { grain: "Rye", fermentation: "Sourdough" },
       status: "rare",
-      brand: "Addis Fixture Co.",
+      attribution: "Addis Fixture Co.",
     },
   ],
   notableGaps: [

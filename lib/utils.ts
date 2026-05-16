@@ -53,34 +53,31 @@ export function googleImagesSearchUrl(query: string): string {
 
 export function exampleImageSearchQuery(example: {
   name?: string;
-  brand?: string;
+  attribution?: string;
   year?: string;
 }): string {
   // Image-search queries are most effective when the subject *is* the query.
-  // In our dataset `brand` is usually a taxonomic family, museum, agency, or
-  // era ("Cactaceae", "USDA NRCS", "Ptolemaic Egypt"), and `year` is often a
-  // bucket like "Historical" or "1st-2nd Century AD". Prepending either kind
-  // of context to the name reliably drops Google Images to zero results — the
-  // db audit found 32% of examples with no images at all under the old
-  // [brand, name, year] join. Strategy: name as the spine, brand appended only
-  // when the name is short enough that disambiguation is genuinely useful AND
-  // brand isn't already substring-present in the name.
+  // Strategy: name as the spine, attribution appended only when the name is
+  // short enough that disambiguation is genuinely useful AND attribution
+  // isn't already substring-present in the name. Year is dropped — even when
+  // it's a real 4-digit number, image search rarely benefits from it; when
+  // it's text ("Historical", "1st-2nd Century AD") it actively dilutes.
   const name = (example.name ?? "").trim().replace(/\s+/g, " ");
   if (!name) {
     return "";
   }
-  const brand = (example.brand ?? "").trim().replace(/\s+/g, " ");
-  if (!brand) {
+  const attribution = (example.attribution ?? "").trim().replace(/\s+/g, " ");
+  if (!attribution) {
     return name;
   }
-  if (name.toLowerCase().includes(brand.toLowerCase())) {
+  if (name.toLowerCase().includes(attribution.toLowerCase())) {
     return name;
   }
   const nameWordCount = name.split(" ").length;
   if (nameWordCount > 2) {
     return name;
   }
-  return `${name} ${brand}`;
+  return `${name} ${attribution}`;
 }
 
 /** Matches server `normalizeExampleImageQuery` minimum length; safe for RSC + client. */

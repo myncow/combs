@@ -81,7 +81,15 @@ export interface MapExample {
   description: string;
   coordinates: Record<string, string>;
   status: MapCellStatus;
-  brand?: string;
+  /**
+   * A specific, verifiable real-world entity that grounds this example so a
+   * reader can image-search or fact-check it: a named maker, designer,
+   * holding institution, recognized regional appellation tied to *this*
+   * specific variety, archaeological find-site, named expedition, etc.
+   * Deliberately NOT a category, topic-family duplicate, generic qualifier,
+   * or certification mark — those weaken image search and add no signal.
+   */
+  attribution?: string;
   year?: string;
   evidenceNote?: string;
   confidence?: number;

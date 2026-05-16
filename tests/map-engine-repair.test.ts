@@ -99,14 +99,14 @@ function examples(prefix: string, coordinates: Record<string, string>) {
   return [
     {
       name: `${prefix} One`,
-      brand: `${prefix} Brand`,
+      attribution: `${prefix} Brand`,
       description: `${prefix} one fixture anchor.`,
       coordinates,
       status: "existing" as const,
     },
     {
       name: `${prefix} Two`,
-      brand: `${prefix} Works`,
+      attribution: `${prefix} Works`,
       description: `${prefix} two fixture anchor.`,
       coordinates,
       status: "existing" as const,

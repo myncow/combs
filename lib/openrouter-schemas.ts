@@ -48,7 +48,7 @@ const mapExampleSchema = {
     description: { type: "string" },
     coordinates: coordinatesSchema,
     status: mapStatusSchema,
-    brand: { type: "string" },
+    attribution: { type: "string" },
     year: { type: "string" },
     evidenceNote: { type: "string" },
     confidence: { type: "number" },

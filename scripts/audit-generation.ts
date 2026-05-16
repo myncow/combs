@@ -259,7 +259,7 @@ function reportDoc(doc: MapDocument) {
       `  · [${cell.status}] ${cell.label}  (${coordPretty})  examples=${cell.examples.length}`,
     );
     for (const ex of cell.examples) {
-      lines.push(`      ↳ ${ex.name}${ex.brand ? ` — ${ex.brand}` : ""}`);
+      lines.push(`      ↳ ${ex.name}${ex.attribution ? ` — ${ex.attribution}` : ""}`);
     }
   }
 

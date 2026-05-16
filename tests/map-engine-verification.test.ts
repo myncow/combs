@@ -51,14 +51,14 @@ function verificationDoc(): MapDocument {
         examples: [
           {
             name: "Linea Mini R",
-            brand: "La Marzocco",
+            attribution: "La Marzocco",
             description: "Verified example one.",
             coordinates: { axis_x: "A", axis_y: "1" },
             status: "existing",
           },
           {
             name: "GS3",
-            brand: "La Marzocco",
+            attribution: "La Marzocco",
             description: "Verified example two.",
             coordinates: { axis_x: "A", axis_y: "1" },
             status: "existing",
@@ -76,14 +76,14 @@ function verificationDoc(): MapDocument {
         examples: [
           {
             name: "Linea Mini",
-            brand: "La Marzocco",
+            attribution: "La Marzocco",
             description: "Verified example.",
             coordinates: { axis_x: "A", axis_y: "2" },
             status: "existing",
           },
           {
             name: "E61 Legend",
-            brand: "Generic House",
+            attribution: "Generic House",
             description: "Weak anchor that should fail verification.",
             coordinates: { axis_x: "A", axis_y: "2" },
             status: "existing",
@@ -101,7 +101,7 @@ function verificationDoc(): MapDocument {
         examples: [
           {
             name: "Unknown Heritage Lever",
-            brand: "Mystery Maker",
+            attribution: "Mystery Maker",
             description: "Weak anchor.",
             coordinates: { axis_x: "A", axis_y: "3" },
             status: "rare",
@@ -151,14 +151,14 @@ function verificationDoc(): MapDocument {
         examples: [
           {
             name: "Profitec Drive",
-            brand: "Profitec",
+            attribution: "Profitec",
             description: "Filler example one.",
             coordinates: { axis_x: "C", axis_y: "1" },
             status: "existing",
           },
           {
             name: "ECM Synchronika",
-            brand: "ECM",
+            attribution: "ECM",
             description: "Filler example two.",
             coordinates: { axis_x: "C", axis_y: "1" },
             status: "existing",
@@ -176,14 +176,14 @@ function verificationDoc(): MapDocument {
         examples: [
           {
             name: "Lelit Bianca",
-            brand: "Lelit",
+            attribution: "Lelit",
             description: "Filler example one.",
             coordinates: { axis_x: "C", axis_y: "2" },
             status: "existing",
           },
           {
             name: "Rocket Appartamento",
-            brand: "Rocket",
+            attribution: "Rocket",
             description: "Filler example two.",
             coordinates: { axis_x: "C", axis_y: "2" },
             status: "existing",
@@ -201,14 +201,14 @@ function verificationDoc(): MapDocument {
         examples: [
           {
             name: "Silvia Pro X",
-            brand: "Rancilio",
+            attribution: "Rancilio",
             description: "Filler example one.",
             coordinates: { axis_x: "C", axis_y: "3" },
             status: "existing",
           },
           {
             name: "Ascaso Steel Duo PID",
-            brand: "Ascaso",
+            attribution: "Ascaso",
             description: "Filler example two.",
             coordinates: { axis_x: "C", axis_y: "3" },
             status: "existing",

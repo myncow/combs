@@ -204,7 +204,7 @@ export const mapExamplesTable = pgTable(
     description: text("description").notNull(),
     status: mapCellStatusEnum("status").notNull(),
     coordinatesSnapshot: jsonb("coordinates_snapshot").notNull(),
-    brand: varchar("brand", { length: 180 }),
+    attribution: varchar("attribution", { length: 180 }),
     year: varchar("year", { length: 32 }),
     evidenceNote: text("evidence_note"),
     confidence: integer("confidence_basis_points"),

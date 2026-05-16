@@ -17,7 +17,8 @@ export type ResearchGroundingState = "none" | "unsourced" | "sourced";
 
 export interface ResearchEntity {
   name: string;
-  brand?: string;
+  /** Specific verifiable real-world entity grounding this anchor (maker, holding institution, named regional appellation, designer, expedition). Empty when none can be cited. */
+  attribution?: string;
   category?: string;
   evidence?: string;
   /**
@@ -170,9 +171,17 @@ Prioritize axes that expose canonical examples, rare edge cases, plausible gaps,
 
 Find real named examples that prove cells in this taxonomy. Return plain text with this exact section:
 REAL EXAMPLES:
-- <example name> | <brand/origin/creator if any> | <category tags or likely axis values> | <why it is evidence>
+- <example name> | <attribution: the specific verifiable entity that grounds this anchor — maker, holding institution, named designer, regional appellation tied to *this very cultivar/variety*, archaeological find-site, named expedition — or leave blank> | <category tags or likely axis values> | <why it is evidence>
 
-Prefer specific attributable instances (catalogued specimens, chartered policies, premiered works, released SKUs—whatever matches the ontology) rather than generic headings. Invent nothing; skip fields you cannot corroborate.`,
+Prefer specific attributable instances (catalogued specimens, chartered policies, premiered works, released SKUs—whatever matches the ontology) rather than generic headings. Invent nothing; skip fields you cannot corroborate.
+
+Attribution rules — the second slot is for verifiability, not categorization:
+- DO put: the specific maker/manufacturer, the museum or collection holding the artifact, the named designer/creator, the regional appellation tied to this specific cultivar, the named expedition/voyage, the archaeological find-site.
+- DO NOT put: the topic itself or a taxonomic parent of the topic (e.g. don't write "Cactaceae" for a cactus on a cactus map, "North Indian Cuisine" for a curry on a curry map). The map's topic is already context; repeating it adds zero signal.
+- DO NOT put: generic qualifiers ("Traditional", "Historical", "Modern", "Standard", "Classic", "Artisanal", "Generic", "Various").
+- DO NOT put: era / dynasty / century labels that belong in the year slot ("Ptolemaic Egypt", "Roman Britain", "1st-2nd Century AD"). If you have a holding institution, use that instead; if not, omit.
+- DO NOT put: certification marks alone ("PDO", "IGP", "ISO") — those are categories, not attributions.
+- When in doubt, leave the slot blank. An empty attribution is strictly better than a misleading one.`,
     },
     {
       focus: "constraints",
@@ -356,7 +365,7 @@ function extractEntityHints(text: string): ResearchEntity[] {
 
   return bullets
     .map((bullet) => {
-      const [rawName, rawBrand, rawCategory, rawEvidence] = bullet.split("|").map((part) => part.trim());
+      const [rawName, rawAttribution, rawCategory, rawEvidence] = bullet.split("|").map((part) => part.trim());
       const name = rawName?.replace(/^Name:\s*/i, "").trim();
 
       if (!name || name.length < 2 || /^(example name|category|style)$/i.test(name)) {
@@ -376,8 +385,8 @@ function extractEntityHints(text: string): ResearchEntity[] {
         visualDescriptors,
         citations: [],
       };
-      if (rawBrand && !/^none|n\/a|unknown$/i.test(rawBrand)) {
-        entity.brand = rawBrand;
+      if (rawAttribution && !/^none|n\/a|unknown$/i.test(rawAttribution)) {
+        entity.attribution = rawAttribution;
       }
       if (rawCategory) {
         entity.category = rawCategory;
@@ -504,7 +513,7 @@ function formatEntity(entity: ResearchEntity) {
   const visualLine = formatVisualLine(entity);
   return [
     entity.name,
-    entity.brand,
+    entity.attribution,
     entity.category,
     entity.evidence,
     visualLine || (entity.visualDescriptors.length ? `Visual cues: ${entity.visualDescriptors.join(", ")}` : ""),

@@ -12,8 +12,8 @@ export const REFERENCE_IMAGES_PER_EXAMPLE = 4;
 /** Max in-flight SerpApi requests during reference enrichment (ordered queue; featured-first). */
 export const REFERENCE_ENRICHMENT_MAX_CONCURRENCY = 4;
 
-export function exampleIdentityKey(example: Pick<MapExample, "name" | "brand" | "year">): string {
-  return `${example.name.trim().toLowerCase()}\u0000${(example.brand ?? "").trim().toLowerCase()}\u0000${(example.year ?? "").trim().toLowerCase()}`;
+export function exampleIdentityKey(example: Pick<MapExample, "name" | "attribution" | "year">): string {
+  return `${example.name.trim().toLowerCase()}\u0000${(example.attribution ?? "").trim().toLowerCase()}\u0000${(example.year ?? "").trim().toLowerCase()}`;
 }
 
 function normalizeHits(rows: Awaited<ReturnType<typeof fetchGoogleImageExampleResults>>["results"]): MapReferenceImage[] {
@@ -114,7 +114,7 @@ export async function enrichMapDocumentReferenceImages(
     }
     // Preserve any reference images attached upstream (e.g. by the gap-cell
     // SerpApi verification step). Without this guard, a stronger label-based
-    // probe done earlier would be overwritten by a weaker name+brand+year query.
+    // probe done earlier would be overwritten by a weaker name+attribution+year query.
     if (ex.referenceImages && ex.referenceImages.length > 0) {
       return;
     }

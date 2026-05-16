@@ -20,8 +20,8 @@ beforeEach(() => {
 
 describe("exampleIdentityKey", () => {
   it("normalizes casing", () => {
-    expect(exampleIdentityKey({ name: "Foo", brand: "Bar", year: "1999" })).toBe(
-      exampleIdentityKey({ name: "foo", brand: "bar", year: "1999" }),
+    expect(exampleIdentityKey({ name: "Foo", attribution: "Bar", year: "1999" })).toBe(
+      exampleIdentityKey({ name: "foo", attribution: "bar", year: "1999" }),
     );
   });
 });
@@ -58,7 +58,7 @@ describe("enrichMapDocumentReferenceImages", () => {
       description: "y".repeat(50),
       coordinates: { ax: "u", ay: "v" },
       status: "existing",
-      brand: "BrandX",
+      attribution: "BrandX",
       evidenceNote: "Long enough note for policy.",
     };
     const cellBase = {
@@ -204,9 +204,9 @@ describe("enrichMapDocumentReferenceImages", () => {
       ],
       featuredExamples: [
         {
-          // name has >2 words so the builder drops brand entirely → query is just the name.
+          // name has >2 words so the builder drops attribution entirely → query is just the name.
           name: "Shared Query Tokens",
-          brand: "BrandOne",
+          attribution: "BrandOne",
           description: "y".repeat(50),
           coordinates: { ax: "0", ay: "0" },
           status: "existing" as const,
@@ -219,10 +219,10 @@ describe("enrichMapDocumentReferenceImages", () => {
           ...cellBase,
           examples: [
             {
-              // Same name (so same assembled query) but different brand identity
+              // Same name (so same assembled query) but different attribution identity
               // — the memo on normalized query string should still dedupe.
               name: "Shared Query Tokens",
-              brand: "BrandTwo",
+              attribution: "BrandTwo",
               description: "y".repeat(50),
               coordinates: { ax: "0", ay: "0" },
               status: "existing" as const,

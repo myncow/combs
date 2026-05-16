@@ -478,7 +478,7 @@ export function formatResearchForPrompt(research: ResearchContext, purpose: "ske
   const entityLedger = research.entityHints.length
     ? research.entityHints
         .slice(0, entityLimit)
-        .map((entity) => [entity.name, entity.brand, entity.category, entity.evidence].filter(Boolean).join(" | "))
+        .map((entity) => [entity.name, entity.attribution, entity.category, entity.evidence].filter(Boolean).join(" | "))
         .join("\n")
     : research.knownEntities.slice(0, entityLimit).join(", ");
   const axisHints = research.axisHints.length
@@ -522,9 +522,9 @@ Universal map contract (same rules for every topic):
 - No axis drift mid-pass: Never introduce new axes, synonyms for keys, or untracked value labels outside the skeleton and normalized brief.
 - Named anchors: Examples must cite identifiable referents (named artifacts, regimes, specimens, canon entries, regimes of practice)—not rhetorical moods, unnamed styles, generic classes, or adjective stacks pretending to be names.
 - Evidence routing: Prefer the GROUNDED RESEARCH PACK; outside that rely only on stable common knowledge readers would broadly accept without specialty invention. Thin evidence → downgrade status and articulate epistemic limits in the prose.
-- Anti-fabrication: Omit SKU-level detail rather than speculate (brands/dates/origins/competition outcomes). Prefer leaving optional fields absent over invented precision.
+- Anti-fabrication: Omit SKU-level detail rather than speculate (attributions/dates/origins/competition outcomes). Prefer leaving optional fields absent over invented precision.
 - Status semantics — "existing" needs two distinct anchors each meeting the verifier bar below; "rare" needs exactly one; "gap/tension/impossible" follow the skeletal prompt definitions while stating which rule binds.
-- verifier bar each anchor: substantive evidenceNote OR explicit brand/origin/date/creator lineage OR a description (same object) of ≥48 characters that states what the anchor is and why it belongs in this cell—not filler strings.
+- verifier bar each anchor: substantive evidenceNote OR an explicit \`attribution\` naming a specific verifiable real-world entity (maker, holding institution, named designer, regional appellation tied to *this very* cultivar/variety, archaeological find-site, named expedition) OR a description (same object) of ≥48 characters that states what the anchor is and why it belongs in this cell—not filler strings. \`attribution\` is NOT: the topic itself or a taxonomic parent of the topic, a generic qualifier ("Traditional", "Historical", "Modern", "Standard", "Classic", "Generic"), an era/century label that belongs in \`year\`, or a certification mark alone ("PDO", "IGP", "ISO"). When you cannot cite a real entity, leave \`attribution\` blank and lean on one of the other three verifier paths.
 - Low research throughput: prioritize gap/tension labels, avoid overcrowding "existing", and forbid promotional-sounding specificity without corroborating context.
 - Gap-first intent: This map is a gap visualizer. "gap" and "tension" cells are first-class outputs, not placeholders—label them whenever a crossing is plausible-but-underfilled or structurally constrained, and write explanations that describe what WOULD need to exist to fill the cell in concrete, picturable terms (material, form, setting, process) so the user can imagine or image-search it.
 - Visualizable cells: Because every axis value is picturable, every filled cell should be something a user could visualize; keep cell labels short and scene-stable for the same reason.
@@ -566,14 +566,17 @@ export function sanitizeMapTitle(rawTitle: string, brief: NormalizedMapBrief): s
 }
 
 /**
- * Generic placeholder brand/name fragments models reach for when they cannot
- * cite a real anchor: "Industry Standard", "Generic Prototype", "Custom",
- * "Concept Recovery Cruiser", etc. These slip past evidence checks because
- * they're nominally non-empty strings, but they're fabrications and need to
- * downgrade the surrounding cell to gap/rare.
+ * Strings the LLM falls back to for the `attribution` slot when it can't cite
+ * a real verifiable entity: outright placeholders ("Generic", "Prototype",
+ * "Concept"), generic qualifiers ("Traditional", "Historical", "Modern",
+ * "Standard", "Classic", "Artisanal"), category words mistaken for
+ * attribution ("Cultivar"), and the literal nullables. Any of these in the
+ * attribution slot means the slot adds zero verifiable signal and should
+ * downgrade the surrounding cell, not earn the verifier bonus.
  */
-const PLACEHOLDER_BRAND_PATTERNS = [
+const PLACEHOLDER_ATTRIBUTION_PATTERNS = [
   /\b(generic|industry standard|specialized [a-z]+ footwear|industry|prototype|concept(?:ual)?|custom|hypothetical|fictional|theoretical|imagined|placeholder|representative)\b/i,
+  /\b(traditional|historical|modern|standard|classic|artisanal|domestic|cultivar)\b/i,
   /^(none|n\/a|unknown|various|tba|tbd)$/i,
 ];
 
@@ -619,11 +622,11 @@ const RULE_BASED_IMPOSSIBLE_PATTERNS = [
   /\bstructur(?:al|ally)\b/i,
 ];
 
-function looksLikePlaceholderBrand(brand: string | undefined): boolean {
-  if (!brand) return false;
-  const trimmed = brand.trim();
+function looksLikePlaceholderAttribution(attribution: string | undefined): boolean {
+  if (!attribution) return false;
+  const trimmed = attribution.trim();
   if (!trimmed) return false;
-  return PLACEHOLDER_BRAND_PATTERNS.some((re) => re.test(trimmed));
+  return PLACEHOLDER_ATTRIBUTION_PATTERNS.some((re) => re.test(trimmed));
 }
 
 function looksLikePlaceholderName(name: string | undefined): boolean {
@@ -657,8 +660,8 @@ function normalizeExampleParentIdentity(raw: string): string {
   return normalized;
 }
 
-export function exampleParentIdentity(example: Pick<MapExample, "name" | "brand">): string {
-  const composite = [example.brand, example.name].filter(Boolean).join(" ").trim();
+export function exampleParentIdentity(example: Pick<MapExample, "name" | "attribution">): string {
+  const composite = [example.attribution, example.name].filter(Boolean).join(" ").trim();
   return normalizeExampleParentIdentity(composite || example.name || "");
 }
 
@@ -728,23 +731,23 @@ function pruneDuplicateAnchorsAcrossCells(cells: MapDocument["cells"]) {
   }
 }
 
-/** Named instance + verifiable hook: brand, year, substantive note, or clearly argued description (models often put proof in description). */
+/** Named instance + verifiable hook: attribution, year, substantive note, or clearly argued description (models often put proof in description). */
 export function hasConcreteExample(example: MapExample): boolean {
   const nameOk = Boolean(example.name?.trim());
   if (!nameOk) return false;
   if (looksLikePlaceholderName(example.name)) return false;
-  if (looksLikePlaceholderBrand(example.brand)) return false;
+  if (looksLikePlaceholderAttribution(example.attribution)) return false;
   if (looksLikeModifiedAnchorName(example.name)) return false;
   const note = example.evidenceNote?.trim() ?? "";
-  const brandOk = Boolean(example.brand?.trim()) && !looksLikePlaceholderBrand(example.brand);
+  const attributionOk = Boolean(example.attribution?.trim()) && !looksLikePlaceholderAttribution(example.attribution);
   const yearOk = Boolean(example.year?.trim());
   const descOk = (example.description?.trim().length ?? 0) >= 48;
-  return brandOk || yearOk || note.length >= 12 || descOk;
+  return attributionOk || yearOk || note.length >= 12 || descOk;
 }
 
 function exampleEvidenceScore(example: MapExample): number {
   let score = 0;
-  if (example.brand?.trim()) score += 4;
+  if (example.attribution?.trim()) score += 4;
   if (example.year?.trim()) score += 2;
   if ((example.evidenceNote?.trim().length ?? 0) >= 12) score += 2;
   if ((example.description?.trim().length ?? 0) >= 48) score += 1;
@@ -800,7 +803,7 @@ function stripGenerationExample(example: MapExample): MapExample {
     name: stripTaxonomyWords(example.name) || example.name,
     description: stripTaxonomyWords(example.description) || example.description,
     evidenceNote: example.evidenceNote ? stripTaxonomyWords(example.evidenceNote) || example.evidenceNote : undefined,
-    brand: example.brand ? stripTaxonomyWords(example.brand) || example.brand : undefined,
+    attribution: example.attribution ? stripTaxonomyWords(example.attribution) || example.attribution : undefined,
     referenceImages: stripReferenceImageMeta(example.referenceImages),
   };
 }
@@ -1039,7 +1042,7 @@ function exampleIntrinsicVerificationStrength(example: MapExample): number {
   if (example.name.trim().split(/\s+/).length >= 2) {
     score += 1;
   }
-  if (!looksLikePlaceholderBrand(example.brand)) {
+  if (!looksLikePlaceholderAttribution(example.attribution)) {
     score += 1;
   }
   return score;
@@ -1065,7 +1068,7 @@ function shouldKeepExampleAfterProbe(example: MapExample, result: ProbeResult): 
   const intrinsicStrength = exampleIntrinsicVerificationStrength(example);
   const suspicious =
     looksLikeModifiedAnchorName(example.name) ||
-    looksLikePlaceholderBrand(example.brand) ||
+    looksLikePlaceholderAttribution(example.attribution) ||
     looksLikePlaceholderName(example.name);
 
   if (result.hits.length === 0) {
@@ -1755,10 +1758,11 @@ Quality bar:
 - "Gap" means plausible but underdeveloped, not nonsense. For gap cells, the explanation must describe what WOULD need to exist to fill it, in concrete, picturable terms (material, form factor, setting, process step)—so the reader can imagine or image-search the missing thing.
 - Cell labels are SCENE LABELS, not status tags. NEVER prefix a label with the status word ("Gap …", "Rare …", "Tension …", "Impossible …", "Common …", "Canonical …"). NEVER use the literal coordinate values as the label ("Reverse-Tanto Full-Bolster"). Instead, name the picturable thing a single hero photo would show — concrete materials, form factor, setting (e.g., "Hearth-charred slack-dough flatbread", "Saturated dual-boiler chrome cube", "Hidden-tang gyuto with steel cap"). Empty cells (gap/tension/impossible) still get vivid scene labels describing the missing/forbidden thing.
 - EVERY example names an identifiable anchor; pick whichever hook suits the ontology (institutional operator, genealogical lineage, catalogued artifact identifier, sanctioned movement name)—never unnamed vibe words masquerading as examples.
-- ANTI-FABRICATION: never invent placeholder anchors with brand names like "Generic", "Industry Standard", "Custom", "Concept", "Prototype", "Hypothetical", "Specialized X Footwear". If you cannot cite a real named instance with a real maker for a cell, downgrade the cell from existing/rare to gap and write the gap explanation. Better an empty gap than a fake anchor.
+- ANTI-FABRICATION: never invent placeholder anchors with attribution strings like "Generic", "Industry Standard", "Custom", "Concept", "Prototype", "Hypothetical", "Specialized X Footwear", "Traditional", "Historical", "Modern", "Standard", "Classic", "Artisanal". If you cannot cite a real named instance with a real maker/holder/designer for a cell, downgrade the cell from existing/rare to gap and write the gap explanation. Better an empty gap than a fake anchor.
+- ATTRIBUTION RULES: the \`attribution\` slot is a specific verifiable entity (named maker, holding institution, named designer, regional appellation tied to *this very* cultivar/variety, archaeological find-site, named expedition). DO NOT use the topic family itself ("Cactaceae" for a cactus, "North Indian Cuisine" for a curry, "Boats" for a boat — the topic is already context), DO NOT use generic qualifiers ("Traditional", "Historical", "Modern"), DO NOT use era/century labels that belong in \`year\` ("Ptolemaic Egypt", "1st-2nd Century AD"), DO NOT use certification marks alone ("PDO", "IGP", "ISO"). When in doubt, OMIT — an empty attribution is strictly better than a misleading one.
 - ONE PARENT PER CELL: each parent product/specimen/work appears in at most ONE cell. Do not split product family variants ("X PDO" + "X non-PDO", "Vaporfly 3" + "Vaporfly 4") across cells just to fill quadrants—pick the cell that best matches the family's archetype and use a different anchor elsewhere.
 - Mark a cell "existing" only when ≥2 verifiable proofs exist by contract definition; exactly one ⇒ "rare"; none ⇒ gap/tension/impossible unless explanation states why no anchor can exist even in principle.
-- For every "existing" cell the examples array MUST contain ≥2 entries before you finish; each entry must pass the verifier (name plus brand, year, evidenceNote≥12, or description≥48). Single-example "existing" cells are invalid output.
+- For every "existing" cell the examples array MUST contain ≥2 entries before you finish; each entry must pass the verifier (name plus a real attribution, year, evidenceNote≥12, or description≥48). Single-example "existing" cells are invalid output.
 - For "existing"/"rare", prefer ENTITY LEDGER overlaps; mismatches downgrade status rather than inventing replacements.
 - Evidence notes articulate why the cited anchor occupies the quadrant, never paraphrase titles.
 - Maintain status diversity—inflate neither "existing" nor "impossible" beyond what evidence supports.
@@ -1767,7 +1771,7 @@ Quality bar:
 ${universalMapContract}
 
 REFERENCE SHAPE ONLY (reuse your skeleton.dimension keys—not these literal identifiers):
-[{"id":"illustration-positive","coordinates":{"axis_one":"Anchored","axis_two":"Controlled"},"label":"Worked cell","status":"existing","confidence":0.86,"examples":[{"name":"Named Reference A","description":"Brief role","coordinates":{"axis_one":"Anchored","axis_two":"Controlled"},"brand":"ResponsibleOrg","year":"2019","status":"existing","confidence":0.9,"evidenceNote":"Anchors quadrant with two independently cited referents"},{"name":"Named Reference B",...}]} , {"id":"illustration-blocked","coordinates":{"axis_one":"Pinned","axis_two":"Inverted"},"label":"Forbidden crossing","status":"impossible","explanation":"State which rule forbids coexistence","examples":[]}]
+[{"id":"illustration-positive","coordinates":{"axis_one":"Anchored","axis_two":"Controlled"},"label":"Worked cell","status":"existing","confidence":0.86,"examples":[{"name":"Named Reference A","description":"Brief role","coordinates":{"axis_one":"Anchored","axis_two":"Controlled"},"attribution":"ResponsibleOrg","year":"2019","status":"existing","confidence":0.9,"evidenceNote":"Anchors quadrant with two independently cited referents"},{"name":"Named Reference B",...}]} , {"id":"illustration-blocked","coordinates":{"axis_one":"Pinned","axis_two":"Inverted"},"label":"Forbidden crossing","status":"impossible","explanation":"State which rule forbids coexistence","examples":[]}]
 `;
 
   const eventBuffers: GenerationSinkEvent[][] = sink

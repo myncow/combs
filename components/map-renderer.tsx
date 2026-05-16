@@ -190,12 +190,12 @@ function CellVisualizeOwner({
   setEntry: (cellId: string, entry: VisualizeEntry) => void;
 }) {
   const cellId = cell.id;
-  const [imageModel, setImageModel] = useState<string>(() => {
-    if (typeof window === "undefined") {
-      return CELL_IMAGE_MODEL;
-    }
-    return readStoredImageModel();
-  });
+  // Always start with the SSR-safe default. Reading localStorage in the
+  // initializer would diverge between server (default) and client (stored),
+  // producing a hydration mismatch (React #418) and corrupting the
+  // server-action response on the next round-trip. Hydrate from storage in
+  // an effect instead.
+  const [imageModel, setImageModel] = useState<string>(CELL_IMAGE_MODEL);
   const [state, formAction, isPending] = useActionState(visualizeCellAction, {
     status: "idle",
   });
@@ -207,6 +207,7 @@ function CellVisualizeOwner({
   // tile's UI synchronously.
 
   useEffect(() => {
+    setImageModel(readStoredImageModel());
     const sync = () => setImageModel(readStoredImageModel());
     window.addEventListener(IMAGE_MODEL_CHANGE_EVENT, sync);
     const onStorage = (e: StorageEvent) => {
@@ -2166,9 +2167,9 @@ function DrawerReferenceGallery({
         </p>
         {item.hit.title ? (
           <p className="line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">{item.hit.title}</p>
-        ) : item.example.brand || item.example.year ? (
+        ) : item.example.attribution || item.example.year ? (
           <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            {[item.example.brand, item.example.year].filter(Boolean).join(" · ")}
+            {[item.example.attribution, item.example.year].filter(Boolean).join(" · ")}
           </p>
         ) : null}
       </div>

@@ -52,7 +52,7 @@ function withEvidencePolicyFixture(doc: MapDocument): MapDocument {
                 description: "Independent corroborating fixture example for this matrix cell.",
                 coordinates: { ...cell.coordinates },
                 status: "existing" as const,
-                brand: "Separate fixture producer",
+                attribution: "Separate fixture producer",
                 evidenceNote: "Independent benchmark used to keep fixture evidence policy realistic.",
               }
             : {
@@ -70,7 +70,7 @@ function withEvidencePolicyFixture(doc: MapDocument): MapDocument {
                 {
                   ...second,
                   name: "Independent corroborating reference",
-                  brand: "Separate producer",
+                  attribution: "Separate producer",
                 },
               ];
         return {
@@ -117,23 +117,23 @@ describe("map engine", () => {
   });
 
   it("requires substantive evidence for concrete examples", () => {
-    expect(hasConcreteExample(exampleFixture({ brand: "Acme" }))).toBe(true);
+    expect(hasConcreteExample(exampleFixture({ attribution: "Acme" }))).toBe(true);
     expect(hasConcreteExample(exampleFixture({ evidenceNote: "x".repeat(12) }))).toBe(true);
     expect(hasConcreteExample(exampleFixture({ evidenceNote: "x".repeat(11) }))).toBe(false);
     expect(hasConcreteExample(exampleFixture({ description: "y".repeat(48), evidenceNote: "" }))).toBe(true);
     expect(hasConcreteExample(exampleFixture({ description: "y".repeat(47) }))).toBe(false);
-    expect(hasConcreteExample(exampleFixture({ name: "", brand: "X" }))).toBe(false);
+    expect(hasConcreteExample(exampleFixture({ name: "", attribution: "X" }))).toBe(false);
   });
 
-  it("rejects placeholder anchors with generic brand or name strings", () => {
+  it("rejects placeholder anchors with generic attribution or name strings", () => {
     expect(
       hasConcreteExample(
-        exampleFixture({ name: "Stability Max-Cushion Trainer", brand: "Industry Standard" }),
+        exampleFixture({ name: "Stability Max-Cushion Trainer", attribution: "Industry Standard" }),
       ),
     ).toBe(false);
     expect(
       hasConcreteExample(
-        exampleFixture({ name: "Concept Recovery Cruiser", brand: "Generic Prototype" }),
+        exampleFixture({ name: "Concept Recovery Cruiser", attribution: "Generic Prototype" }),
       ),
     ).toBe(false);
     expect(
@@ -145,26 +145,26 @@ describe("map engine", () => {
       ),
     ).toBe(false);
     expect(
-      hasConcreteExample(exampleFixture({ name: "Hoka Bondi 9", brand: "Hoka" })),
+      hasConcreteExample(exampleFixture({ name: "Hoka Bondi 9", attribution: "Hoka" })),
     ).toBe(true);
   });
 
   it("rejects modified anchors as concrete evidence", () => {
     expect(
-      hasConcreteExample(exampleFixture({ name: "Linea Mini (Paddle Mod)", brand: "La Marzocco" })),
+      hasConcreteExample(exampleFixture({ name: "Linea Mini (Paddle Mod)", attribution: "La Marzocco" })),
     ).toBe(false);
     expect(
-      hasConcreteExample(exampleFixture({ name: "Custom GS/3 Retrofit", brand: "La Marzocco" })),
+      hasConcreteExample(exampleFixture({ name: "Custom GS/3 Retrofit", attribution: "La Marzocco" })),
     ).toBe(false);
   });
 
   it("collapses obvious family variants to one parent identity", () => {
     expect(
-      exampleParentIdentity({ name: "Linea Mini", brand: "La Marzocco" }),
-    ).toBe(exampleParentIdentity({ name: "Linea Mini R", brand: "La Marzocco" }));
+      exampleParentIdentity({ name: "Linea Mini", attribution: "La Marzocco" }),
+    ).toBe(exampleParentIdentity({ name: "Linea Mini R", attribution: "La Marzocco" }));
     expect(
-      exampleParentIdentity({ name: "Lelit Bianca", brand: "Lelit" }),
-    ).toBe(exampleParentIdentity({ name: "Lelit Bianca V3", brand: "Lelit" }));
+      exampleParentIdentity({ name: "Lelit Bianca", attribution: "Lelit" }),
+    ).toBe(exampleParentIdentity({ name: "Lelit Bianca V3", attribution: "Lelit" }));
   });
 
   it("test fixture document validates schema", () => {

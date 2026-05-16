@@ -121,7 +121,7 @@ export async function visualizeCellAction(
     // verbatim into both the prompt's grounding cues and the drawer caption.
     const exampleStrings = (targetCell.examples ?? []).flatMap((example) => [
       example.name,
-      example.brand,
+      example.attribution,
       example.year,
       example.evidenceNote,
       example.description,

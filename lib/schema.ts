@@ -82,7 +82,7 @@ export const mapExampleSchema = z.object({
   description: z.string(),
   coordinates: z.record(z.string(), z.string()),
   status: z.enum(MAP_CELL_STATUSES),
-  brand: z.string().optional(),
+  attribution: z.string().optional(),
   year: z.string().optional(),
   evidenceNote: z.string().optional(),
   confidence: z.number().min(0).max(1).optional(),

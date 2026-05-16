@@ -60,7 +60,7 @@ function userVisibleDocumentConcat(doc: MapDocument): string {
   for (const cell of doc.cells) {
     chunks.push(cell.label, cell.explanation, ...cell.badges);
     for (const ex of cell.examples) {
-      chunks.push(ex.name, ex.description, ex.evidenceNote ?? "", ex.brand ?? "", ex.year ?? "");
+      chunks.push(ex.name, ex.description, ex.evidenceNote ?? "", ex.attribution ?? "", ex.year ?? "");
       for (const img of ex.referenceImages ?? []) {
         if (img.title) chunks.push(img.title);
         if (img.source) chunks.push(img.source);
@@ -71,7 +71,7 @@ function userVisibleDocumentConcat(doc: MapDocument): string {
     }
   }
   for (const ex of doc.featuredExamples) {
-    chunks.push(ex.name, ex.description, ex.evidenceNote ?? "", ex.brand ?? "", ex.year ?? "");
+    chunks.push(ex.name, ex.description, ex.evidenceNote ?? "", ex.attribution ?? "", ex.year ?? "");
     for (const img of ex.referenceImages ?? []) {
       if (img.title) chunks.push(img.title);
       if (img.source) chunks.push(img.source);
