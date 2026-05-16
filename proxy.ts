@@ -61,6 +61,13 @@ export function proxy(request: NextRequest, ...args: NeonAuthProxyRestArgs) {
     return redirect;
   }
 
+  // API routes handle their own auth and return JSON errors; the Neon Auth
+  // middleware would otherwise 302 unauthenticated (or stale-session) API
+  // calls to /auth/sign-in, breaking fetch/XHR clients.
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    return NextResponse.next();
+  }
+
   return getNeonAuthProxy()(request, ...args);
 }
 
