@@ -68,6 +68,16 @@ export function proxy(request: NextRequest, ...args: NeonAuthProxyRestArgs) {
     return NextResponse.next();
   }
 
+  // Next.js Server Actions POST to the current page URL with a `Next-Action`
+  // header. The Neon Auth middleware would 302 those to /auth/sign-in for any
+  // session it can't verify, which the action client surfaces as the generic
+  // "An unexpected response was received from the server" + React hydration
+  // error #418. Every action (cell sketch, comments, votes, edits) checks
+  // auth itself, so let action POSTs through.
+  if (request.headers.get("next-action")) {
+    return NextResponse.next();
+  }
+
   return getNeonAuthProxy()(request, ...args);
 }
 
