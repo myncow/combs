@@ -179,7 +179,7 @@ export function LeaderboardComments({
             rows={2}
             maxLength={1200}
             className={cn(
-              "w-full resize-y border border-border bg-background px-3 py-2 font-sans text-[13px] leading-snug text-foreground placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "w-full resize-y border border-border bg-background px-3 py-2 font-sans text-[16px] leading-snug text-foreground placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:text-[13px]",
               !isSignedIn && "cursor-not-allowed opacity-60",
             )}
           />

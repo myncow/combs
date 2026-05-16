@@ -39,6 +39,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   ArrowUpRight,
@@ -1281,13 +1282,13 @@ function CellPreviewImage({ image }: { image: { url: string; alt: string } }) {
         "flex items-center justify-center bg-[color:color-mix(in_srgb,var(--foreground)_6%,var(--background))]",
       )}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <Image
         key={image.url}
         src={image.url}
         alt={image.alt}
         width={640}
         height={480}
+        sizes="(max-width: 768px) 25vw, 200px"
         loading="lazy"
         referrerPolicy="no-referrer"
         className="live-image-reveal h-full w-full object-cover [transform:translateZ(0)]"
@@ -1802,13 +1803,13 @@ function DrawerBody({
                     aria-label={`Open larger view for ${cell.label}`}
                     title="Open larger view"
                   />
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     key={display.imageUrl}
                     src={display.imageUrl}
                     alt={`Visualization for ${cell.label}`}
                     width={1024}
                     height={768}
+                    sizes="(max-width: 768px) 100vw, 70vw"
                     loading="lazy"
                     className="live-image-reveal max-h-[70vh] w-full object-contain"
                   />
@@ -2118,6 +2119,7 @@ function DrawerReferenceGallery({
             width={1200}
             height={900}
             loading="eager"
+            decoding="async"
             referrerPolicy="no-referrer"
             className="live-image-reveal max-h-[min(46vh,26rem)] w-full object-contain"
           />
@@ -2174,6 +2176,7 @@ function DrawerReferenceGallery({
               src={entry.hit.thumbnail!}
               alt=""
               loading="lazy"
+              decoding="async"
               referrerPolicy="no-referrer"
               className="h-full w-full object-cover"
             />
@@ -2297,13 +2300,13 @@ function ViewerModal({
           </div>
         </div>
         <div className="relative flex items-center justify-center bg-muted/30 p-4 sm:p-6 dark:bg-background">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src={imageUrl}
             alt={`Large visualization for ${cell.label}`}
             width={1600}
             height={1200}
-            loading="lazy"
+            sizes="100vw"
+            priority
             className="max-h-[82vh] w-auto max-w-full object-contain"
           />
           {imageModel ? <VizModelOverlay modelId={imageModel} className="bottom-4 left-4 sm:bottom-6 sm:left-6" /> : null}

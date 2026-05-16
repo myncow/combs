@@ -42,7 +42,7 @@ export function PersistedReferenceThumbnails({
         >
           {/* Remote SERP thumb: native img for arbitrary hosts. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={h.thumbnail!} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+          <img src={h.thumbnail!} alt="" referrerPolicy="no-referrer" loading="lazy" decoding="async" className="h-full w-full object-cover" />
         </a>
       ))}
     </div>
@@ -118,6 +118,8 @@ export function ExampleImageThumbnails({
               src={h.thumbnail!}
               alt=""
               referrerPolicy="no-referrer"
+              loading="lazy"
+              decoding="async"
               className="h-full w-full object-cover"
             />
           </a>
@@ -241,6 +243,8 @@ export function ExampleVisualMatrix({
               src={hit.thumbnail!}
               alt=""
               referrerPolicy="no-referrer"
+              loading="lazy"
+              decoding="async"
               className="h-full w-full flex-1 border-b border-border object-cover"
             />
             <div className="space-y-2 bg-card px-3 py-3">

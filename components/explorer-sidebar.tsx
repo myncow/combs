@@ -232,7 +232,7 @@ export function ExplorerSidebar({
     >
       {!collapsed ? (
         <div className="flex items-center gap-1.5 border-b border-border px-2 py-2">
-          <p className="min-w-0 flex-1 truncate px-1 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          <p className="min-w-0 flex-1 truncate px-1 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground md:text-[10px]">
             My maps
           </p>
           <Link
@@ -311,12 +311,12 @@ export function ExplorerSidebar({
             </ul>
           ) : !isSignedIn ? (
             <div className="flex flex-col items-stretch gap-3 px-3 py-6">
-              <p className="text-center font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              <p className="text-center font-mono text-[12px] uppercase tracking-[0.2em] text-muted-foreground md:text-[10px]">
                 Sign in to start mapping
               </p>
               <Link
                 href="/auth/sign-in"
-                className="inline-flex items-center justify-center border border-border bg-card px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-foreground transition-colors hover:border-foreground/40"
+                className="inline-flex items-center justify-center border border-border bg-card px-3 py-1.5 font-mono text-[12px] uppercase tracking-[0.2em] text-foreground transition-colors hover:border-foreground/40 md:text-[10px]"
               >
                 Sign in
               </Link>

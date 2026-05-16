@@ -201,7 +201,7 @@ export default async function HomePage({
       : `${entries.total} ${entries.total === 1 ? "entry" : "entries"}`;
 
   return (
-    <ShellPage size="wide" className="gap-3 overflow-hidden">
+    <ShellPage size="wide" className="gap-3 md:overflow-hidden">
       {/* Toolbar + pagination are pinned siblings; only the middle list
           region scrolls. ShellPage's default overflow-y-auto is
           overridden above so the page itself never scrolls — the user
@@ -228,7 +228,7 @@ export default async function HomePage({
                 defaultValue={query}
                 placeholder="Search title, category…"
                 aria-label="Search leaderboard"
-                className="h-9 w-full min-w-0 border border-border bg-background px-2.5 font-sans text-[12.5px] text-foreground placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:w-[12rem] md:w-[14rem]"
+                className="h-9 w-full min-w-0 border border-border bg-background px-2.5 font-sans text-[16px] text-foreground placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:w-[12rem] md:w-[14rem] md:text-[12.5px]"
               />
               <input type="hidden" name="scope" value={scope} />
               <input type="hidden" name="view" value={view} />
@@ -280,8 +280,8 @@ export default async function HomePage({
         </div>
       </StickyToolbar>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-hidden md:grid-cols-[minmax(0,1fr)_minmax(13rem,15rem)] md:gap-8">
-        <section className="flex min-h-0 flex-col gap-3 overflow-hidden">
+      <div className="grid grid-cols-1 gap-4 md:min-h-0 md:flex-1 md:grid-cols-[minmax(0,1fr)_minmax(13rem,15rem)] md:gap-8 md:overflow-hidden">
+        <section className="flex flex-col gap-3 md:min-h-0 md:overflow-hidden">
           {!user ? (
             <p className="font-sans text-[13px] leading-snug text-muted-foreground">
               Each entry is a <span className="italic text-foreground">find</span> — a gap someone surfaced from a Lelet map. Upvote the strong ones, or{" "}
@@ -306,7 +306,7 @@ export default async function HomePage({
             </Link>
           </div>
 
-          <div className="-mx-5 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-5 md:mx-0 md:px-0">
+          <div className="-mx-5 flex flex-col px-5 md:mx-0 md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain md:px-0">
             {entries.items.length ? (
               <LeaderboardGallery
                 entries={entries.items}

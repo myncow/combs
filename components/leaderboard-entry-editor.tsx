@@ -162,7 +162,7 @@ export function LeaderboardEntryEditor({
         maxLength={120}
         disabled={pending}
         className={cn(
-          "w-full border border-border bg-background px-2.5 py-1.5 font-sans text-[14px] font-semibold leading-snug text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "w-full border border-border bg-background px-2.5 py-1.5 font-sans text-[16px] font-semibold leading-snug text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:text-[14px]",
           titleClassName,
         )}
       />
@@ -177,7 +177,7 @@ export function LeaderboardEntryEditor({
         rows={3}
         disabled={pending}
         className={cn(
-          "w-full resize-y border border-border bg-background px-2.5 py-1.5 font-sans text-[13px] leading-snug text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "w-full resize-y border border-border bg-background px-2.5 py-1.5 font-sans text-[16px] leading-snug text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:text-[13px]",
           summaryClassName,
         )}
       />

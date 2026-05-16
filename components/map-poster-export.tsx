@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import Image from "next/image";
 import { Download, FileImage, Link2, Loader2, RefreshCw, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -164,7 +165,7 @@ function PosterDialog({
         aria-labelledby={titleId}
         aria-busy={busy}
         onClick={(event) => event.stopPropagation()}
-        className="w-full max-w-md border border-border bg-background shadow-[var(--shadow-overlay)]"
+        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col overflow-y-auto border border-border bg-background shadow-[var(--shadow-overlay)]"
       >
         <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
           <div className="min-w-0">
@@ -190,22 +191,23 @@ function PosterDialog({
         <div className="px-4 py-4">
           <div
             className={cn(
-              "relative flex aspect-square w-full items-center justify-center overflow-hidden border border-border bg-muted",
+              "relative flex aspect-square max-h-[60vh] w-full items-center justify-center overflow-hidden border border-border bg-muted",
               !state.posterUrl && "bg-card",
             )}
           >
             {state.posterUrl ? (
               <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={state.posterUrl}
                   alt="Generated poster preview"
-                  className="h-full w-full object-contain"
+                  fill
+                  sizes="(max-width: 480px) 100vw, 448px"
+                  className="object-contain"
                 />
                 {busy ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[color:color-mix(in_srgb,var(--background)_72%,transparent)] backdrop-blur-sm">
                     <Spinner size="md" className="text-primary" />
-                    <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-foreground">
+                    <p className="font-mono text-[12px] uppercase tracking-[0.22em] text-foreground md:text-[11px]">
                       Regenerating…
                     </p>
                   </div>
@@ -214,7 +216,7 @@ function PosterDialog({
             ) : busy ? (
               <div className="flex flex-col items-center gap-2 px-5 py-6 text-center">
                 <Spinner size="md" className="text-primary" />
-                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-foreground">
+                <p className="font-mono text-[12px] uppercase tracking-[0.22em] text-foreground md:text-[10px]">
                   Generating…
                 </p>
                 <p className="max-w-[18rem] text-[11.5px] leading-snug text-muted-foreground">
@@ -239,14 +241,14 @@ function PosterDialog({
           {error ? (
             <p
               role="alert"
-              className="mt-2.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--destructive)]"
+              className="mt-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-[color:var(--destructive)] md:text-[10px]"
             >
               {error}
             </p>
           ) : null}
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground md:text-[10px]">
               {state.posterUrl
                 ? generatedLabel
                   ? generatedLabel

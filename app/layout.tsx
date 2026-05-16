@@ -72,7 +72,7 @@ export default async function RootLayout({
       lang="en"
       suppressHydrationWarning
       data-scroll-behavior="smooth"
-      className={cn(geistSans.variable, geistMono.variable, "h-full overflow-hidden antialiased", ssrDark && "dark")}
+      className={cn(geistSans.variable, geistMono.variable, "antialiased md:h-full md:overflow-hidden", ssrDark && "dark")}
     >
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -82,11 +82,11 @@ export default async function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="h-dvh overflow-hidden bg-background font-sans text-foreground">
+      <body className="min-h-dvh bg-background font-sans text-foreground md:h-dvh md:overflow-hidden">
         <ThemeBootstrap />
         <NeonAuthProviders serverKnownSignedIn={Boolean(sessionUser)}>
           <TooltipProvider delayDuration={150} skipDelayDuration={300}>
-            <div className="flex h-dvh flex-col overflow-hidden">
+            <div className="flex min-h-dvh flex-col md:h-dvh md:overflow-hidden">
               <SiteHeader brandName={settings.appName} primaryLinks={headerLinks} isAdmin={isAdmin} />
               <div className="flex min-h-0 flex-1 flex-col">{children}</div>
             </div>

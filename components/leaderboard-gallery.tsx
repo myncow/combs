@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowUpRight, MessageSquare } from "lucide-react";
@@ -143,14 +144,15 @@ export function LeaderboardGallery({
                     <Link
                       href={expandHref}
                       aria-label={`Expand ${entry.storyTitle}`}
-                      className="block aspect-square h-12 w-12 overflow-hidden border border-border bg-muted md:h-14 md:w-14"
+                      className="relative block aspect-square h-12 w-12 overflow-hidden border border-border bg-muted md:h-14 md:w-14"
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
+                      <Image
                         src={entry.imageUrl}
                         alt=""
+                        fill
+                        sizes="56px"
                         referrerPolicy="no-referrer"
-                        className="h-full w-full object-cover"
+                        className="object-cover"
                       />
                     </Link>
                   </TableCell>
@@ -164,7 +166,7 @@ export function LeaderboardGallery({
                           {entry.storyTitle}
                         </Link>
                       </h3>
-                      <p className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      <p className="mt-1 truncate font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground md:text-[10px]">
                         {entry.topicFamily}
                         {entry.createdByDisplayName ? (
                           <>
@@ -247,12 +249,14 @@ export function LeaderboardGallery({
           >
             <div className="grid gap-0 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
               <div className="relative overflow-hidden border-b border-border bg-muted md:border-b-0 md:border-r">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={entry.imageUrl}
                   alt={entry.storyTitle}
+                  width={1200}
+                  height={900}
+                  sizes="(max-width: 768px) 100vw, 60vw"
                   referrerPolicy="no-referrer"
-                  className="block h-full max-h-[78vh] w-full object-contain"
+                  className="block h-auto max-h-[78vh] w-full object-contain"
                 />
                 {entry.imageModel ? (
                   <div

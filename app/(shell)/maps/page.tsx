@@ -189,7 +189,7 @@ export default async function GalleryPage({
   const eyebrowLabel = `${total} ${total === 1 ? "map" : "maps"}`;
 
   return (
-    <ShellPage size="wide" className="gap-3 overflow-hidden">
+    <ShellPage size="wide" className="gap-3 md:overflow-hidden">
       <StickyToolbar>
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div className="flex min-w-0 items-baseline gap-3">
@@ -208,7 +208,7 @@ export default async function GalleryPage({
                 defaultValue={filters.q ?? ""}
                 placeholder="Search title, topic…"
                 aria-label="Search maps"
-                className="h-9 w-full min-w-0 border border-border bg-background px-2.5 font-sans text-[12.5px] text-foreground placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:w-[12rem] md:w-[14rem]"
+                className="h-9 w-full min-w-0 border border-border bg-background px-2.5 font-sans text-[16px] text-foreground placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:w-[12rem] md:w-[14rem] md:text-[12.5px]"
               />
               {filters.topicFamily ? (
                 <input type="hidden" name="topicFamily" value={filters.topicFamily} />
@@ -235,7 +235,7 @@ export default async function GalleryPage({
         </div>
       </StickyToolbar>
 
-      <div className="-mx-5 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-5 md:-mx-8 md:px-8">
+      <div className="-mx-5 flex flex-col gap-5 px-5 md:-mx-8 md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain md:px-8">
         {items.length === 0 ? (
           <EmptyStatePanel
             kicker={
@@ -305,6 +305,8 @@ export default async function GalleryPage({
                               src={thumbnailUrl}
                               alt=""
                               referrerPolicy="no-referrer"
+                              loading="lazy"
+                              decoding="async"
                               className="h-full w-full object-cover"
                             />
                           ) : null}
@@ -318,7 +320,7 @@ export default async function GalleryPage({
                           <h3 className="truncate text-[15px] font-semibold leading-tight tracking-[-0.005em] text-foreground transition-colors duration-150 group-hover:text-primary md:text-[16px]">
                             {displayTitle}
                           </h3>
-                          <p className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground md:hidden">
+                          <p className="mt-1 truncate font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground md:hidden">
                             {map.topicFamily}
                             {map.createdByDisplayName ? (
                               <>

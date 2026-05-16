@@ -110,7 +110,7 @@ export default async function AdminMapsPage({
                 defaultValue={query}
                 autoComplete="off"
                 placeholder="Title, topic, slug…"
-                className="mt-1 h-9 w-full border-b border-border bg-transparent text-[14px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="mt-1 h-9 w-full border-b border-border bg-transparent text-[16px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:text-[14px]"
               />
             </label>
             <label className="block">
@@ -120,7 +120,7 @@ export default async function AdminMapsPage({
               <select
                 name="status"
                 defaultValue={status}
-                className="mt-1 h-9 w-full border-b border-border bg-transparent font-mono text-[12px] uppercase tracking-[0.14em] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="mt-1 h-9 w-full border-b border-border bg-transparent font-mono text-[16px] uppercase tracking-[0.14em] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:text-[12px]"
               >
                 {STATUS_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -136,7 +136,7 @@ export default async function AdminMapsPage({
               <select
                 name="visibility"
                 defaultValue={visibility ?? ""}
-                className="mt-1 h-9 w-full border-b border-border bg-transparent font-mono text-[12px] uppercase tracking-[0.14em] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="mt-1 h-9 w-full border-b border-border bg-transparent font-mono text-[16px] uppercase tracking-[0.14em] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:text-[12px]"
               >
                 <option value="">All</option>
                 <option value="public">Public</option>
@@ -153,7 +153,7 @@ export default async function AdminMapsPage({
                 autoComplete="off"
                 spellCheck={false}
                 placeholder="Neon user id…"
-                className="mt-1 h-9 w-full border-b border-border bg-transparent font-mono text-[12px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="mt-1 h-9 w-full border-b border-border bg-transparent font-mono text-[16px] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:text-[12px]"
               />
             </label>
             <div className="flex gap-2">

@@ -91,6 +91,8 @@ function MapThumbnail({
         src={url}
         alt=""
         referrerPolicy="no-referrer"
+        loading="lazy"
+        decoding="async"
         className="h-full w-full object-cover"
       />
     </div>

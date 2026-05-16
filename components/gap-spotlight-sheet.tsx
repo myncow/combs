@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useId, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Globe, Lock, Save, Send, X } from "lucide-react";
 import { publishGapSpotlightAction, type PublishGapSpotlightActionState } from "@/app/actions";
@@ -150,13 +151,14 @@ export function GapSpotlightSheet({
           <input type="hidden" name="cellId" value={cellId} />
           <input type="hidden" name="makePublic" value={String(mapIsPublic ? false : makePublic)} />
 
-          <div className="overflow-hidden border border-border bg-muted">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+          <div className="relative aspect-[4/3] w-full overflow-hidden border border-border bg-muted">
+            <Image
               src={imageUrl}
               alt={storyTitle || defaultTitle}
+              fill
+              sizes="(max-width: 768px) 100vw, 480px"
               referrerPolicy="no-referrer"
-              className="aspect-[4/3] w-full object-cover"
+              className="object-cover"
             />
           </div>
 
