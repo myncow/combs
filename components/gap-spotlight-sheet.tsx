@@ -1,15 +1,21 @@
 "use client";
 
-import { useActionState, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Globe, Lock, Save, Send, X } from "lucide-react";
+import { Globe, Lock, Save, Send } from "lucide-react";
 import { publishGapSpotlightAction, type PublishGapSpotlightActionState } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { dispatchLibraryRefresh } from "@/lib/client-events";
-import { useFocusTrap } from "@/lib/use-focus-trap";
 import { cn } from "@/lib/utils";
 
 const LOCAL_DRAFT_PREFIX = "raster-gap-spotlight-draft";
@@ -101,50 +107,26 @@ export function GapSpotlightSheet({
     window.setTimeout(() => setDraftFeedback(null), 1800);
   }
 
-  const dialogRef = useRef<HTMLDivElement | null>(null);
-  const titleId = useId();
-  useFocusTrap(dialogRef, true);
-
-  useEffect(() => {
-    function handleKey(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [onClose]);
-
   return (
-    <div
-      className="fixed inset-0 z-[110] flex items-center justify-center bg-[color:color-mix(in_srgb,var(--foreground)_58%,transparent)] p-4"
-      onClick={onClose}
+    <Dialog
+      open
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
     >
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        onClick={(event) => event.stopPropagation()}
-        className="w-full max-w-lg border border-border bg-background shadow-[var(--shadow-overlay)]"
+      <DialogContent
+        showCloseButton
+        className="w-full max-w-lg rounded-none border border-border bg-background p-0 sm:max-w-lg"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
-          <div className="min-w-0">
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-primary">Leaderboard</p>
-            <h3
-              id={titleId}
-              className="mt-1.5 font-sans text-xl font-semibold leading-tight tracking-[-0.02em] text-foreground"
-            >
-              Publish to leaderboard
-            </h3>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-9 w-9 items-center justify-center border border-border bg-card text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4" aria-hidden />
-          </button>
-        </div>
+        <DialogHeader className="border-b border-border px-5 py-4">
+          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-primary">Leaderboard</p>
+          <DialogTitle className="font-sans text-xl font-semibold leading-tight tracking-[-0.02em] text-foreground">
+            Publish to leaderboard
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Publish a spotlight entry from the selected map cell.
+          </DialogDescription>
+        </DialogHeader>
 
         <form action={formAction} className="space-y-5 p-5">
           <input type="hidden" name="mapSlug" value={mapSlug} />
@@ -176,6 +158,7 @@ export function GapSpotlightSheet({
               value={storyTitle}
               onChange={(event) => setStoryTitle(event.target.value)}
               placeholder={defaultTitle}
+              autoComplete="off"
             />
           </div>
 
@@ -238,14 +221,17 @@ export function GapSpotlightSheet({
           <div className="flex flex-wrap items-center gap-2 pt-1">
             <Button type="submit" disabled={isPending}>
               <Send className={cn("h-3.5 w-3.5", isPending && "animate-pulse")} aria-hidden />
-              {isPending ? "Publishing" : "Publish"}
+              {isPending ? "Publishing…" : "Publish"}
             </Button>
             <Button type="button" variant="secondary" onClick={saveDraft}>
               <Save className="h-3.5 w-3.5" aria-hidden />
               Save draft
             </Button>
             {draftFeedback ? (
-              <p className="ml-auto font-mono text-[11px] uppercase tracking-[0.2em] text-primary">
+              <p
+                aria-live="polite"
+                className="ml-auto font-mono text-[11px] uppercase tracking-[0.2em] text-primary"
+              >
                 {draftFeedback}
               </p>
             ) : null}
@@ -254,13 +240,14 @@ export function GapSpotlightSheet({
           {state.status === "error" ? (
             <p
               role="alert"
+              aria-live="polite"
               className="font-mono text-[11px] uppercase tracking-[0.2em] text-destructive"
             >
               {state.message}
             </p>
           ) : null}
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

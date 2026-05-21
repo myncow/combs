@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 export function AdminOwnerCell({ ownerId }: { ownerId?: string | null }) {
   const [copied, setCopied] = useState(false);
-  const label = ownerId ? `${ownerId.slice(0, 10)}...` : "Legacy (no owner)";
+  const label = ownerId ? `${ownerId.slice(0, 10)}…` : "Legacy (no owner)";
 
   useEffect(() => {
     if (!copied) return;

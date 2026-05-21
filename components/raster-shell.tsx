@@ -83,7 +83,7 @@ export function PageHeader({
       ) : null}
       <h1
         className={cn(
-          "mt-4 font-sans text-[28px] font-semibold leading-[1.02] tracking-[-0.03em] text-foreground md:text-[36px]",
+          "mt-4 font-sans text-[28px] font-semibold leading-[1.02] tracking-[-0.03em] text-balance text-foreground md:text-[36px]",
           titleClassName,
         )}
       >

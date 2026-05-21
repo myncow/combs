@@ -12,7 +12,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { getSessionUser } from "@/lib/auth/admin";
 import { getSiteUrl } from "@/lib/site-url";
 import { getNavigation, getSiteSettings } from "@/lib/store";
-import { THEME_STORAGE_KEY, parseThemeCookie } from "@/lib/theme-preference";
+import {
+  ACCENT_STORAGE_KEY,
+  THEME_STORAGE_KEY,
+  parseAccentCookie,
+  parseThemeCookie,
+} from "@/lib/theme-preference";
 import { cn } from "@/lib/utils";
 
 const geistSans = Geist({
@@ -60,6 +65,7 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const cookiePref = parseThemeCookie(cookieStore.get(THEME_STORAGE_KEY)?.value);
   const ssrDark = (cookiePref ?? "system") === "dark";
+  const cookieAccent = parseAccentCookie(cookieStore.get(ACCENT_STORAGE_KEY)?.value) ?? "cobalt";
   const [settings, headerLinks, sessionUser] = await Promise.all([
     getSiteSettings(),
     getNavigation("header_primary"),
@@ -72,6 +78,7 @@ export default async function RootLayout({
       lang="en"
       suppressHydrationWarning
       data-scroll-behavior="smooth"
+      data-theme={cookieAccent === "cobalt" ? undefined : cookieAccent}
       className={cn(geistSans.variable, geistMono.variable, "antialiased md:h-full md:overflow-hidden", ssrDark && "dark")}
     >
       <head>

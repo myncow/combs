@@ -1,4 +1,5 @@
 export const THEME_STORAGE_KEY = "raster-theme";
+export const ACCENT_STORAGE_KEY = "raster-accent";
 
 /**
  * Same-tab notification channel for theme preference changes. The
@@ -9,6 +10,7 @@ export const THEME_STORAGE_KEY = "raster-theme";
  * stored value reliably.
  */
 export const THEME_CHANGE_EVENT = "raster:theme-change";
+export const ACCENT_CHANGE_EVENT = "raster:accent-change";
 
 export type ThemePreference = "light" | "dark" | "system";
 
@@ -76,6 +78,70 @@ export function persistThemePreference(pref: ThemePreference): void {
   applyThemePreference(pref);
   try {
     window.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT, { detail: pref }));
+  } catch {
+    /* CustomEvent unsupported — fall back silently */
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Accent palette (cobalt | graphite | moss | rust).
+ *
+ * Orthogonal to light/dark. Cobalt is the default and writes no
+ * attribute; the others toggle `data-theme="<name>"` on <html> which
+ * overrides --primary / --primary-foreground / --ring via theme.css.
+ * Mirror the light/dark API so callers feel the same.
+ * ------------------------------------------------------------------ */
+
+export type AccentTheme = "cobalt" | "graphite" | "moss" | "rust";
+
+const ACCENT_VALUES: ReadonlyArray<AccentTheme> = ["cobalt", "graphite", "moss", "rust"];
+
+function isAccentTheme(v: string | undefined): v is AccentTheme {
+  return v !== undefined && (ACCENT_VALUES as ReadonlyArray<string>).includes(v);
+}
+
+export function parseAccentCookie(raw: string | undefined): AccentTheme | undefined {
+  return isAccentTheme(raw) ? raw : undefined;
+}
+
+export function applyAccentTheme(accent: AccentTheme): void {
+  if (typeof document === "undefined") return;
+  if (accent === "cobalt") {
+    document.documentElement.removeAttribute("data-theme");
+  } else {
+    document.documentElement.setAttribute("data-theme", accent);
+  }
+}
+
+export function readStoredAccentTheme(): AccentTheme {
+  if (typeof window === "undefined") return "cobalt";
+  try {
+    const raw = localStorage.getItem(ACCENT_STORAGE_KEY);
+    if (isAccentTheme(raw ?? undefined)) return raw as AccentTheme;
+  } catch {
+    /* private mode */
+  }
+  return "cobalt";
+}
+
+const ACCENT_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+
+export function persistAccentCookie(accent: AccentTheme): void {
+  if (typeof document === "undefined") return;
+  document.cookie = `${ACCENT_STORAGE_KEY}=${accent}; Path=/; Max-Age=${ACCENT_COOKIE_MAX_AGE}; SameSite=Lax`;
+}
+
+export function persistAccentTheme(accent: AccentTheme): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(ACCENT_STORAGE_KEY, accent);
+  } catch {
+    /* private mode */
+  }
+  persistAccentCookie(accent);
+  applyAccentTheme(accent);
+  try {
+    window.dispatchEvent(new CustomEvent(ACCENT_CHANGE_EVENT, { detail: accent }));
   } catch {
     /* CustomEvent unsupported — fall back silently */
   }

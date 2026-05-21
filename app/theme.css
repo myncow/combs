@@ -88,3 +88,53 @@ html.dark {
 
   color-scheme: dark;
 }
+
+/* ------------------------------------------------------------------ *
+ * Accent palettes.
+ *
+ * The base palette (above) is cobalt — the default. Additional accents
+ * override only the "single accent" tokens so the engineering-paper
+ * identity stays intact: page background, ink, card surface, muted
+ * stone, destructive russet are all constant. Switching accents only
+ * changes the colour the system uses to signal "the missing picture"
+ * and to ring focused controls.
+ *
+ * Toggle via `data-theme="<name>"` on <html>. Light/dark stays on
+ * `html.dark`; the two are orthogonal.
+ * ------------------------------------------------------------------ */
+
+/* graphite — no chromatic accent; pure ink on paper. */
+html[data-theme="graphite"] {
+  --primary: #1c1e1f;
+  --primary-foreground: #f7f7f3;
+  --ring: #1c1e1f;
+}
+html.dark[data-theme="graphite"] {
+  --primary: #e8eae4;
+  --primary-foreground: #141616;
+  --ring: #e8eae4;
+}
+
+/* moss — desaturated botanical green. */
+html[data-theme="moss"] {
+  --primary: #3b5d3a;
+  --primary-foreground: #f7f7f3;
+  --ring: #3b5d3a;
+}
+html.dark[data-theme="moss"] {
+  --primary: #8aab85;
+  --primary-foreground: #141616;
+  --ring: #8aab85;
+}
+
+/* rust — warm earth, distinct from the russet destructive token. */
+html[data-theme="rust"] {
+  --primary: #8a4a2f;
+  --primary-foreground: #f7f7f3;
+  --ring: #8a4a2f;
+}
+html.dark[data-theme="rust"] {
+  --primary: #c98a6e;
+  --primary-foreground: #141616;
+  --ring: #c98a6e;
+}

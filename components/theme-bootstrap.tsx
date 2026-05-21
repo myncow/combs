@@ -2,20 +2,28 @@
 
 import { useInsertionEffect } from "react";
 import {
+  applyAccentTheme,
   applyThemePreference,
+  persistAccentCookie,
   persistThemeCookie,
+  readStoredAccentTheme,
   readStoredThemePreference,
 } from "@/lib/theme-preference";
 
 /**
- * Applies stored theme before paint (no inline `<script>` — React 19 warns on script in the tree).
- * Cookie is kept in sync for SSR on later navigations.
+ * Applies stored theme + accent before paint (no inline `<script>` — React 19
+ * warns on script in the tree). Cookies are kept in sync so SSR can pre-set
+ * `<html class="dark" data-theme="…">` on later navigations.
  */
 export function ThemeBootstrap() {
   useInsertionEffect(() => {
     const pref = readStoredThemePreference();
     applyThemePreference(pref);
     persistThemeCookie(pref);
+
+    const accent = readStoredAccentTheme();
+    applyAccentTheme(accent);
+    persistAccentCookie(accent);
   }, []);
   return null;
 }

@@ -330,15 +330,15 @@ function visualizationActionCopy(hasViz: boolean, isPending: boolean) {
   if (hasViz) {
     return {
       actionLabel: "Try another scene",
-      pendingLabel: "Trying another scene...",
-      buttonLabel: isPending ? "Trying another scene..." : "Try another scene",
+      pendingLabel: "Trying another scene…",
+      buttonLabel: isPending ? "Trying another scene…" : "Try another scene",
     };
   }
 
   return {
     actionLabel: "Sketch scene",
-    pendingLabel: "Sketching scene...",
-    buttonLabel: isPending ? "Sketching scene..." : "Sketch scene",
+    pendingLabel: "Sketching scene…",
+    buttonLabel: isPending ? "Sketching scene…" : "Sketch scene",
   };
 }
 
